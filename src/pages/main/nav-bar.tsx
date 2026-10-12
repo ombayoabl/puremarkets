@@ -36,7 +36,7 @@ export const ComingSoon = ({ name, icon }: { name: string; icon?: string }) => (
     <div className='coming-soon'>
         {icon && (
             <div className='coming-soon__icon'>
-                <NavIcon name={icon} size={64} />
+                <NavIcon name={icon} size={96} />
             </div>
         )}
         <h2 className='coming-soon__title'>{name}</h2>
