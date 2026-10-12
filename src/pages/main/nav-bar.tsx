@@ -2,6 +2,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { NAV_ITEMS, TNavItem } from '@/constants/bot-contents';
 import { localize } from '@deriv-com/translations';
+import NavIcon from './nav-icons';
 import './nav-bar.scss';
 
 type TNavBarProps = {
@@ -22,7 +23,8 @@ const NavBar = ({ active_key, onSelect }: TNavBarProps) => (
                         aria-current={active_key === item.key ? 'page' : undefined}
                         onClick={() => onSelect(item)}
                     >
-                        {localize(item.label)}
+                        <NavIcon name={item.key} />
+                        <span>{localize(item.label)}</span>
                     </button>
                 </li>
             ))}
@@ -30,8 +32,13 @@ const NavBar = ({ active_key, onSelect }: TNavBarProps) => (
     </nav>
 );
 
-export const ComingSoon = ({ name }: { name: string }) => (
+export const ComingSoon = ({ name, icon }: { name: string; icon?: string }) => (
     <div className='coming-soon'>
+        {icon && (
+            <div className='coming-soon__icon'>
+                <NavIcon name={icon} size={64} />
+            </div>
+        )}
         <h2 className='coming-soon__title'>{name}</h2>
         <p className='coming-soon__text'>{localize('Coming soon')}</p>
     </div>

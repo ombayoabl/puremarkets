@@ -474,7 +474,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
-                                <ComingSoon name={coming_soon_item?.label ?? ''} />
+                                <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
                             </div>
                         </Tabs>
                     </div>
