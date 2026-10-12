@@ -47,6 +47,7 @@ import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 const Tutorial = lazy(() => import('../tutorials'));
+const DTrader = lazy(() => import('../dtrader/dtrader'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -80,7 +81,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'dtrader'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -475,6 +476,11 @@ const AppWrapper = observer(() => {
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
                                 <ComingSoon name={coming_soon_item?.label ?? ''} />
+                            </div>
+                            <div label='DTrader/Circles' id='id-dtrader'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading DTrader...')} />}>
+                                    <DTrader />
+                                </Suspense>
                             </div>
                         </Tabs>
                     </div>
