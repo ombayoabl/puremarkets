@@ -11,7 +11,7 @@ import MobileWrapper from '@/components/shared_ui/mobile-wrapper';
 import Tabs from '@/components/shared_ui/tabs/tabs';
 import TradeTypeConfirmationModal from '@/components/trade-type-confirmation-modal';
 import TradingViewModal from '@/components/trading-view-chart/trading-view-modal';
-import { DBOT_TABS, TAB_IDS } from '@/constants/bot-contents';
+import { DBOT_TABS, NAV_ITEMS, TAB_IDS, TNavItem } from '@/constants/bot-contents';
 import { api_base, updateWorkspaceName } from '@/external/bot-skeleton';
 import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
@@ -42,6 +42,7 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
+import NavBar, { ComingSoon } from './nav-bar';
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
@@ -60,6 +61,7 @@ const AppWrapper = observer(() => {
         setWebSocketState,
         setActiveTour,
         setTourDialogVisibility,
+        setTradingViewModalVisibility,
     } = dashboard;
     const { dashboard_strategies } = load_modal;
     const {
@@ -78,12 +80,13 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
+    const [coming_soon_item, setComingSoonItem] = useState<TNavItem | null>(null);
 
     // Trade type modal state
     const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
@@ -356,6 +359,24 @@ const AppWrapper = observer(() => {
         [active_tab]
     );
 
+    const handleNavSelect = (item: TNavItem) => {
+        if (item.type === 'tab') {
+            setComingSoonItem(null);
+            handleTabChange(item.tab_index);
+        } else if (item.type === 'trading_view' && isDesktop) {
+            setTradingViewModalVisibility();
+        } else {
+            // Feature not built yet (or TradingView on mobile): show a Coming soon page
+            setComingSoonItem(item);
+            handleTabChange(DBOT_TABS.COMING_SOON);
+        }
+    };
+
+    const active_nav_key =
+        active_tab === DBOT_TABS.COMING_SOON
+            ? (coming_soon_item?.key ?? null)
+            : (NAV_ITEMS.find(item => item.type === 'tab' && item.tab_index === active_tab)?.key ?? null);
+
     // [AI]
     const handleLoginGeneration = async () => {
         const oauthUrl = await generateOAuthURL();
@@ -375,7 +396,7 @@ const AppWrapper = observer(() => {
                     })}
                 >
                     <div>
-                        {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}{' '}
+                        <NavBar active_key={active_nav_key} onSelect={handleNavSelect} />
                         <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
                             <div
                                 label={
@@ -452,8 +473,10 @@ const AppWrapper = observer(() => {
                                     </Suspense>
                                 </div>
                             </div>
+                            <div label='Coming soon' id='id-coming-soon'>
+                                <ComingSoon name={coming_soon_item?.label ?? ''} />
+                            </div>
                         </Tabs>
-                        {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
                     </div>
                 </div>
             </div>
