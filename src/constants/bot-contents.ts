@@ -45,5 +45,7 @@ export const NAV_ITEMS: TNavItem[] = [
     { key: 'charts', label: 'Charts', type: 'tab', tab_index: DBOT_TABS.CHART },
     { key: 'trading_view', label: 'Trading View', type: 'trading_view' },
     { key: 'analysis', label: 'Analysis', type: 'soon' },
+    { key: 'over_one', label: 'Over One', type: 'soon' },
+    { key: 'under_eight', label: 'Under Eight', type: 'soon' },
     { key: 'copy_trading', label: 'Copy Trading', type: 'soon' },
 ];
