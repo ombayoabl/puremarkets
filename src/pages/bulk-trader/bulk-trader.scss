@@ -1,9 +1,10 @@
 .bulk {
     max-width: 112rem;
     margin: 0 auto;
-    padding: 1.6rem 1.6rem 6rem;
+    padding: 1.6rem 1.6rem calc(6rem + env(safe-area-inset-bottom, 0px));
     // The page frame is a fixed height, so the trader scrolls inside it
     height: calc(100vh - 19rem);
+    height: calc(100dvh - 19rem);
     min-height: 30rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -11,6 +12,7 @@
 
     @media (max-width: 1024px) {
         height: calc(100vh - 15rem);
+        height: calc(100dvh - 15rem);
     }
     color: var(--text-general);
     font-size: 1.4rem;

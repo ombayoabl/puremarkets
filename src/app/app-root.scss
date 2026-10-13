@@ -1,5 +1,6 @@
 .app-root {
     height: 100vh;
+    height: 100dvh; // follows the visible screen on phones (address bar showing/hidden)
     width: 100vw;
     display: flex;
     align-items: center;

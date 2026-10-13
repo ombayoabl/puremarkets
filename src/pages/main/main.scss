@@ -32,10 +32,12 @@
     overflow: hidden;
     width: 100%;
     height: calc(100vh - 9rem);
+    height: calc(100dvh - 9rem);
     padding: 1.6rem;
 
     @include mobile-or-tablet-screen {
         height: calc(100vh - 6rem);
+        height: calc(100dvh - 6rem);
         padding: 0;
     }
 
