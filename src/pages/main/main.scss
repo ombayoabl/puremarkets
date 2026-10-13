@@ -47,6 +47,16 @@
         max-width: 100%;
         width: 100%;
 
+        // Car photo behind every tab. The theme colour is laid over it so text stays readable
+        // in both light and dark mode.
+        background: var(--general-main-1);
+        background:
+            linear-gradient(
+                color-mix(in srgb, var(--general-main-1) 74%, transparent),
+                color-mix(in srgb, var(--general-main-1) 74%, transparent)
+            ),
+            url('./tab-background.jpg') center / cover no-repeat;
+
         &.no-scroll {
             overflow: hidden;
         }
