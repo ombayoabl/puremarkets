@@ -47,6 +47,7 @@ import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 const Tutorial = lazy(() => import('../tutorials'));
+const BulkTrader = lazy(() => import('../bulk-trader/bulk-trader'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -80,7 +81,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -475,6 +476,11 @@ const AppWrapper = observer(() => {
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
                                 <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
+                            </div>
+                            <div label='Bulk Trader' id='id-bulk-trader'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Bulk Trader...')} />}>
+                                    <BulkTrader />
+                                </Suspense>
                             </div>
                         </Tabs>
                     </div>
