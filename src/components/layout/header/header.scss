@@ -294,31 +294,7 @@
     to   { transform: rotate(360deg); }
 }
 
-// ---- Black header bar with coloured Log in / Sign up buttons ----
-.app-header {
-    background-color: #000 !important;
-    border-bottom: 1px solid #1f1f1f;
-
-    .app-header__logo-text,
-    .app-header__logo-badge,
-    .account-info {
-        color: #fff;
-    }
-
-    &__account-settings,
-    .notifications__wrapper,
-    &__menu {
-        svg > path,
-        svg > g > path {
-            fill: #fff;
-        }
-    }
-
-    .auth-actions__spinner {
-        color: #fff;
-    }
-}
-
+// ---- Coloured Log in / Sign up buttons (white text, high contrast on light and dark headers) ----
 .auth-actions {
     button {
         border: none;
@@ -333,19 +309,19 @@
 
         // Log in: red
         &:first-child {
-            background-color: #ec3f3f !important;
+            background-color: #d32f2f !important;
 
             &:hover:not(:disabled) {
-                background-color: #d12f2f !important;
+                background-color: #b71c1c !important;
             }
         }
 
         // Sign up: blue
         &:last-child {
-            background-color: #2563eb !important;
+            background-color: #1d4ed8 !important;
 
             &:hover:not(:disabled) {
-                background-color: #1d4fd8 !important;
+                background-color: #1e40af !important;
             }
         }
     }
