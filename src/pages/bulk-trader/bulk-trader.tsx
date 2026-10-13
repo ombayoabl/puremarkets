@@ -69,10 +69,19 @@ const getBadge = (type: string, digit: number, prediction: number) => {
     return digit === prediction ? { t: 'M', c: 'bad' } : { t: 'D', c: 'good' };
 };
 
+const Check = ({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) => (
+    <button type='button' role='checkbox' aria-checked={checked} className='bulk__cbx' onClick={onChange}>
+        <span className={classNames('bulk__box', { 'bulk__box--on': checked })}>{checked ? '✓' : ''}</span>
+        <span>{label}</span>
+    </button>
+);
+
 const BulkTrader = observer(() => {
-    const { client } = useStore();
+    const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
     const is_logged_in = !!client?.is_logged_in;
+    const is_demo = !!client?.is_virtual;
+    const balance = Number(client?.balance ?? 0);
 
     const [market, setMarket] = useState(MARKETS[0].symbol);
     const [trade_type, setTradeType] = useState('matches_differs');
@@ -83,8 +92,10 @@ const BulkTrader = observer(() => {
     const [stake, setStake] = useState<number>(1);
     const [trades, setTrades] = useState<number>(1);
     const [duration, setDuration] = useState<number>(1);
-    const [manual_on, setManualOn] = useState(true);
-    const [auto_on, setAutoOn] = useState(false);
+    const [mode, setMode] = useState<'manual' | 'auto'>('manual');
+    const manual_on = mode === 'manual';
+    const auto_on = mode === 'auto';
+    const [show_top, setShowTop] = useState(false);
     const [martingale, setMartingale] = useState(false);
     const [multiplier, setMultiplier] = useState<number>(2);
     const [current_stake, setCurrentStake] = useState<number>(1);
@@ -111,6 +122,17 @@ const BulkTrader = observer(() => {
 
     const type_def = TRADE_TYPES.find(t => t.key === trade_type) || TRADE_TYPES[0];
     const market_def = MARKETS.find(m => m.symbol === market) || MARKETS[0];
+
+    // show the scroll-to-top button once the page has been scrolled down
+    useEffect(() => {
+        const onScroll = (e: Event) => {
+            const t = e.target as any;
+            const y = t && t.scrollTop !== undefined ? t.scrollTop : window.scrollY;
+            setShowTop(y > 200);
+        };
+        window.addEventListener('scroll', onScroll, true);
+        return () => window.removeEventListener('scroll', onScroll, true);
+    }, []);
 
     // keep the working stake in line with the stake box when martingale is off / stake edited
     useEffect(() => {
@@ -143,24 +165,6 @@ const BulkTrader = observer(() => {
                 setTimeout(() => !cancelled && setRetry(r => r + 1), 1500);
                 return;
             }
-            try {
-                const res = await api_base.api.send({
-                    ticks_history: market,
-                    adjust_start_time: 1,
-                    count: ticks_count,
-                    end: 'latest',
-                    style: 'ticks',
-                });
-                if (cancelled) return;
-                if (res?.pip_size !== undefined) dp_ref.current = Number(res.pip_size);
-                const prices = res?.history?.prices || [];
-                setDigits(prices.map((p: number) => toDigit(p, dp_ref.current)).slice(-ticks_count));
-                if (prices.length) setLastQuote(Number(prices[prices.length - 1]).toFixed(dp_ref.current));
-            } catch (e) {
-                if (!cancelled) setFeedError(errMsg(e));
-                return;
-            }
-
             msg_sub = api_base.api.onMessage().subscribe(({ data }: any) => {
                 if (data?.msg_type !== 'tick' || data.tick?.symbol !== market) return;
                 if (data.tick.pip_size !== undefined) dp_ref.current = Number(data.tick.pip_size);
@@ -169,12 +173,30 @@ const BulkTrader = observer(() => {
                 setDigits(prev => [...prev, toDigit(data.tick.quote, dp)].slice(-ticks_count));
             });
 
+            const base_request = {
+                ticks_history: market,
+                adjust_start_time: 1,
+                count: ticks_count,
+                end: 'latest',
+                style: 'ticks',
+            };
             try {
-                const res = await api_base.api.send({ ticks: market, subscribe: 1 });
-                sub_id.current = res?.subscription?.id || '';
+                let res;
+                try {
+                    res = await api_base.api.send({ ...base_request, subscribe: 1 });
+                    sub_id.current = res?.subscription?.id || '';
+                } catch (e) {
+                    // Someone else (the chart or a bot) already streams this market: just read the history
+                    if (e?.error?.code !== 'AlreadySubscribed') throw e;
+                    res = await api_base.api.send(base_request);
+                }
+                if (cancelled) return;
+                if (res?.pip_size !== undefined) dp_ref.current = Number(res.pip_size);
+                const prices = res?.history?.prices || [];
+                setDigits(prices.map((p: number) => toDigit(p, dp_ref.current)).slice(-ticks_count));
+                if (prices.length) setLastQuote(Number(prices[prices.length - 1]).toFixed(dp_ref.current));
             } catch (e) {
-                // AlreadySubscribed: the stream is already flowing through onMessage
-                if (e?.error?.code !== 'AlreadySubscribed' && !cancelled) setFeedError(errMsg(e));
+                if (!cancelled) setFeedError(errMsg(e));
             }
         };
         start();
@@ -208,14 +230,28 @@ const BulkTrader = observer(() => {
         waiters.current.delete(c.contract_id);
     }, []);
 
+    // Every update of one of our contracts goes to the side panel (Summary / Transactions) and the settle logic
+    const onContract = useCallback(
+        (c: any) => {
+            if (!c || !own.current.has(c.contract_id) || settled.current.has(c.contract_id)) return;
+            try {
+                transactions?.onBotContractEvent?.(c);
+            } catch (e) {
+                // the side panel is optional
+            }
+            settleContract(c);
+        },
+        [settleContract, transactions]
+    );
+
     // Push messages from the shared connection
     useEffect(() => {
         if (!api_base.api) return;
         const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
-            if (data?.msg_type === 'proposal_open_contract') settleContract(data.proposal_open_contract);
+            if (data?.msg_type === 'proposal_open_contract') onContract(data.proposal_open_contract);
         });
         return () => sub.unsubscribe();
-    }, [retry, settleContract]);
+    }, [retry, onContract]);
 
     // Poll one contract until it is sold (same one-shot request the bot engine uses)
     const trackContract = useCallback(
@@ -225,13 +261,13 @@ const BulkTrader = observer(() => {
                 await new Promise(r => setTimeout(r, 1500));
                 try {
                     const res = await api_base.api.send({ proposal_open_contract: 1, contract_id: cid });
-                    settleContract(res?.proposal_open_contract);
+                    onContract(res?.proposal_open_contract);
                 } catch (e) {
                     // try again on the next round
                 }
             }
         },
-        [settleContract]
+        [onContract]
     );
 
     // ---- statistics ----
@@ -270,20 +306,17 @@ const BulkTrader = observer(() => {
     // ---- trading ----
     const buyOne = async (side: { key: string; label: string; barrier: boolean }) => {
         const amount = live.current.current_stake;
-        const req: Record<string, any> = {
-            proposal: 1,
+        const parameters: Record<string, any> = {
             amount,
             basis: 'stake',
             contract_type: side.key,
             currency,
-            symbol: market,
             duration: clamp(Math.round(duration) || 1, 1, 10),
             duration_unit: 't',
+            underlying_symbol: market,
         };
-        if (side.barrier) req.barrier = String(prediction);
-        const prop = await api_base.api.send(req);
-        const { id, ask_price } = prop.proposal;
-        const res = await api_base.api.send({ buy: id, price: Number(ask_price) });
+        if (side.barrier) parameters.barrier = String(prediction);
+        const res = await api_base.api.send({ buy: '1', price: Number(amount), parameters });
         const cid = res.buy.contract_id;
         own.current.add(cid);
         setLog(prev =>
@@ -358,12 +391,32 @@ const BulkTrader = observer(() => {
         }
     };
 
-    const scrollToTop = () => root_ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const scrollToTop = () => {
+        let el: HTMLElement | null = root_ref.current?.parentElement ?? null;
+        while (el) {
+            const overflow = getComputedStyle(el).overflowY;
+            if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) {
+                el.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            el = el.parentElement;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     const total_pl = log.reduce((a, l) => a + (l.profit ?? 0), 0);
 
     return (
         <div className='bulk' ref={root_ref}>
+            {is_logged_in && (
+                <div className='bulk__account'>
+                    <span className={classNames('bulk__pill', is_demo ? 'bulk__pill--demo' : 'bulk__pill--real')}>
+                        {is_demo ? localize('Demo account') : localize('Real account')}
+                    </span>
+                    <strong>
+                        {localize('Balance')}: {balance.toFixed(2)} {currency}
+                    </strong>
+                </div>
+            )}
             <div className='bulk__grid'>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Market')}</label>
@@ -486,14 +539,8 @@ const BulkTrader = observer(() => {
             </div>
 
             <div className='bulk__modes'>
-                <label className='bulk__check'>
-                    <input type='checkbox' checked={manual_on} onChange={e => setManualOn(e.target.checked)} />
-                    {localize('Manual')}
-                </label>
-                <label className='bulk__check'>
-                    <input type='checkbox' checked={auto_on} onChange={e => setAutoOn(e.target.checked)} />
-                    {localize('Automated')}
-                </label>
+                <Check checked={manual_on} onChange={() => setMode('manual')} label={localize('Manual')} />
+                <Check checked={auto_on} onChange={() => setMode('auto')} label={localize('Automated')} />
             </div>
             <p className='bulk__hint'>
                 {auto_on
@@ -524,10 +571,9 @@ const BulkTrader = observer(() => {
                 </button>
             )}
 
-            <label className='bulk__check bulk__check--martingale'>
-                <input type='checkbox' checked={martingale} onChange={e => setMartingale(e.target.checked)} />
-                {localize('Enable martingale')}
-            </label>
+            <div className='bulk__martingale'>
+                <Check checked={martingale} onChange={() => setMartingale(m => !m)} label={localize('Enable martingale')} />
+            </div>
             {martingale && (
                 <div className='bulk__grid bulk__grid--three'>
                     <div className='bulk__field'>
@@ -578,9 +624,11 @@ const BulkTrader = observer(() => {
                     </table>
                 </div>
             )}
-            <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Back to top')}>
-                ↑
-            </button>
+            {show_top && (
+                <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Scroll to top')}>
+                    ↑
+                </button>
+            )}
             <p className='bulk__attribution'>{localize('Live markets provided by Deriv')}</p>
         </div>
     );
