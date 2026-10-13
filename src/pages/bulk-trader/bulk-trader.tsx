@@ -203,6 +203,8 @@ const BulkTrader = observer(() => {
     const dp_ref = useRef<number>(MARKETS[0].dp);
     const sub_id = useRef('');
     const stop_ref = useRef(false);
+    const run_id = useRef(0);
+    const stop_signal = useRef<(() => void) | null>(null);
     const waiters = useRef<Map<number, (profit: number) => void>>(new Map());
     const settled = useRef<Set<number>>(new Set());
     const own = useRef<Set<number>>(new Set());
@@ -456,6 +458,11 @@ const BulkTrader = observer(() => {
         const count = clamp(Math.round(trades) || 1, 1, 50);
         setMessage(null);
         stop_ref.current = false;
+        run_id.current += 1;
+        const my_run = run_id.current;
+        const stopped = new Promise<void>(resolve => {
+            stop_signal.current = resolve;
+        });
 
         // Fire `count` contracts at the same moment and group them for martingale
         const fireBatch = async (batch_side = side) => {
@@ -475,14 +482,17 @@ const BulkTrader = observer(() => {
                 // Automated: keep firing the batch again as soon as the last one has finished, until Stop
                 setAutoRunning(true);
                 let in_recovery = false;
-                while (!stop_ref.current) {
+                while (!stop_ref.current && run_id.current === my_run) {
                     const { martingale: m, recovery: rec, recovery_prediction: rec_pred } = live.current;
                     const recovery_side = m && in_recovery ? getRecoverySide(rec, rec_pred) : null;
                     const { ids, first_error } = await fireBatch(recovery_side || side);
+                    if (run_id.current !== my_run) break;
                     if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
                     if (!ids.length) break;
-                    const profits = await Promise.all(ids.map(waitForResult));
-                    const known = profits.filter(p => p !== null) as number[];
+                    // wait for this batch to finish, but give up the moment Stop is pressed
+                    const profits: any = await Promise.race([Promise.all(ids.map(waitForResult)), stopped.then(() => null)]);
+                    if (!profits || run_id.current !== my_run) break;
+                    const known = profits.filter((p: number | null) => p !== null) as number[];
                     if (known.length) in_recovery = known.reduce((a, b) => a + b, 0) < 0;
                 }
             } else {
@@ -493,9 +503,20 @@ const BulkTrader = observer(() => {
         } catch (e) {
             setMessage({ type: 'error', text: errMsg(e) });
         } finally {
-            setBusy(false);
-            setAutoRunning(false);
+            if (run_id.current === my_run) {
+                setBusy(false);
+                setAutoRunning(false);
+            }
         }
+    };
+
+    // Stop: no more trades are started and the screen leaves "running" straight away
+    const stopAuto = () => {
+        stop_ref.current = true;
+        run_id.current += 1;
+        stop_signal.current?.();
+        setAutoRunning(false);
+        setBusy(false);
     };
 
     const scrollToTop = () => {
@@ -630,7 +651,7 @@ const BulkTrader = observer(() => {
             </div>
 
             {auto_running && (
-                <button type='button' className='bulk__stop' onClick={() => (stop_ref.current = true)}>
+                <button type='button' className='bulk__stop' onClick={stopAuto}>
                     {localize('Stop')}
                 </button>
             )}
@@ -676,7 +697,7 @@ const BulkTrader = observer(() => {
                 className={classNames('bulk__run', { 'bulk__run--stop': auto_running })}
                 disabled={!auto_on || (busy && !auto_running)}
                 title={auto_on ? '' : localize('Switch to Automated to use Run')}
-                onClick={() => (auto_running ? (stop_ref.current = true) : fire(sides[auto_side]))}
+                onClick={() => (auto_running ? stopAuto() : fire(sides[auto_side]))}
             >
                 {auto_running ? localize('Stop') : localize('Run')}
             </button>
