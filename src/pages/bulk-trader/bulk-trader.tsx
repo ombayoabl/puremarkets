@@ -28,7 +28,6 @@ const TRADE_TYPES = [
 ];
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-const MARTINGALE_OPTIONS = [1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10];
 const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
@@ -586,17 +585,7 @@ const BulkTrader = observer(() => {
                 {martingale && (
                     <div className='bulk__field bulk__field--martingale'>
                         <label className='bulk__label'>{localize('Martingale multiplier (stake after a loss)')}</label>
-                        <select
-                            className='bulk__select'
-                            value={multiplier}
-                            onChange={e => setMultiplier(Number(e.target.value))}
-                        >
-                            {MARTINGALE_OPTIONS.map(m => (
-                                <option key={m} value={m}>
-                                    {`${m}x`}
-                                </option>
-                            ))}
-                        </select>
+                        <NumInput value={multiplier} onChange={setMultiplier} min={1} max={100} fallback={2} />
                     </div>
                 )}
             </div>
