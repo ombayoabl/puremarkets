@@ -321,6 +321,34 @@
         }
     }
 
+    &__side--selected {
+        box-shadow: 0 0 0 0.3rem #2f3640;
+    }
+
+    &__run {
+        display: block;
+        width: 100%;
+        max-width: 32rem;
+        height: 4.4rem;
+        margin: 0 0 1.6rem;
+        border: none;
+        border-radius: 0.4rem;
+        background: #00a79e;
+        color: #fff;
+        font-size: 1.6rem;
+        font-weight: 700;
+        cursor: pointer;
+
+        &--stop {
+            background: #ff444f;
+        }
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
+
     &__stop {
         width: 100%;
         height: 4rem;

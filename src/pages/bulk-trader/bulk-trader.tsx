@@ -48,22 +48,31 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 
+// Digit range Deriv accepts for each recovery contract
+const RECOVERY_RANGE: Record<string, [number, number]> = {
+    over: [0, 8],
+    under: [1, 9],
+    matches: [0, 9],
+    differs: [0, 9],
+};
+
 // The contract to buy for a recovery choice (null = same as the traded side)
-const getRecoverySide = (key: string, prediction: number) => {
-    const ou = clamp(prediction, 1, 8); // valid for both Over and Under
+const getRecoverySide = (key: string, digit: number) => {
+    const [lo, hi] = RECOVERY_RANGE[key] || [0, 9];
+    const d = clamp(Math.round(digit), lo, hi);
     switch (key) {
         case 'even':
             return { key: 'DIGITEVEN', label: 'Even', barrier: false };
         case 'odd':
             return { key: 'DIGITODD', label: 'Odd', barrier: false };
         case 'over':
-            return { key: 'DIGITOVER', label: `Over ${ou}`, barrier: true, barrier_value: ou };
+            return { key: 'DIGITOVER', label: `Over ${d}`, barrier: true, barrier_value: d };
         case 'under':
-            return { key: 'DIGITUNDER', label: `Under ${ou}`, barrier: true, barrier_value: ou };
+            return { key: 'DIGITUNDER', label: `Under ${d}`, barrier: true, barrier_value: d };
         case 'matches':
-            return { key: 'DIGITMATCH', label: `Matches ${prediction}`, barrier: true, barrier_value: prediction };
+            return { key: 'DIGITMATCH', label: `Matches ${d}`, barrier: true, barrier_value: d };
         case 'differs':
-            return { key: 'DIGITDIFF', label: `Differs ${prediction}`, barrier: true, barrier_value: prediction };
+            return { key: 'DIGITDIFF', label: `Differs ${d}`, barrier: true, barrier_value: d };
         default:
             return null;
     }
@@ -177,6 +186,8 @@ const BulkTrader = observer(() => {
     const [martingale, setMartingale] = useState(false);
     const [multiplier, setMultiplier] = useState<number>(2);
     const [recovery, setRecovery] = useState<string>('same');
+    const [recovery_prediction, setRecoveryPrediction] = useState<number>(5);
+    const [auto_side, setAutoSide] = useState<number>(0);
     const [current_stake, setCurrentStake] = useState<number>(1);
 
     const [digits, setDigits] = useState<number[]>([]);
@@ -199,7 +210,7 @@ const BulkTrader = observer(() => {
     const contract_batch = useRef<Map<number, number>>(new Map());
     const batch_seq = useRef(0);
     const live = useRef<any>({});
-    live.current = { stake, current_stake, martingale, multiplier, recovery, prediction };
+    live.current = { stake, current_stake, martingale, multiplier, recovery, recovery_prediction, prediction };
 
     const type_def = TRADE_TYPES.find(t => t.key === trade_type) || TRADE_TYPES[0];
     const market_def = MARKETS.find(m => m.symbol === market) || MARKETS[0];
@@ -465,8 +476,8 @@ const BulkTrader = observer(() => {
                 setAutoRunning(true);
                 let in_recovery = false;
                 while (!stop_ref.current) {
-                    const { martingale: m, recovery: rec, prediction: pred } = live.current;
-                    const recovery_side = m && in_recovery ? getRecoverySide(rec, pred) : null;
+                    const { martingale: m, recovery: rec, recovery_prediction: rec_pred } = live.current;
+                    const recovery_side = m && in_recovery ? getRecoverySide(rec, rec_pred) : null;
                     const { ids, first_error } = await fireBatch(recovery_side || side);
                     if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
                     if (!ids.length) break;
@@ -593,7 +604,7 @@ const BulkTrader = observer(() => {
             </div>
             <p className='bulk__hint'>
                 {auto_on
-                    ? `${localize('Click a side button to start: it fires')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('at once, again and again, until you press Stop.')}`
+                    ? `${localize('Pick a side, then press Run: it fires')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('at once, again and again, until you press Stop.')}`
                     : `${localize('Click a side button to fire')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('at once')}`}
             </p>
             {message?.type === 'error' && <p className='bulk__bad'>{message.text}</p>}
@@ -603,11 +614,16 @@ const BulkTrader = observer(() => {
                     <button
                         type='button'
                         key={s.key}
-                        className={classNames('bulk__side', i === 0 ? 'bulk__side--left' : 'bulk__side--right')}
+                        className={classNames('bulk__side', i === 0 ? 'bulk__side--left' : 'bulk__side--right', {
+                            'bulk__side--selected': auto_on && auto_side === i,
+                        })}
                         disabled={busy || auto_running}
-                        onClick={() => fire(s)}
+                        onClick={() => (auto_on ? setAutoSide(i) : fire(s))}
                     >
-                        <span className='bulk__side-top'>{s.label}</span>
+                        <span className='bulk__side-top'>
+                            {s.label}
+                            {auto_on && auto_side === i ? '  ✓' : ''}
+                        </span>
                         <span className='bulk__side-bottom'>{digits.length ? `${sidePct(i).toFixed(1)}%` : '—'}</span>
                     </button>
                 ))}
@@ -639,9 +655,31 @@ const BulkTrader = observer(() => {
                                 </select>
                             </div>
                         )}
+                        {auto_on && RECOVERY_RANGE[recovery] && (
+                            <div className='bulk__field'>
+                                <label className='bulk__label'>{localize('Recovery prediction')}</label>
+                                <NumInput
+                                    value={recovery_prediction}
+                                    onChange={setRecoveryPrediction}
+                                    min={RECOVERY_RANGE[recovery][0]}
+                                    max={RECOVERY_RANGE[recovery][1]}
+                                    integer
+                                    fallback={5}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
+            <button
+                type='button'
+                className={classNames('bulk__run', { 'bulk__run--stop': auto_running })}
+                disabled={!auto_on || (busy && !auto_running)}
+                title={auto_on ? '' : localize('Switch to Automated to use Run')}
+                onClick={() => (auto_running ? (stop_ref.current = true) : fire(sides[auto_side]))}
+            >
+                {auto_running ? localize('Stop') : localize('Run')}
+            </button>
             {show_top && (
                 <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Scroll to top')}>
                     ↑
