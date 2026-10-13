@@ -87,27 +87,37 @@
         font-weight: 700;
     }
 
+    // The real <select> sits invisibly over the whole box: taps still open the phone's own picker,
+    // while the text you see is .bulk__sel-text, which is always centred in the box.
     &__select {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        opacity: 0;
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
-        padding: 0 3.6rem;
-        text-align: center;
-        text-align-last: center;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        overflow: hidden;
-        font-weight: 700;
-
-        option {
-            text-align: center;
-        }
+        font-size: 1.6rem;
     }
 
     // Dropdown with an arrow on the right (and an icon on the left for Market)
     &__selbox {
         position: relative;
         width: 100%;
+        height: 5rem;
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        border-radius: 0.8rem;
+        background: var(--general-main-1);
+        color: var(--text-general);
+
+        &:focus-within {
+            border-color: #00a79e;
+        }
 
         &::after {
             content: '';
@@ -119,9 +129,7 @@
 
         // Market: grey box with a solid triangle
         &--triangle {
-            .bulk__select {
-                background: var(--general-section-1);
-            }
+            background: var(--general-section-1);
 
             &::after {
                 margin-top: -0.3rem;
@@ -142,8 +150,26 @@
         }
 
         // leave room for the icon, same on both sides so the text stays centred
-        &--icon .bulk__select {
+        &--icon .bulk__sel-text {
             padding: 0 4.4rem;
+        }
+    }
+
+    &__sel-text {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 0 3.6rem;
+        font-size: 1.6rem;
+        font-weight: 700;
+        pointer-events: none;
+
+        span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
     }
 
@@ -349,8 +375,9 @@
         grid-template-columns: 1fr 1fr;
         gap: 1.6rem;
 
+        // Over | Under (and Even | Odd, Matches | Differs) stay side by side on a phone
         @media (max-width: 700px) {
-            grid-template-columns: 1fr;
+            gap: 0.8rem;
         }
     }
 

@@ -198,10 +198,14 @@ const MarketIcon = ({ name }: { name: string }) => {
     );
 };
 
-// Dropdown with an arrow drawn on top of the native select (so the native list still works on phones)
-const SelectBox = ({ value, onChange, children, variant = 'chevron', icon = null }: any) => (
+// Dropdown box with an arrow; the native list still opens on phones
+// The visible text is our own element (always centred); the real select sits invisibly on top and handles taps.
+const SelectBox = ({ value, onChange, label, children, variant = 'chevron', icon = null }: any) => (
     <div className={classNames('bulk__selbox', `bulk__selbox--${variant}`, { 'bulk__selbox--icon': !!icon })}>
         {icon}
+        <div className='bulk__sel-text'>
+            <span>{label}</span>
+        </div>
         <select className='bulk__select' value={value} onChange={onChange}>
             {children}
         </select>
@@ -568,6 +572,7 @@ const BulkTrader = observer(() => {
                     <label className='bulk__label'>{localize('Market')}</label>
                     <SelectBox
                         variant='triangle'
+                        label={market_def.name}
                         value={market}
                         onChange={e => setMarket(e.target.value)}
                         icon={<MarketIcon name={market_def.name} />}
@@ -581,7 +586,7 @@ const BulkTrader = observer(() => {
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Trade type')}</label>
-                    <SelectBox value={trade_type} onChange={e => setTradeType(e.target.value)}>
+                    <SelectBox label={type_def.label} value={trade_type} onChange={e => setTradeType(e.target.value)}>
                         {TRADE_TYPES.map(t => (
                             <option key={t.key} value={t.key}>
                                 {t.label}
@@ -701,7 +706,10 @@ const BulkTrader = observer(() => {
                         {auto_on && (
                             <div className='bulk__field'>
                                 <label className='bulk__label'>{localize('Recovery trade (after a loss)')}</label>
-                                <SelectBox value={recovery} onChange={e => setRecovery(e.target.value)}>
+                                <SelectBox
+                                    label={localize((RECOVERY_OPTIONS.find(o => o.key === recovery) || RECOVERY_OPTIONS[0]).label)}
+                                    value={recovery}
+                                    onChange={e => setRecovery(e.target.value)}>
                                     {RECOVERY_OPTIONS.map(o => (
                                         <option key={o.key} value={o.key}>
                                             {localize(o.label)}
