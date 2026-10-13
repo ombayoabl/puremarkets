@@ -36,8 +36,6 @@ const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toF
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-type TLog = { id: number; time: string; label: string; stake: number; profit?: number };
-
 // Which side buttons are shown for each trade type: [left (teal), right (red)]
 const getSides = (type: string, prediction: number) => {
     if (type === 'even_odd') {
@@ -95,7 +93,7 @@ const BulkTrader = observer(() => {
     const auto_on = mode === 'auto';
     const [show_top, setShowTop] = useState(false);
     const [martingale, setMartingale] = useState(false);
-    const [multiplier, setMultiplier] = useState<number>(2);
+    const multiplier = 2;
     const [current_stake, setCurrentStake] = useState<number>(1);
 
     const [digits, setDigits] = useState<number[]>([]);
@@ -106,7 +104,6 @@ const BulkTrader = observer(() => {
     const [busy, setBusy] = useState(false);
     const [auto_running, setAutoRunning] = useState(false);
     const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
-    const [log, setLog] = useState<TLog[]>([]);
 
     const root_ref = useRef<HTMLDivElement>(null);
     const dp_ref = useRef<number>(MARKETS[0].dp);
@@ -115,6 +112,9 @@ const BulkTrader = observer(() => {
     const waiters = useRef<Map<number, (profit: number) => void>>(new Map());
     const settled = useRef<Set<number>>(new Set());
     const own = useRef<Set<number>>(new Set());
+    const batches = useRef<Map<number, { pending: number; profit: number }>>(new Map());
+    const contract_batch = useRef<Map<number, number>>(new Map());
+    const batch_seq = useRef(0);
     const live = useRef<any>({});
     live.current = { stake, current_stake, martingale, multiplier };
 
@@ -214,16 +214,25 @@ const BulkTrader = observer(() => {
         if (!c || !own.current.has(c.contract_id) || !c.is_sold || settled.current.has(c.contract_id)) return;
         settled.current.add(c.contract_id);
         const profit = Number(c.profit);
-        setLog(prev => prev.map(l => (l.id === c.contract_id ? { ...l, profit } : l)));
-        const { martingale: m, multiplier: mult, stake: base } = live.current;
-        if (m) {
-            if (profit < 0) {
-                live.current.current_stake = round2(live.current.current_stake * Math.max(1, mult));
-            } else {
-                live.current.current_stake = base;
+
+        // Martingale is applied once per batch of contracts that were fired together
+        const batch_id = contract_batch.current.get(c.contract_id);
+        const batch = batch_id !== undefined ? batches.current.get(batch_id) : undefined;
+        if (batch) {
+            batch.pending -= 1;
+            batch.profit += profit;
+            if (batch.pending <= 0) {
+                batches.current.delete(batch_id);
+                const { martingale: m, multiplier: mult, stake: base } = live.current;
+                if (m) {
+                    live.current.current_stake =
+                        batch.profit < 0 ? round2(live.current.current_stake * Math.max(1, mult)) : base;
+                    setCurrentStake(live.current.current_stake);
+                }
             }
-            setCurrentStake(live.current.current_stake);
         }
+        contract_batch.current.delete(c.contract_id);
+
         waiters.current.get(c.contract_id)?.(profit);
         waiters.current.delete(c.contract_id);
     }, []);
@@ -317,17 +326,6 @@ const BulkTrader = observer(() => {
         const res = await api_base.api.send({ buy: '1', price: Number(amount), parameters });
         const cid = res.buy.contract_id;
         own.current.add(cid);
-        setLog(prev =>
-            [
-                {
-                    id: cid,
-                    time: new Date().toLocaleTimeString(),
-                    label: `${market_def.name} · ${side.label}`,
-                    stake: Number(res.buy.buy_price),
-                },
-                ...prev,
-            ].slice(0, 30)
-        );
         trackContract(cid);
         return cid;
     };
@@ -364,22 +362,34 @@ const BulkTrader = observer(() => {
         const count = clamp(Math.round(trades) || 1, 1, 50);
         setMessage(null);
         stop_ref.current = false;
+
+        // Fire `count` contracts at the same moment and group them for martingale
+        const fireBatch = async () => {
+            const results = await Promise.allSettled(Array.from({ length: count }, () => buyOne(side)));
+            const ids = results.filter(r => r.status === 'fulfilled').map((r: any) => r.value as number);
+            const first_error = (results.find(r => r.status === 'rejected') as any)?.reason;
+            if (ids.length) {
+                const batch_id = (batch_seq.current += 1);
+                batches.current.set(batch_id, { pending: ids.length, profit: 0 });
+                ids.forEach(id => contract_batch.current.set(id, batch_id));
+            }
+            return { ids, first_error };
+        };
+
         try {
             if (auto_on) {
-                // Automated: keep buying this side, one contract after another, until done or stopped
+                // Automated: keep firing the batch again as soon as the last one has finished, until Stop
                 setAutoRunning(true);
-                let done = 0;
-                for (let i = 0; i < count && !stop_ref.current; i++) {
-                    const cid = await buyOne(side);
-                    done += 1;
-                    await waitForResult(cid);
+                while (!stop_ref.current) {
+                    const { ids, first_error } = await fireBatch();
+                    if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
+                    if (!ids.length) break;
+                    await Promise.all(ids.map(waitForResult));
                 }
-                setMessage({ type: 'ok', text: `${localize('Automated run finished:')} ${done} ${localize('trade(s).')}` });
             } else {
-                // Manual: fire all contracts straight away
                 setBusy(true);
-                for (let i = 0; i < count; i++) await buyOne(side);
-                setMessage({ type: 'ok', text: localize('Contract(s) purchased.') });
+                const { first_error } = await fireBatch();
+                if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
             }
         } catch (e) {
             setMessage({ type: 'error', text: errMsg(e) });
@@ -401,7 +411,6 @@ const BulkTrader = observer(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const total_pl = log.reduce((a, l) => a + (l.profit ?? 0), 0);
 
     return (
         <div className='bulk' ref={root_ref}>
@@ -532,11 +541,10 @@ const BulkTrader = observer(() => {
             </div>
             <p className='bulk__hint'>
                 {auto_on
-                    ? `${localize('Click a side button to start: it buys that side one contract after another,')} ${trades} ${localize('in total, or until you press Stop.')}`
-                    : manual_on
-                      ? `${localize('Click a side button to fire')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('instantly')}`
-                      : localize('Tick Manual or Automated to trade.')}
+                    ? `${localize('Click a side button to start: it fires')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('at once, again and again, until you press Stop.')}`
+                    : `${localize('Click a side button to fire')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('at once')}`}
             </p>
+            {message?.type === 'error' && <p className='bulk__bad'>{message.text}</p>}
 
             <div className='bulk__sides'>
                 {sides.map((s, i) => (
@@ -562,62 +570,11 @@ const BulkTrader = observer(() => {
             <div className='bulk__martingale'>
                 <Check checked={martingale} onChange={() => setMartingale(m => !m)} label={localize('Enable martingale')} />
             </div>
-            {martingale && (
-                <div className='bulk__grid bulk__grid--three'>
-                    <div className='bulk__field'>
-                        <label className='bulk__label'>{localize('Martingale multiplier')}</label>
-                        <input
-                            className='bulk__input'
-                            type='number'
-                            min={1}
-                            step='0.1'
-                            value={multiplier}
-                            onChange={e => setMultiplier(Number(e.target.value))}
-                        />
-                    </div>
-                    <div className='bulk__field'>
-                        <label className='bulk__label'>{localize('Next stake')}</label>
-                        <div className='bulk__static'>
-                            {current_stake.toFixed(2)} {currency}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {!is_logged_in && <p className='bulk__muted'>{localize('Log in to place trades.')}</p>}
-            {message && <p className={message.type === 'ok' ? 'bulk__good' : 'bulk__bad'}>{message.text}</p>}
-
-            {log.length > 0 && (
-                <div className='bulk__log'>
-                    <div className='bulk__log-head'>
-                        <strong>{localize('Recent trades')}</strong>
-                        <span className={total_pl >= 0 ? 'bulk__good' : 'bulk__bad'}>
-                            {localize('Total')}: {total_pl >= 0 ? '+' : ''}
-                            {total_pl.toFixed(2)} {currency}
-                        </span>
-                    </div>
-                    <table className='bulk__table'>
-                        <tbody>
-                            {log.map(l => (
-                                <tr key={l.id}>
-                                    <td>{l.time}</td>
-                                    <td>{l.label}</td>
-                                    <td>{l.stake.toFixed(2)}</td>
-                                    <td className={l.profit === undefined ? '' : l.profit >= 0 ? 'bulk__good' : 'bulk__bad'}>
-                                        {l.profit === undefined ? '…' : `${l.profit >= 0 ? '+' : ''}${l.profit.toFixed(2)}`}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
             {show_top && (
                 <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Scroll to top')}>
                     ↑
                 </button>
             )}
-            <p className='bulk__attribution'>{localize('Live markets provided by Deriv')}</p>
         </div>
     );
 });
