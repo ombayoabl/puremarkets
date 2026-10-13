@@ -28,6 +28,17 @@ const TRADE_TYPES = [
 ];
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+// Recovery trade: what to trade after a losing batch (in this order)
+const RECOVERY_OPTIONS = [
+    { key: 'same', label: 'Same as traded side' },
+    { key: 'even', label: 'Even' },
+    { key: 'odd', label: 'Odd' },
+    { key: 'over', label: 'Over' },
+    { key: 'under', label: 'Under' },
+    { key: 'matches', label: 'Matches' },
+    { key: 'differs', label: 'Differs' },
+];
 const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
@@ -35,6 +46,28 @@ const errMsg = (e: any) => e?.error?.message || e?.message || localize('Somethin
 const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toFixed(dp).slice(-1));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+
+// The contract to buy for a recovery choice (null = same as the traded side)
+const getRecoverySide = (key: string, prediction: number) => {
+    const ou = clamp(prediction, 1, 8); // valid for both Over and Under
+    switch (key) {
+        case 'even':
+            return { key: 'DIGITEVEN', label: 'Even', barrier: false };
+        case 'odd':
+            return { key: 'DIGITODD', label: 'Odd', barrier: false };
+        case 'over':
+            return { key: 'DIGITOVER', label: `Over ${ou}`, barrier: true, barrier_value: ou };
+        case 'under':
+            return { key: 'DIGITUNDER', label: `Under ${ou}`, barrier: true, barrier_value: ou };
+        case 'matches':
+            return { key: 'DIGITMATCH', label: `Matches ${prediction}`, barrier: true, barrier_value: prediction };
+        case 'differs':
+            return { key: 'DIGITDIFF', label: `Differs ${prediction}`, barrier: true, barrier_value: prediction };
+        default:
+            return null;
+    }
+};
 
 // Which side buttons are shown for each trade type: [left (teal), right (red)]
 const getSides = (type: string, prediction: number) => {
@@ -143,6 +176,7 @@ const BulkTrader = observer(() => {
     const [show_top, setShowTop] = useState(false);
     const [martingale, setMartingale] = useState(false);
     const [multiplier, setMultiplier] = useState<number>(2);
+    const [recovery, setRecovery] = useState<string>('same');
     const [current_stake, setCurrentStake] = useState<number>(1);
 
     const [digits, setDigits] = useState<number[]>([]);
@@ -165,7 +199,7 @@ const BulkTrader = observer(() => {
     const contract_batch = useRef<Map<number, number>>(new Map());
     const batch_seq = useRef(0);
     const live = useRef<any>({});
-    live.current = { stake, current_stake, martingale, multiplier };
+    live.current = { stake, current_stake, martingale, multiplier, recovery, prediction };
 
     const type_def = TRADE_TYPES.find(t => t.key === trade_type) || TRADE_TYPES[0];
     const market_def = MARKETS.find(m => m.symbol === market) || MARKETS[0];
@@ -371,7 +405,7 @@ const BulkTrader = observer(() => {
             duration_unit: 't',
             underlying_symbol: market,
         };
-        if (side.barrier) parameters.barrier = String(prediction);
+        if (side.barrier) parameters.barrier = String(side.barrier_value ?? prediction);
         const res = await api_base.api.send({ buy: '1', price: Number(amount), parameters });
         const cid = res.buy.contract_id;
         own.current.add(cid);
@@ -413,8 +447,8 @@ const BulkTrader = observer(() => {
         stop_ref.current = false;
 
         // Fire `count` contracts at the same moment and group them for martingale
-        const fireBatch = async () => {
-            const results = await Promise.allSettled(Array.from({ length: count }, () => buyOne(side)));
+        const fireBatch = async (batch_side = side) => {
+            const results = await Promise.allSettled(Array.from({ length: count }, () => buyOne(batch_side)));
             const ids = results.filter(r => r.status === 'fulfilled').map((r: any) => r.value as number);
             const first_error = (results.find(r => r.status === 'rejected') as any)?.reason;
             if (ids.length) {
@@ -429,11 +463,16 @@ const BulkTrader = observer(() => {
             if (auto_on) {
                 // Automated: keep firing the batch again as soon as the last one has finished, until Stop
                 setAutoRunning(true);
+                let in_recovery = false;
                 while (!stop_ref.current) {
-                    const { ids, first_error } = await fireBatch();
+                    const { martingale: m, recovery: rec, prediction: pred } = live.current;
+                    const recovery_side = m && in_recovery ? getRecoverySide(rec, pred) : null;
+                    const { ids, first_error } = await fireBatch(recovery_side || side);
                     if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
                     if (!ids.length) break;
-                    await Promise.all(ids.map(waitForResult));
+                    const profits = await Promise.all(ids.map(waitForResult));
+                    const known = profits.filter(p => p !== null) as number[];
+                    if (known.length) in_recovery = known.reduce((a, b) => a + b, 0) < 0;
                 }
             } else {
                 setBusy(true);
@@ -583,9 +622,23 @@ const BulkTrader = observer(() => {
             <div className='bulk__martingale'>
                 <Check checked={martingale} onChange={() => setMartingale(m => !m)} label={localize('Enable martingale')} />
                 {martingale && (
-                    <div className='bulk__field bulk__field--martingale'>
-                        <label className='bulk__label'>{localize('Martingale multiplier (stake after a loss)')}</label>
-                        <NumInput value={multiplier} onChange={setMultiplier} min={1} max={100} fallback={2} />
+                    <div className='bulk__martingale-fields'>
+                        <div className='bulk__field'>
+                            <label className='bulk__label'>{localize('Martingale multiplier (stake after a loss)')}</label>
+                            <NumInput value={multiplier} onChange={setMultiplier} min={1} max={100} fallback={2} />
+                        </div>
+                        {auto_on && (
+                            <div className='bulk__field'>
+                                <label className='bulk__label'>{localize('Recovery trade (after a loss)')}</label>
+                                <select className='bulk__select' value={recovery} onChange={e => setRecovery(e.target.value)}>
+                                    {RECOVERY_OPTIONS.map(o => (
+                                        <option key={o.key} value={o.key}>
+                                            {localize(o.label)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
