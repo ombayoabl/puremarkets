@@ -1,7 +1,17 @@
 .bulk {
     max-width: 112rem;
     margin: 0 auto;
-    padding: 1.6rem;
+    padding: 1.6rem 1.6rem 6rem;
+    // The page frame is a fixed height, so the trader scrolls inside it
+    height: calc(100vh - 19rem);
+    min-height: 30rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+
+    @media (max-width: 1024px) {
+        height: calc(100vh - 15rem);
+    }
     color: var(--text-general);
     font-size: 1.4rem;
 
@@ -370,29 +380,5 @@
 
     &__martingale {
         margin: 1.6rem 0;
-    }
-
-    &__account {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 1.2rem;
-        margin-bottom: 1.2rem;
-    }
-
-    &__pill {
-        padding: 0.2rem 1rem;
-        border-radius: 1.2rem;
-        color: #fff;
-        font-size: 1.2rem;
-        font-weight: 700;
-
-        &--demo {
-            background: #ff9800;
-        }
-
-        &--real {
-            background: #00a79e;
-        }
     }
 }

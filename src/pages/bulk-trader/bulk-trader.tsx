@@ -80,8 +80,6 @@ const BulkTrader = observer(() => {
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
     const is_logged_in = !!client?.is_logged_in;
-    const is_demo = !!client?.is_virtual;
-    const balance = Number(client?.balance ?? 0);
 
     const [market, setMarket] = useState(MARKETS[0].symbol);
     const [trade_type, setTradeType] = useState('matches_differs');
@@ -392,7 +390,7 @@ const BulkTrader = observer(() => {
     };
 
     const scrollToTop = () => {
-        let el: HTMLElement | null = root_ref.current?.parentElement ?? null;
+        let el: HTMLElement | null = root_ref.current;
         while (el) {
             const overflow = getComputedStyle(el).overflowY;
             if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) {
@@ -407,16 +405,6 @@ const BulkTrader = observer(() => {
 
     return (
         <div className='bulk' ref={root_ref}>
-            {is_logged_in && (
-                <div className='bulk__account'>
-                    <span className={classNames('bulk__pill', is_demo ? 'bulk__pill--demo' : 'bulk__pill--real')}>
-                        {is_demo ? localize('Demo account') : localize('Real account')}
-                    </span>
-                    <strong>
-                        {localize('Balance')}: {balance.toFixed(2)} {currency}
-                    </strong>
-                </div>
-            )}
             <div className='bulk__grid'>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Market')}</label>
