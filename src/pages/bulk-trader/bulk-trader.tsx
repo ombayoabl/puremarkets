@@ -28,6 +28,7 @@ const TRADE_TYPES = [
 ];
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const MARTINGALE_OPTIONS = [1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10];
 const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
@@ -67,6 +68,55 @@ const getBadge = (type: string, digit: number, prediction: number) => {
     return digit === prediction ? { t: 'M', c: 'bad' } : { t: 'D', c: 'good' };
 };
 
+// Number box that lets you clear and retype freely; the value is tidied when you leave the box.
+const NumInput = ({
+    value,
+    onChange,
+    min,
+    max,
+    integer = false,
+    fallback,
+}: {
+    value: number;
+    onChange: (n: number) => void;
+    min: number;
+    max: number;
+    integer?: boolean;
+    fallback: number;
+}) => {
+    const [text, setText] = useState(String(value));
+
+    useEffect(() => {
+        if (Number(text) !== value) setText(String(value));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
+
+    const pattern = integer ? /^\d*$/ : /^\d*\.?\d*$/;
+
+    return (
+        <input
+            className='bulk__input'
+            type='text'
+            inputMode={integer ? 'numeric' : 'decimal'}
+            value={text}
+            onFocus={e => e.target.select()}
+            onChange={e => {
+                const raw = e.target.value;
+                if (!pattern.test(raw)) return;
+                setText(raw);
+                if (raw !== '' && raw !== '.' && !Number.isNaN(Number(raw))) onChange(Number(raw));
+            }}
+            onBlur={() => {
+                let n = Number(text);
+                if (text === '' || text === '.' || Number.isNaN(n)) n = fallback;
+                n = clamp(integer ? Math.round(n) : n, min, max);
+                setText(String(n));
+                onChange(n);
+            }}
+        />
+    );
+};
+
 const Check = ({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) => (
     <button type='button' role='checkbox' aria-checked={checked} className='bulk__cbx' onClick={onChange}>
         <span className={classNames('bulk__box', { 'bulk__box--on': checked })}>{checked ? '✓' : ''}</span>
@@ -93,7 +143,7 @@ const BulkTrader = observer(() => {
     const auto_on = mode === 'auto';
     const [show_top, setShowTop] = useState(false);
     const [martingale, setMartingale] = useState(false);
-    const multiplier = 2;
+    const [multiplier, setMultiplier] = useState<number>(2);
     const [current_stake, setCurrentStake] = useState<number>(1);
 
     const [digits, setDigits] = useState<number[]>([]);
@@ -437,33 +487,18 @@ const BulkTrader = observer(() => {
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Number of ticks')}</label>
-                    <input
-                        className='bulk__input'
-                        type='number'
-                        min={20}
-                        max={MAX_TICKS}
-                        value={ticks_input}
-                        onChange={e => setTicksInput(Number(e.target.value))}
-                    />
+                    <NumInput value={ticks_input} onChange={setTicksInput} min={20} max={MAX_TICKS} integer fallback={1000} />
                 </div>
                 {type_def.has_prediction && (
                     <div className='bulk__field'>
                         <label className='bulk__label'>{localize('Prediction')}</label>
-                        <input
-                            className='bulk__input'
-                            type='number'
+                        <NumInput
+                            value={prediction}
+                            onChange={setPrediction}
                             min={trade_type === 'over_under' ? 1 : 0}
                             max={trade_type === 'over_under' ? 8 : 9}
-                            value={prediction}
-                            onChange={e =>
-                                setPrediction(
-                                    clamp(
-                                        Math.round(Number(e.target.value) || 0),
-                                        trade_type === 'over_under' ? 1 : 0,
-                                        trade_type === 'over_under' ? 8 : 9
-                                    )
-                                )
-                            }
+                            integer
+                            fallback={5}
                         />
                     </div>
                 )}
@@ -502,36 +537,15 @@ const BulkTrader = observer(() => {
             <div className='bulk__grid bulk__grid--three'>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Stake')}</label>
-                    <input
-                        className='bulk__input'
-                        type='number'
-                        min={0.35}
-                        step='0.01'
-                        value={stake}
-                        onChange={e => setStake(Number(e.target.value))}
-                    />
+                    <NumInput value={stake} onChange={setStake} min={0.35} max={100000} fallback={1} />
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('No of trades')}</label>
-                    <input
-                        className='bulk__input'
-                        type='number'
-                        min={1}
-                        max={50}
-                        value={trades}
-                        onChange={e => setTrades(clamp(Math.round(Number(e.target.value) || 1), 1, 50))}
-                    />
+                    <NumInput value={trades} onChange={setTrades} min={1} max={50} integer fallback={1} />
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Ticks')}</label>
-                    <input
-                        className='bulk__input'
-                        type='number'
-                        min={1}
-                        max={10}
-                        value={duration}
-                        onChange={e => setDuration(clamp(Math.round(Number(e.target.value) || 1), 1, 10))}
-                    />
+                    <NumInput value={duration} onChange={setDuration} min={1} max={10} integer fallback={1} />
                 </div>
             </div>
 
@@ -569,6 +583,22 @@ const BulkTrader = observer(() => {
 
             <div className='bulk__martingale'>
                 <Check checked={martingale} onChange={() => setMartingale(m => !m)} label={localize('Enable martingale')} />
+                {martingale && (
+                    <div className='bulk__field bulk__field--martingale'>
+                        <label className='bulk__label'>{localize('Martingale multiplier (stake after a loss)')}</label>
+                        <select
+                            className='bulk__select'
+                            value={multiplier}
+                            onChange={e => setMultiplier(Number(e.target.value))}
+                        >
+                            {MARTINGALE_OPTIONS.map(m => (
+                                <option key={m} value={m}>
+                                    {`${m}x`}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
             {show_top && (
                 <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Scroll to top')}>
