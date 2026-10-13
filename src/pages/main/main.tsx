@@ -48,6 +48,7 @@ import './main.scss';
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 const Tutorial = lazy(() => import('../tutorials'));
 const BulkTrader = lazy(() => import('../bulk-trader/bulk-trader'));
+const SuperAnalysis = lazy(() => import('../super-analysis/super-analysis'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -81,7 +82,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -480,6 +481,11 @@ const AppWrapper = observer(() => {
                             <div label='Bulk Trader' id='id-bulk-trader'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Bulk Trader...')} />}>
                                     <BulkTrader />
+                                </Suspense>
+                            </div>
+                            <div label='Super Analysis' id='id-super-analysis'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Super Analysis...')} />}>
+                                    <SuperAnalysis />
                                 </Suspense>
                             </div>
                         </Tabs>

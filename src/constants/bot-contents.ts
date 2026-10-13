@@ -18,11 +18,12 @@ export const DBOT_TABS: TDashboardTabIndex = Object.freeze({
     TUTORIAL: 3,
     COMING_SOON: 4,
     BULK_TRADER: 5,
+    SUPER_ANALYSIS: 6,
 });
 
 export const MAX_STRATEGIES = 10;
 
-export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader'];
+export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis'];
 
 export const DEBOUNCE_INTERVAL_TIME = 500;
 
@@ -41,7 +42,7 @@ export const NAV_ITEMS: TNavItem[] = [
     { key: 'market_insights', label: 'Market Insights', type: 'soon' },
     { key: 'freebots', label: 'Freebots by puremarkets', type: 'soon' },
     { key: 'dtrader_circles', label: 'DTrader/Circles', type: 'soon' },
-    { key: 'super_analysis', label: 'Super Analysis', type: 'soon' },
+    { key: 'super_analysis', label: 'Super Analysis', type: 'tab', tab_index: DBOT_TABS.SUPER_ANALYSIS },
     { key: 'bot_builder', label: 'Bot Builder', type: 'tab', tab_index: DBOT_TABS.BOT_BUILDER },
     { key: 'charts', label: 'Charts', type: 'tab', tab_index: DBOT_TABS.CHART },
     { key: 'trading_view', label: 'Trading View', type: 'trading_view' },
