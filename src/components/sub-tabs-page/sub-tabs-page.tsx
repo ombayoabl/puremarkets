@@ -3,9 +3,10 @@ import classNames from 'classnames';
 import { localize } from '@deriv-com/translations';
 import './sub-tabs-page.scss';
 
-export type TSubTab = { key: string; label: string };
+/** `subtitle` is optional text shown under the heading; a tab without `ready` shows "Coming soon". */
+export type TSubTab = { key: string; label: string; ready?: boolean; subtitle?: string };
 
-/** A row of sub-tabs; each one shows a "Coming soon" message until its feature is built. */
+/** A row of sub-tabs; each one shows a "Coming soon" message until it is marked ready. */
 const SubTabsPage = ({ tabs }: { tabs: TSubTab[] }) => {
     const [tab, setTab] = useState(tabs[0].key);
     const active = tabs.find(t => t.key === tab) || tabs[0];
@@ -28,7 +29,7 @@ const SubTabsPage = ({ tabs }: { tabs: TSubTab[] }) => {
             </div>
             <div className='sub-tabs-page__soon'>
                 <h2>{localize(active.label)}</h2>
-                <p>{localize('Coming soon')}</p>
+                <p>{active.ready ? active.subtitle : localize('Coming soon')}</p>
             </div>
         </div>
     );
