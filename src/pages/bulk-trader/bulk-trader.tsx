@@ -166,6 +166,48 @@ const Check = ({ checked, onChange, label }: { checked: boolean; onChange: () =>
     </button>
 );
 
+// Small market badge: candles plus the volatility number and, for 1-second indices, a "1s" tag
+const MarketIcon = ({ name }: { name: string }) => {
+    const num = (name.match(/\d+/) || [''])[0];
+    const one_sec = /\(1s\)/i.test(name);
+    return (
+        <svg className='bulk__micon' viewBox='0 0 32 32' aria-hidden='true'>
+            <g strokeWidth='1.4' strokeLinecap='round'>
+                <path d='M7.5 17v11' stroke='#00a79e' />
+                <path d='M13.5 15v11' stroke='#00a79e' />
+                <path d='M19.5 18v11' stroke='#ec3f3f' />
+                <path d='M25.5 14v12' stroke='#00a79e' />
+            </g>
+            <rect x='5.5' y='20' width='4' height='6' rx='1' fill='#00a79e' />
+            <rect x='11.5' y='18' width='4' height='6' rx='1' fill='#00a79e' />
+            <rect x='17.5' y='21' width='4' height='6' rx='1' fill='#ec3f3f' />
+            <rect x='23.5' y='17' width='4' height='7' rx='1' fill='#00a79e' />
+            <rect x='0.5' y='0.5' width='17' height='11' rx='3' fill='#3a424d' />
+            <text x='9' y='8.7' textAnchor='middle' fontSize='7.5' fontWeight='700' fill='#fff'>
+                {num}
+            </text>
+            {one_sec && (
+                <>
+                    <circle cx='25.5' cy='6.5' r='6.5' fill='#e5384f' />
+                    <text x='25.5' y='9.1' textAnchor='middle' fontSize='7' fontWeight='700' fill='#fff'>
+                        1s
+                    </text>
+                </>
+            )}
+        </svg>
+    );
+};
+
+// Dropdown with an arrow drawn on top of the native select (so the native list still works on phones)
+const SelectBox = ({ value, onChange, children, variant = 'chevron', icon = null }: any) => (
+    <div className={classNames('bulk__selbox', `bulk__selbox--${variant}`, { 'bulk__selbox--icon': !!icon })}>
+        {icon}
+        <select className='bulk__select' value={value} onChange={onChange}>
+            {children}
+        </select>
+    </div>
+);
+
 const BulkTrader = observer(() => {
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
@@ -524,23 +566,28 @@ const BulkTrader = observer(() => {
             <div className='bulk__grid'>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Market')}</label>
-                    <select className='bulk__select bulk__select--market' value={market} onChange={e => setMarket(e.target.value)}>
+                    <SelectBox
+                        variant='triangle'
+                        value={market}
+                        onChange={e => setMarket(e.target.value)}
+                        icon={<MarketIcon name={market_def.name} />}
+                    >
                         {MARKETS.map(m => (
                             <option key={m.symbol} value={m.symbol}>
                                 {m.name}
                             </option>
                         ))}
-                    </select>
+                    </SelectBox>
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Trade type')}</label>
-                    <select className='bulk__select' value={trade_type} onChange={e => setTradeType(e.target.value)}>
+                    <SelectBox value={trade_type} onChange={e => setTradeType(e.target.value)}>
                         {TRADE_TYPES.map(t => (
                             <option key={t.key} value={t.key}>
                                 {t.label}
                             </option>
                         ))}
-                    </select>
+                    </SelectBox>
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Number of ticks')}</label>
@@ -654,13 +701,13 @@ const BulkTrader = observer(() => {
                         {auto_on && (
                             <div className='bulk__field'>
                                 <label className='bulk__label'>{localize('Recovery trade (after a loss)')}</label>
-                                <select className='bulk__select' value={recovery} onChange={e => setRecovery(e.target.value)}>
+                                <SelectBox value={recovery} onChange={e => setRecovery(e.target.value)}>
                                     {RECOVERY_OPTIONS.map(o => (
                                         <option key={o.key} value={o.key}>
                                             {localize(o.label)}
                                         </option>
                                     ))}
-                                </select>
+                                </SelectBox>
                             </div>
                         )}
                         {auto_on && RECOVERY_RANGE[recovery] && (

@@ -27,8 +27,7 @@
         }
 
         @media (max-width: 700px) {
-            grid-template-columns: 1fr;
-            gap: 1.2rem;
+            gap: 1.2rem 1rem;
 
             // Stake, No of trades and Ticks stay side by side on a phone
             &--three {
@@ -51,10 +50,10 @@
 
     &__label {
         display: block;
-        margin-bottom: 0.6rem;
-        font-size: 1.1rem;
+        margin-bottom: 0.8rem;
+        font-size: 1.3rem;
         font-weight: 700;
-        letter-spacing: 0.06rem;
+        letter-spacing: 0.1rem;
         text-transform: uppercase;
         color: var(--text-less-prominent);
 
@@ -67,13 +66,13 @@
     &__select,
     &__static {
         width: 100%;
-        height: 3.8rem;
+        height: 5rem;
         padding: 0 1.2rem;
-        border: 1px solid rgba(128, 128, 128, 0.4);
-        border-radius: 0.2rem;
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        border-radius: 0.8rem;
         background: var(--general-main-1);
         color: var(--text-general);
-        font-size: 1.4rem;
+        font-size: 1.6rem;
     }
 
     &__input {
@@ -90,18 +89,72 @@
 
     &__select {
         cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        padding: 0 3.6rem;
         text-align: center;
         text-align-last: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
         font-weight: 700;
 
         option {
             text-align: center;
         }
+    }
 
-        &--market {
-            max-width: 32rem;
-            background: var(--general-section-1);
+    // Dropdown with an arrow on the right (and an icon on the left for Market)
+    &__selbox {
+        position: relative;
+        width: 100%;
+
+        &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 1.6rem;
+            pointer-events: none;
         }
+
+        // Market: grey box with a solid triangle
+        &--triangle {
+            .bulk__select {
+                background: var(--general-section-1);
+            }
+
+            &::after {
+                margin-top: -0.3rem;
+                border-left: 0.7rem solid transparent;
+                border-right: 0.7rem solid transparent;
+                border-top: 0.8rem solid var(--text-less-prominent);
+            }
+        }
+
+        // Other dropdowns: white box with a chevron
+        &--chevron::after {
+            width: 0.9rem;
+            height: 0.9rem;
+            margin-top: -0.7rem;
+            border-right: 0.2rem solid var(--text-general);
+            border-bottom: 0.2rem solid var(--text-general);
+            transform: rotate(45deg);
+        }
+
+        // leave room for the icon, same on both sides so the text stays centred
+        &--icon .bulk__select {
+            padding: 0 4.4rem;
+        }
+    }
+
+    &__micon {
+        position: absolute;
+        left: 1.2rem;
+        top: 50%;
+        width: 2.6rem;
+        height: 2.6rem;
+        margin-top: -1.3rem;
+        pointer-events: none;
     }
 
     &__muted {
