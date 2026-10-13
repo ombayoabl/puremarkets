@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
+import { batch_lanes, MAX_EXTRA_LANES } from './batch-sockets';
 import './bulk-trader.scss';
 
 // Deriv's 10 volatility indices (dp = default decimals; the API's pip_size overrides it)
@@ -198,6 +199,14 @@ const BulkTrader = observer(() => {
     const [busy, setBusy] = useState(false);
     const [auto_running, setAutoRunning] = useState(false);
     const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+
+    // Extra trade connections so a batch is fired side by side instead of queuing on one socket.
+    useEffect(() => {
+        if (!is_logged_in) return;
+        const wanted = clamp(Math.round(trades) || 1, 1, 50);
+        batch_lanes.warm(Math.min(wanted - 1, MAX_EXTRA_LANES));
+    }, [is_logged_in, client?.loginid, trades]);
+    useEffect(() => () => batch_lanes.close(), [is_logged_in, client?.loginid]);
 
     const root_ref = useRef<HTMLDivElement>(null);
     const dp_ref = useRef<number>(MARKETS[0].dp);
@@ -407,7 +416,7 @@ const BulkTrader = observer(() => {
     const badges = digits.slice(-8).map(d => getBadge(trade_type, d, prediction));
 
     // ---- trading ----
-    const buyOne = async (side: { key: string; label: string; barrier: boolean }) => {
+    const buyOne = async (side: { key: string; label: string; barrier: boolean }, lane_index = 0) => {
         const amount = live.current.current_stake;
         const parameters: Record<string, any> = {
             amount,
@@ -419,7 +428,9 @@ const BulkTrader = observer(() => {
             underlying_symbol: market,
         };
         if (side.barrier) parameters.barrier = String(side.barrier_value ?? prediction);
-        const res = await api_base.api.send({ buy: '1', price: Number(amount), parameters });
+        const res = await batch_lanes.send(lane_index, { buy: '1', price: Number(amount), parameters }, request =>
+            api_base.api.send(request)
+        );
         const cid = res.buy.contract_id;
         own.current.add(cid);
         trackContract(cid);
@@ -466,7 +477,7 @@ const BulkTrader = observer(() => {
 
         // Fire `count` contracts at the same moment and group them for martingale
         const fireBatch = async (batch_side = side) => {
-            const results = await Promise.allSettled(Array.from({ length: count }, () => buyOne(batch_side)));
+            const results = await Promise.allSettled(Array.from({ length: count }, (_, i) => buyOne(batch_side, i)));
             const ids = results.filter(r => r.status === 'fulfilled').map((r: any) => r.value as number);
             const first_error = (results.find(r => r.status === 'rejected') as any)?.reason;
             if (ids.length) {
