@@ -83,7 +83,8 @@ const BulkTrader = observer(() => {
     const [stake, setStake] = useState<number>(1);
     const [trades, setTrades] = useState<number>(1);
     const [duration, setDuration] = useState<number>(1);
-    const [is_automated, setIsAutomated] = useState(false);
+    const [manual_on, setManualOn] = useState(true);
+    const [auto_on, setAutoOn] = useState(false);
     const [martingale, setMartingale] = useState(false);
     const [multiplier, setMultiplier] = useState<number>(2);
     const [current_stake, setCurrentStake] = useState<number>(1);
@@ -98,6 +99,7 @@ const BulkTrader = observer(() => {
     const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
     const [log, setLog] = useState<TLog[]>([]);
 
+    const root_ref = useRef<HTMLDivElement>(null);
     const dp_ref = useRef<number>(MARKETS[0].dp);
     const sub_id = useRef('');
     const stop_ref = useRef(false);
@@ -188,22 +190,49 @@ const BulkTrader = observer(() => {
     }, [market, ticks_count, retry]);
 
     // ---- contract results (for the log, martingale and automated mode) ----
+    const settleContract = useCallback((c: any) => {
+        if (!c || !own.current.has(c.contract_id) || !c.is_sold || settled.current.has(c.contract_id)) return;
+        settled.current.add(c.contract_id);
+        const profit = Number(c.profit);
+        setLog(prev => prev.map(l => (l.id === c.contract_id ? { ...l, profit } : l)));
+        const { martingale: m, multiplier: mult, stake: base } = live.current;
+        if (m) {
+            if (profit < 0) {
+                live.current.current_stake = round2(live.current.current_stake * Math.max(1, mult));
+            } else {
+                live.current.current_stake = base;
+            }
+            setCurrentStake(live.current.current_stake);
+        }
+        waiters.current.get(c.contract_id)?.(profit);
+        waiters.current.delete(c.contract_id);
+    }, []);
+
+    // Push messages from the shared connection
     useEffect(() => {
         if (!api_base.api) return;
         const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
-            if (data?.msg_type !== 'proposal_open_contract') return;
-            const c = data.proposal_open_contract;
-            if (!c || !own.current.has(c.contract_id) || !c.is_sold || settled.current.has(c.contract_id)) return;
-            settled.current.add(c.contract_id);
-            const profit = Number(c.profit);
-            setLog(prev => prev.map(l => (l.id === c.contract_id ? { ...l, profit } : l)));
-            const { martingale: m, multiplier: mult, stake: base, current_stake: cur } = live.current;
-            if (m) setCurrentStake(profit < 0 ? round2(cur * Math.max(1, mult)) : base);
-            waiters.current.get(c.contract_id)?.(profit);
-            waiters.current.delete(c.contract_id);
+            if (data?.msg_type === 'proposal_open_contract') settleContract(data.proposal_open_contract);
         });
         return () => sub.unsubscribe();
-    }, [retry]);
+    }, [retry, settleContract]);
+
+    // Poll one contract until it is sold (same one-shot request the bot engine uses)
+    const trackContract = useCallback(
+        async (cid: number) => {
+            const started = Date.now();
+            while (!settled.current.has(cid) && Date.now() - started < SETTLE_TIMEOUT_MS) {
+                await new Promise(r => setTimeout(r, 1500));
+                try {
+                    const res = await api_base.api.send({ proposal_open_contract: 1, contract_id: cid });
+                    settleContract(res?.proposal_open_contract);
+                } catch (e) {
+                    // try again on the next round
+                }
+            }
+        },
+        [settleContract]
+    );
 
     // ---- statistics ----
     const stats = useMemo(() => {
@@ -268,7 +297,7 @@ const BulkTrader = observer(() => {
                 ...prev,
             ].slice(0, 30)
         );
-        api_base.api.send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 }).catch(() => {});
+        trackContract(cid);
         return cid;
     };
 
@@ -289,23 +318,35 @@ const BulkTrader = observer(() => {
             setMessage({ type: 'error', text: localize('Please log in to trade.') });
             return;
         }
+        if (!manual_on && !auto_on) {
+            setMessage({ type: 'error', text: localize('Tick Manual or Automated first.') });
+            return;
+        }
+        if (auto_running) {
+            setMessage({ type: 'error', text: localize('Automated trading is running. Press Stop first.') });
+            return;
+        }
         if (!(live.current.current_stake >= 0.35)) {
             setMessage({ type: 'error', text: localize('Minimum stake is 0.35.') });
             return;
         }
         const count = clamp(Math.round(trades) || 1, 1, 50);
-        setBusy(true);
         setMessage(null);
         stop_ref.current = false;
         try {
-            if (is_automated) {
+            if (auto_on) {
+                // Automated: keep buying this side, one contract after another, until done or stopped
                 setAutoRunning(true);
+                let done = 0;
                 for (let i = 0; i < count && !stop_ref.current; i++) {
                     const cid = await buyOne(side);
+                    done += 1;
                     await waitForResult(cid);
                 }
-                setMessage({ type: 'ok', text: localize('Automated run finished.') });
+                setMessage({ type: 'ok', text: `${localize('Automated run finished:')} ${done} ${localize('trade(s).')}` });
             } else {
+                // Manual: fire all contracts straight away
+                setBusy(true);
                 for (let i = 0; i < count; i++) await buyOne(side);
                 setMessage({ type: 'ok', text: localize('Contract(s) purchased.') });
             }
@@ -317,10 +358,12 @@ const BulkTrader = observer(() => {
         }
     };
 
+    const scrollToTop = () => root_ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     const total_pl = log.reduce((a, l) => a + (l.profit ?? 0), 0);
 
     return (
-        <div className='bulk'>
+        <div className='bulk' ref={root_ref}>
             <div className='bulk__grid'>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Market')}</label>
@@ -444,18 +487,20 @@ const BulkTrader = observer(() => {
 
             <div className='bulk__modes'>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={!is_automated} onChange={() => setIsAutomated(false)} />
+                    <input type='checkbox' checked={manual_on} onChange={e => setManualOn(e.target.checked)} />
                     {localize('Manual')}
                 </label>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={is_automated} onChange={() => setIsAutomated(true)} />
+                    <input type='checkbox' checked={auto_on} onChange={e => setAutoOn(e.target.checked)} />
                     {localize('Automated')}
                 </label>
             </div>
             <p className='bulk__hint'>
-                {is_automated
-                    ? `${localize('Click a side button to start: contracts are bought one after another,')} ${trades} ${localize('in total, until you press Stop.')}`
-                    : `${localize('Click a side button to fire')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('instantly')}`}
+                {auto_on
+                    ? `${localize('Click a side button to start: it buys that side one contract after another,')} ${trades} ${localize('in total, or until you press Stop.')}`
+                    : manual_on
+                      ? `${localize('Click a side button to fire')} ${trades} ${trades === 1 ? localize('contract') : localize('contracts')} ${localize('instantly')}`
+                      : localize('Tick Manual or Automated to trade.')}
             </p>
 
             <div className='bulk__sides'>
@@ -464,7 +509,7 @@ const BulkTrader = observer(() => {
                         type='button'
                         key={s.key}
                         className={classNames('bulk__side', i === 0 ? 'bulk__side--left' : 'bulk__side--right')}
-                        disabled={busy}
+                        disabled={busy || auto_running}
                         onClick={() => fire(s)}
                     >
                         <span className='bulk__side-top'>{s.label}</span>
@@ -533,6 +578,9 @@ const BulkTrader = observer(() => {
                     </table>
                 </div>
             )}
+            <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Back to top')}>
+                ↑
+            </button>
             <p className='bulk__attribution'>{localize('Live markets provided by Deriv')}</p>
         </div>
     );

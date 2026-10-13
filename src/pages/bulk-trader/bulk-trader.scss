@@ -319,4 +319,20 @@
         font-size: 1.2rem;
         color: var(--text-less-prominent);
     }
+
+    &__top {
+        position: sticky;
+        bottom: 1.6rem;
+        float: right;
+        width: 4rem;
+        height: 4rem;
+        border: none;
+        border-radius: 50%;
+        background: #ff444f;
+        color: #fff;
+        font-size: 2rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.3);
+    }
 }
