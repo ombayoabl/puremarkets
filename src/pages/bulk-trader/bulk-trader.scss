@@ -410,23 +410,6 @@
         color: var(--text-less-prominent);
     }
 
-    &__top {
-        position: fixed;
-        right: 2.4rem;
-        bottom: 2.4rem;
-        z-index: 50;
-        width: 4.4rem;
-        height: 4.4rem;
-        border: none;
-        border-radius: 50%;
-        background: #2f3640;
-        color: #fff;
-        font-size: 2.2rem;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.35);
-    }
-
     &__cbx {
         display: inline-flex;
         align-items: center;

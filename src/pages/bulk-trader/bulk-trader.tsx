@@ -183,7 +183,6 @@ const BulkTrader = observer(() => {
     const [mode, setMode] = useState<'manual' | 'auto'>('manual');
     const manual_on = mode === 'manual';
     const auto_on = mode === 'auto';
-    const [show_top, setShowTop] = useState(false);
     const [martingale, setMartingale] = useState(false);
     const [multiplier, setMultiplier] = useState<number>(2);
     const [recovery, setRecovery] = useState<string>('same');
@@ -225,17 +224,6 @@ const BulkTrader = observer(() => {
 
     const type_def = TRADE_TYPES.find(t => t.key === trade_type) || TRADE_TYPES[0];
     const market_def = MARKETS.find(m => m.symbol === market) || MARKETS[0];
-
-    // show the scroll-to-top button once the page has been scrolled down
-    useEffect(() => {
-        const onScroll = (e: Event) => {
-            const t = e.target as any;
-            const y = t && t.scrollTop !== undefined ? t.scrollTop : window.scrollY;
-            setShowTop(y > 200);
-        };
-        window.addEventListener('scroll', onScroll, true);
-        return () => window.removeEventListener('scroll', onScroll, true);
-    }, []);
 
     // keep the working stake in line with the stake box when martingale is off / stake edited
     useEffect(() => {
@@ -530,18 +518,6 @@ const BulkTrader = observer(() => {
         setBusy(false);
     };
 
-    const scrollToTop = () => {
-        let el: HTMLElement | null = root_ref.current;
-        while (el) {
-            const overflow = getComputedStyle(el).overflowY;
-            if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) {
-                el.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-            el = el.parentElement;
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
 
     return (
         <div className='bulk' ref={root_ref}>
@@ -712,11 +688,6 @@ const BulkTrader = observer(() => {
             >
                 {auto_running ? localize('Stop') : localize('Run')}
             </button>
-            {show_top && (
-                <button type='button' className='bulk__top' onClick={scrollToTop} aria-label={localize('Scroll to top')}>
-                    ↑
-                </button>
-            )}
         </div>
     );
 });
