@@ -537,6 +537,80 @@
         margin: 1.6rem 0;
     }
 
+    &__scan {
+        margin: 0 0 2.4rem;
+    }
+
+    &__scan-box {
+        margin-top: 1.2rem;
+        padding: 1.2rem;
+        border: 1px solid rgba(128, 128, 128, 0.3);
+        border-radius: 0.8rem;
+    }
+
+    &__scan-list {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    &__scan-row {
+        min-width: 0;
+        padding: 0.8rem;
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        border-radius: 0.6rem;
+
+        &--hit {
+            border-color: #00a79e;
+            background: rgba(0, 167, 158, 0.12);
+        }
+    }
+
+    &__scan-name {
+        margin-bottom: 0.6rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+
+    &__scan-cells {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 0.4rem;
+
+        @media (max-width: 700px) {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+    }
+
+    &__scan-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+        padding: 0.4rem 0.2rem;
+        border-radius: 0.4rem;
+        background: rgba(128, 128, 128, 0.12);
+
+        strong {
+            font-size: 1.3rem;
+        }
+
+        small {
+            font-size: 1.05rem;
+            white-space: nowrap;
+        }
+
+        // the four digits the scanner looks at
+        &--rule {
+            outline: 0.15rem solid rgba(255, 68, 79, 0.6);
+        }
+
+        &--pass {
+            outline-color: #00a79e;
+            background: rgba(0, 167, 158, 0.2);
+        }
+    }
+
     &__martingale-fields {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 32rem));
