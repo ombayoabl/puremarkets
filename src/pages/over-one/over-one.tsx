@@ -5,7 +5,6 @@ import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
-import { batch_lanes, MAX_EXTRA_LANES } from '../bulk-trader/batch-sockets';
 import { Check, NumInput } from '../bulk-trader/bulk-trader';
 import '../bulk-trader/bulk-trader.scss';
 
@@ -35,6 +34,10 @@ const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const OVER1 = { key: 'DIGITOVER', digit: 1, label: 'Over 1' };
+// digits Deriv accepts for the recovery contract
+const REC_RANGE: Record<string, [number, number]> = { over: [0, 8], under: [1, 9] };
 const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toFixed(dp).slice(-1));
 const errMsg = (e: any) => e?.error?.message || e?.message || localize('Something went wrong');
 const digitPercents = (list: number[]) => {
@@ -52,21 +55,42 @@ const OverOne = observer(() => {
     const is_logged_in = !!client?.is_logged_in;
 
     const [stake, setStake] = useState<number>(1);
-    const [trades, setTrades] = useState<number>(1);
+    const [take_profit, setTakeProfit] = useState<number>(0);
+    const [stop_loss, setStopLoss] = useState<number>(0);
+    const [rec_on, setRecOn] = useState(false);
+    const [rec_type, setRecType] = useState<'over' | 'under'>('over');
+    const [rec_digit, setRecDigit] = useState<number>(5);
+    const [multiplier, setMultiplier] = useState<number>(2);
     const [duration, setDuration] = useState<number>(1);
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
 
     const [scanning, setScanning] = useState(false);
+    const [trading, setTrading] = useState(false);
+    const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [scan_pct, setScanPct] = useState<Record<string, number[]>>({});
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
-    const [result, setResult] = useState('');
     const [, setRetry] = useState(0);
 
     const cfg = useRef<any>({});
-    cfg.current = { stake, trades, duration, auto_trade, currency, is_logged_in, transactions };
+    const run_id = useRef(0);
+    const cancel_wait = useRef<(() => void) | null>(null);
+    cfg.current = {
+        stake,
+        duration,
+        auto_trade,
+        currency,
+        is_logged_in,
+        transactions,
+        take_profit,
+        stop_loss,
+        rec_on,
+        rec_type,
+        rec_digit,
+        multiplier,
+    };
 
     // debounce the "number of ticks" box
     useEffect(() => {
@@ -74,68 +98,125 @@ const OverOne = observer(() => {
         return () => clearTimeout(t);
     }, [ticks_input]);
 
-    // Follow a contract until it is sold; feeds the Summary / Transactions panel and the result line
-    const trackContract = useCallback(async (cid: number, done: (profit: number | null) => void) => {
-        const started = Date.now();
-        while (Date.now() - started < SETTLE_TIMEOUT_MS) {
-            await new Promise(r => setTimeout(r, 1500));
-            try {
-                const res = await api_base.api.send({ proposal_open_contract: 1, contract_id: cid });
-                const c = res?.proposal_open_contract;
-                if (!c) continue;
-                try {
-                    cfg.current.transactions?.onBotContractEvent?.(c);
-                } catch (e) {
-                    // the side panel is optional
-                }
-                if (c.is_sold) return done(Number(c.profit));
-            } catch (e) {
-                // try again on the next round
-            }
-        }
-        done(null);
-    }, []);
-
-    // Fire the whole batch of Over 1 contracts at the same moment (one connection each)
-    const fireOver1 = useCallback(
-        async (symbol: string) => {
-            const { stake: amount, trades: n, duration: ticks, currency: cur } = cfg.current;
-            const count = clamp(Math.round(n) || 1, 1, 50);
-            const buyOne = async (lane: number) => {
-                const parameters = {
-                    amount,
-                    basis: 'stake',
-                    contract_type: 'DIGITOVER',
-                    barrier: '1',
-                    currency: cur,
-                    duration: clamp(Math.round(ticks) || 1, 1, 10),
-                    duration_unit: 't',
-                    underlying_symbol: symbol,
+    // Wait until one contract is sold (pushed updates, with a slow poll as a safety net)
+    const waitForResult = useCallback(
+        (cid: number, my_run: number) =>
+            new Promise<number | null>(resolve => {
+                let done = false;
+                let sub_id = '';
+                const finish = (v: number | null) => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timer);
+                    clearInterval(poll);
+                    msg.unsubscribe();
+                    cancel_wait.current = null;
+                    if (sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+                    resolve(v);
                 };
-                const res = await batch_lanes.send(lane, { buy: '1', price: Number(amount), parameters }, request =>
-                    api_base.api.send(request)
-                );
-                return res.buy.contract_id as number;
-            };
-            const results = await Promise.allSettled(Array.from({ length: count }, (_, i) => buyOne(i)));
-            const ids = results.filter(r => r.status === 'fulfilled').map((r: any) => r.value as number);
-            const first_error = (results.find(r => r.status === 'rejected') as any)?.reason;
-            if (first_error) setError(errMsg(first_error));
-            if (!ids.length) return;
-            setResult(`${localize('Placed')} ${ids.length} × Over 1 ${localize('on')} ${MARKETS.find(m => m.symbol === symbol)?.name}`);
-            let pending = ids.length;
-            let total = 0;
-            ids.forEach(id =>
-                trackContract(id, profit => {
-                    pending -= 1;
-                    if (profit !== null) total += profit;
-                    if (pending <= 0) {
-                        setResult(`${localize('Result:')} ${total >= 0 ? '+' : ''}${total.toFixed(2)} ${cfg.current.currency}`);
+                const handle = (poc: any) => {
+                    if (done || !poc || poc.contract_id !== cid) return;
+                    try {
+                        cfg.current.transactions?.onBotContractEvent?.(poc);
+                    } catch (e) {
+                        // the side panel is optional
                     }
-                })
-            );
+                    if (poc.is_sold) finish(Number(poc.profit));
+                };
+                const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
+                    if (data?.msg_type === 'proposal_open_contract') handle(data.proposal_open_contract);
+                });
+                const timer = setTimeout(() => finish(null), SETTLE_TIMEOUT_MS);
+                const poll = setInterval(() => {
+                    if (run_id.current !== my_run) return finish(null);
+                    api_base.api
+                        .send({ proposal_open_contract: 1, contract_id: cid })
+                        .then((r: any) => handle(r?.proposal_open_contract))
+                        .catch(() => {});
+                }, 3000);
+                cancel_wait.current = () => finish(null);
+                api_base.api
+                    .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
+                    .then((r: any) => {
+                        sub_id = r?.subscription?.id || '';
+                        if (done && sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+                        handle(r?.proposal_open_contract);
+                    })
+                    .catch(() => {});
+            }),
+        []
+    );
+
+    // Trade one contract at a time on `symbol`: Over 1, or the recovery contract after a loss,
+    // until Stop is pressed or take profit / stop loss is reached
+    const runTrades = useCallback(
+        async (symbol: string) => {
+            run_id.current += 1;
+            const my_run = run_id.current;
+            const name = MARKETS.find(m => m.symbol === symbol)?.name || symbol;
+            let total = 0;
+            let n = 0;
+            let losses = 0; // losses in a row
+            setPl({ n: 0, total: 0 });
+            setTrading(true);
+            try {
+                while (run_id.current === my_run) {
+                    const c = cfg.current;
+                    const recovering = c.rec_on && losses > 0;
+                    const [lo, hi] = REC_RANGE[c.rec_type];
+                    const rec_digit_ok = clamp(Math.round(c.rec_digit) || lo, lo, hi);
+                    const key = recovering ? (c.rec_type === 'under' ? 'DIGITUNDER' : 'DIGITOVER') : OVER1.key;
+                    const barrier = recovering ? rec_digit_ok : OVER1.digit;
+                    const label = recovering ? `${c.rec_type === 'under' ? 'Under' : 'Over'} ${barrier}` : OVER1.label;
+                    const amount = recovering ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
+                    setStatus(`${localize('Trading')} ${name}: ${label}, ${localize('stake')} ${amount} ${c.currency}…`);
+
+                    let cid: number;
+                    try {
+                        const res = await api_base.api.send({
+                            buy: '1',
+                            price: Number(amount),
+                            parameters: {
+                                amount,
+                                basis: 'stake',
+                                contract_type: key,
+                                barrier: String(barrier),
+                                currency: c.currency,
+                                duration: clamp(Math.round(c.duration) || 1, 1, 10),
+                                duration_unit: 't',
+                                underlying_symbol: symbol,
+                            },
+                        });
+                        cid = res.buy.contract_id;
+                    } catch (e) {
+                        if (run_id.current === my_run) setError(errMsg(e));
+                        break;
+                    }
+                    const profit = await waitForResult(cid, my_run);
+                    if (run_id.current !== my_run) break;
+                    if (profit === null) {
+                        setError(localize('Could not confirm the result of the last trade, so trading stopped.'));
+                        break;
+                    }
+                    total = round2(total + profit);
+                    n += 1;
+                    setPl({ n, total });
+                    losses = profit < 0 ? losses + 1 : 0;
+
+                    if (c.take_profit > 0 && total >= c.take_profit) {
+                        setStatus(`${localize('Take profit reached. Trading stopped.')}`);
+                        break;
+                    }
+                    if (c.stop_loss > 0 && total <= -c.stop_loss) {
+                        setStatus(`${localize('Stop loss reached. Trading stopped.')}`);
+                        break;
+                    }
+                }
+            } finally {
+                if (run_id.current === my_run) setTrading(false);
+            }
         },
-        [trackContract]
+        [waitForResult]
     );
 
     // ---- scan all 10 volatilities, trade the first one that meets the rule ----
@@ -158,7 +239,6 @@ const OverOne = observer(() => {
 
         setScanPct({});
         setStatus(localize('Analysing the volatilities…'));
-        if (cfg.current.auto_trade) batch_lanes.warm(Math.min(clamp(Math.round(cfg.current.trades) || 1, 1, 50) - 1, MAX_EXTRA_LANES));
 
         const check = () => {
             if (fired || cancelled || !loaded_all) return;
@@ -171,7 +251,7 @@ const OverOne = observer(() => {
                 return;
             }
             setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Placing Over 1…')}`);
-            fireOver1(hit.symbol);
+            runTrades(hit.symbol);
         };
 
         const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
@@ -249,7 +329,7 @@ const OverOne = observer(() => {
             // let other pages (Bulk Trader digits feed) pick their own stream up again
             if (own_subs.length) setRetry(r => r + 1);
         };
-    }, [scanning, ticks_count, fireOver1]);
+    }, [scanning, ticks_count, runTrades]);
 
     const startScan = () => {
         if (auto_trade && !is_logged_in) {
@@ -261,19 +341,33 @@ const OverOne = observer(() => {
             return;
         }
         setError('');
-        setResult('');
+        setPl(null);
         setScanning(true);
     };
 
-    const stopScan = () => {
+    const stopAll = () => {
+        run_id.current += 1; // ends the trading loop
+        cancel_wait.current?.();
         setScanning(false);
+        setTrading(false);
         setStatus(localize('Stopped.'));
     };
+
+    // leaving the tab ends any trading
+    useEffect(
+        () => () => {
+            run_id.current += 1;
+            cancel_wait.current?.();
+        },
+        []
+    );
+
+    const active = scanning || trading;
 
     return (
         <div className='bulk'>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities and trades Over 1 on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}. ${localize('It stops after it trades.')}`}
+                {`${localize('Run scans all 10 volatilities and, on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}, ${localize('trades Over 1 one trade at a time until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
 
             <div className='bulk__grid bulk__grid--three'>
@@ -282,18 +376,22 @@ const OverOne = observer(() => {
                     <NumInput value={stake} onChange={setStake} min={0.35} max={100000} fallback={1} />
                 </div>
                 <div className='bulk__field'>
-                    <label className='bulk__label'>{localize('No of trades')}</label>
-                    <NumInput value={trades} onChange={setTrades} min={1} max={50} integer fallback={1} />
-                </div>
-                <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Ticks')}</label>
                     <NumInput value={duration} onChange={setDuration} min={1} max={10} integer fallback={1} />
+                </div>
+                <div className='bulk__field'>
+                    <label className='bulk__label'>{localize('Ticks to analyse')}</label>
+                    <NumInput value={ticks_input} onChange={setTicksInput} min={20} max={MAX_TICKS} integer fallback={1000} />
                 </div>
             </div>
             <div className='bulk__grid'>
                 <div className='bulk__field'>
-                    <label className='bulk__label'>{localize('Number of ticks to analyse')}</label>
-                    <NumInput value={ticks_input} onChange={setTicksInput} min={20} max={MAX_TICKS} integer fallback={1000} />
+                    <label className='bulk__label'>{localize('Take profit (0 = off)')}</label>
+                    <NumInput value={take_profit} onChange={setTakeProfit} min={0} max={1000000} fallback={0} />
+                </div>
+                <div className='bulk__field'>
+                    <label className='bulk__label'>{localize('Stop loss (0 = off)')}</label>
+                    <NumInput value={stop_loss} onChange={setStopLoss} min={0} max={1000000} fallback={0} />
                 </div>
             </div>
 
@@ -301,15 +399,62 @@ const OverOne = observer(() => {
                 <Check checked={auto_trade} onChange={() => setAutoTrade(v => !v)} label={localize('Auto trade after a signal')} />
             </div>
 
+            <div className='bulk__martingale'>
+                <Check checked={rec_on} onChange={() => setRecOn(v => !v)} label={localize('Recovery mode (after a loss)')} />
+                {rec_on && (
+                    <>
+                        <div className='bulk__modes'>
+                            <Check
+                                checked={rec_type === 'over'}
+                                onChange={() => {
+                                    setRecType('over');
+                                    setRecDigit(d => clamp(d, REC_RANGE.over[0], REC_RANGE.over[1]));
+                                }}
+                                label={localize('Recover with Over')}
+                            />
+                            <Check
+                                checked={rec_type === 'under'}
+                                onChange={() => {
+                                    setRecType('under');
+                                    setRecDigit(d => clamp(d, REC_RANGE.under[0], REC_RANGE.under[1]));
+                                }}
+                                label={localize('Recover with Under')}
+                            />
+                        </div>
+                        <div className='bulk__martingale-fields'>
+                            <div className='bulk__field'>
+                                <label className='bulk__label'>{localize('Recovery prediction')}</label>
+                                <NumInput
+                                    value={rec_digit}
+                                    onChange={setRecDigit}
+                                    min={REC_RANGE[rec_type][0]}
+                                    max={REC_RANGE[rec_type][1]}
+                                    integer
+                                    fallback={5}
+                                />
+                            </div>
+                            <div className='bulk__field'>
+                                <label className='bulk__label'>{localize('Stake multiplier after a loss')}</label>
+                                <NumInput value={multiplier} onChange={setMultiplier} min={1} max={100} fallback={2} />
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+
             <button
                 type='button'
-                className={classNames('bulk__run', { 'bulk__run--stop': scanning })}
-                onClick={scanning ? stopScan : startScan}
+                className={classNames('bulk__run', { 'bulk__run--stop': active })}
+                onClick={active ? stopAll : startScan}
             >
-                {scanning ? localize('Stop') : localize('Run')}
+                {active ? localize('Stop') : localize('Run')}
             </button>
             {status && <p className='bulk__muted'>{status}</p>}
-            {result && <p className='bulk__good'>{result}</p>}
+            {pl && (
+                <p className={pl.total >= 0 ? 'bulk__good' : 'bulk__bad'}>
+                    {`${pl.n} ${localize('trades')} · ${localize('Profit/Loss')} ${pl.total >= 0 ? '+' : ''}${pl.total.toFixed(2)} ${currency}`}
+                </p>
+            )}
             {error && <p className='bulk__bad'>{error}</p>}
 
             <div className='bulk__scan-list'>
