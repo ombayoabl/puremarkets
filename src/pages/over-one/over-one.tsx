@@ -126,8 +126,8 @@ const OverOne = observer(() => {
         }
     }, []);
 
-    // A soft scratching sound that loops on the audio clock while scanning. It needs no timer,
-    // so it keeps going when you switch to another tab or app.
+    // A soft, machine-like "beep beep" that loops (3.2 seconds long) while scanning. It plays on
+    // the audio clock and needs no timer, so it keeps going when you switch to another tab or app.
     useEffect(() => {
         if (!scanning) return;
         const ctx = audio.current;
@@ -135,37 +135,35 @@ const OverOne = observer(() => {
         let src: any = null;
         try {
             const rate = ctx.sampleRate;
-            const buf = ctx.createBuffer(1, Math.floor(rate * 1.5), rate);
+            const buf = ctx.createBuffer(1, Math.floor(rate * 3.2), rate);
             const data = buf.getChannelData(0);
-            // a few short, rough strokes with gaps between them
-            const strokes = [
-                [0.0, 0.14],
-                [0.2, 0.09],
-                [0.36, 0.18],
-                [0.72, 0.1],
-                [0.9, 0.16],
-                [1.2, 0.08],
-            ];
-            strokes.forEach(([at, len]) => {
-                const from = Math.floor(rate * at);
-                const n = Math.floor(rate * len);
-                for (let i = 0; i < n; i++) {
-                    const fade = Math.sin((Math.PI * i) / n); // soft start and end
-                    const rough = 0.5 + 0.5 * Math.random(); // makes it raspy
-                    data[from + i] = (Math.random() * 2 - 1) * rough * fade * 0.5;
-                }
-            });
+            const FREQ = 1100;
+            const BEEP = 0.07; // seconds
+            const edge = Math.floor(rate * 0.008); // short fade in/out so it does not click
+            // a pair of beeps every 0.8 seconds
+            for (let k = 0; k < 4; k++) {
+                [0, 0.15].forEach(offset => {
+                    const from = Math.floor(rate * (k * 0.8 + offset));
+                    const n = Math.floor(rate * BEEP);
+                    for (let i = 0; i < n; i++) {
+                        const t = (2 * Math.PI * FREQ * i) / rate;
+                        // a square-ish tone (odd harmonics) is what gives it the machine character
+                        const wave = Math.sin(t) + Math.sin(3 * t) / 3 + Math.sin(5 * t) / 5;
+                        const env = Math.min(1, i / edge, (n - i) / edge);
+                        data[from + i] = wave * env * 0.18;
+                    }
+                });
+            }
             src = ctx.createBufferSource();
             src.buffer = buf;
             src.loop = true;
-            const band = ctx.createBiquadFilter(); // keeps the scratchy highs, drops the hiss and rumble
-            band.type = 'bandpass';
-            band.frequency.value = 3200;
-            band.Q.value = 0.7;
+            const soften = ctx.createBiquadFilter(); // rounds off the harsh highs
+            soften.type = 'lowpass';
+            soften.frequency.value = 2600;
             const gain = ctx.createGain();
-            gain.gain.value = 0.35; // soft
-            src.connect(band);
-            band.connect(gain);
+            gain.gain.value = 0.5; // soft
+            src.connect(soften);
+            soften.connect(gain);
             gain.connect(ctx.destination);
             src.start();
         } catch (e) {
