@@ -748,3 +748,6 @@ const BulkTrader = observer(() => {
 });
 
 export default BulkTrader;
+
+// shared with the Over One tab
+export { NumInput, Check };
