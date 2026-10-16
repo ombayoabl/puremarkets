@@ -65,6 +65,7 @@ const OverOne = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
+    const [sound_on, setSoundOn] = useState(true);
 
     const [scanning, setScanning] = useState(false);
     const [trading, setTrading] = useState(false);
@@ -76,11 +77,13 @@ const OverOne = observer(() => {
 
     const cfg = useRef<any>({});
     const run_id = useRef(0);
+    const audio = useRef<any>(null);
     const cancel_wait = useRef<(() => void) | null>(null);
     cfg.current = {
         stake,
         duration,
         auto_trade,
+        sound_on,
         currency,
         is_logged_in,
         transactions,
@@ -91,6 +94,48 @@ const OverOne = observer(() => {
         rec_digit,
         multiplier,
     };
+
+    // ---- sound (made with the browser's own audio, no files) ----
+    const unlockAudio = () => {
+        try {
+            if (!audio.current) {
+                const AC = window.AudioContext || (window as any).webkitAudioContext;
+                if (AC) audio.current = new AC();
+            }
+            audio.current?.resume?.();
+        } catch (e) {
+            // no sound available
+        }
+    };
+    const tone = useCallback((freq: number, dur: number, vol: number, delay = 0) => {
+        const ctx = audio.current;
+        if (!ctx) return;
+        try {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const t0 = ctx.currentTime + delay;
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t0);
+            osc.stop(t0 + dur + 0.02);
+        } catch (e) {
+            // no sound available
+        }
+    }, []);
+
+    // a soft tick every second or so while the scan is running
+    useEffect(() => {
+        if (!scanning) return;
+        const t = setInterval(() => {
+            if (cfg.current.sound_on) tone(660, 0.07, 0.06);
+        }, 1200);
+        return () => clearInterval(t);
+    }, [scanning, tone]);
 
     // debounce the "number of ticks" box
     useEffect(() => {
@@ -246,6 +291,12 @@ const OverOne = observer(() => {
             if (!hit) return;
             fired = true;
             setScanning(false);
+            if (cfg.current.sound_on) {
+                // signal found: three rising beeps
+                tone(880, 0.16, 0.2);
+                tone(1100, 0.16, 0.2, 0.2);
+                tone(1320, 0.28, 0.2, 0.4);
+            }
             if (!cfg.current.auto_trade) {
                 setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Auto trade is off, so no trade was placed.')}`);
                 return;
@@ -329,9 +380,10 @@ const OverOne = observer(() => {
             // let other pages (Bulk Trader digits feed) pick their own stream up again
             if (own_subs.length) setRetry(r => r + 1);
         };
-    }, [scanning, ticks_count, runTrades]);
+    }, [scanning, ticks_count, runTrades, tone]);
 
     const startScan = () => {
+        unlockAudio(); // browsers only allow sound after a click
         if (auto_trade && !is_logged_in) {
             setError(localize('Please log in to trade.'));
             return;
@@ -358,6 +410,7 @@ const OverOne = observer(() => {
         () => () => {
             run_id.current += 1;
             cancel_wait.current?.();
+            audio.current?.close?.();
         },
         []
     );
@@ -397,6 +450,7 @@ const OverOne = observer(() => {
 
             <div className='bulk__modes'>
                 <Check checked={auto_trade} onChange={() => setAutoTrade(v => !v)} label={localize('Auto trade after a signal')} />
+                <Check checked={sound_on} onChange={() => setSoundOn(v => !v)} label={localize('Sound')} />
             </div>
 
             <div className='bulk__martingale'>
