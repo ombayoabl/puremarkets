@@ -735,7 +735,8 @@
 
     &__account {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        align-items: center;
         padding: .8rem 1.6rem;
         cursor: pointer;
         background: var(--general-main-2);
@@ -752,6 +753,20 @@
             background: var(--state-active);
             cursor: default;
         }
+    }
+
+    &__icon {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        margin-right: 1rem;
+    }
+
+    &__text {
+        display: flex;
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-direction: column;
     }
 
     &__account-type {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
+import { CurrencyIcon } from '@/components/currency/currency-icon';
 import { addComma, getCurrencyDisplayCode, getDecimalPlaces } from '@/components/shared';
 import Text from '@/components/shared_ui/text';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
@@ -92,7 +93,11 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         }
                     }}
                 >
-                    <span className='acc-info__id' aria-hidden='true'></span>
+                    <span className='acc-info__id' aria-hidden='true'>
+                        <span className='acc-info__id-icon'>
+                            <CurrencyIcon currency={currency} isVirtual={isVirtual} />
+                        </span>
+                    </span>
                     <div className='acc-info__content'>
                         <div className='acc-info__account-type-header'>
                             <Text as='p' size='xs' className='acc-info__account-type'>
@@ -159,25 +164,30 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                 }
                             }}
                         >
-                            <Text
-                                size='xxxs'
-                                className={classNames('acc-dropdown__account-type', {
-                                    'acc-dropdown__account-type--virtual': account.isVirtual,
-                                })}
-                            >
-                                {account.isVirtual ? (
-                                    <Localize i18n_default_text='Demo account' />
-                                ) : (
-                                    <Localize i18n_default_text='Real account' />
-                                )}
-                            </Text>
-                            <Text size='xs' weight='bold' className='acc-dropdown__balance'>
-                                {account.currency ? (
-                                    `${account.balance} ${getCurrencyDisplayCode(account.currency)}`
-                                ) : (
-                                    <Localize i18n_default_text='No currency assigned' />
-                                )}
-                            </Text>
+                            <span className='acc-dropdown__icon' aria-hidden='true'>
+                                <CurrencyIcon currency={account.currency} isVirtual={account.isVirtual} />
+                            </span>
+                            <span className='acc-dropdown__text'>
+                                <Text
+                                    size='xxxs'
+                                    className={classNames('acc-dropdown__account-type', {
+                                        'acc-dropdown__account-type--virtual': account.isVirtual,
+                                    })}
+                                >
+                                    {account.isVirtual ? (
+                                        <Localize i18n_default_text='Demo account' />
+                                    ) : (
+                                        <Localize i18n_default_text='Real account' />
+                                    )}
+                                </Text>
+                                <Text size='xs' weight='bold' className='acc-dropdown__balance'>
+                                    {account.currency ? (
+                                        `${account.balance} ${getCurrencyDisplayCode(account.currency)}`
+                                    ) : (
+                                        <Localize i18n_default_text='No currency assigned' />
+                                    )}
+                                </Text>
+                            </span>
                         </div>
                     ))}
                 </div>
