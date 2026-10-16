@@ -57,23 +57,6 @@ const RECOVERY_RANGE: Record<string, [number, number]> = {
     differs: [0, 9],
 };
 
-// "Over 1" scanner: trade Over 1 on the first volatility whose digit percentages reach all of these levels
-const OVER1_SIDE = { key: 'DIGITOVER', label: 'Over 1', barrier: true, barrier_value: 1 };
-const OVER1_RULES = [
-    { digit: 0, min: 10.2 },
-    { digit: 1, min: 9 },
-    { digit: 8, min: 9.2 },
-    { digit: 9, min: 9.2 },
-];
-const digitPercents = (list: number[]) => {
-    const counts = Array(10).fill(0);
-    list.forEach(d => (counts[d] += 1));
-    const total = list.length || 1;
-    return counts.map(n => (n / total) * 100);
-};
-// compared the way they are shown (1 decimal), so a box that reads 9.2% counts as 9.2%
-const meetsOver1 = (pct: number[]) => OVER1_RULES.every(r => Number(pct[r.digit].toFixed(1)) >= r.min);
-
 // The contract to buy for a recovery choice (null = same as the traded side)
 const getRecoverySide = (key: string, digit: number) => {
     const [lo, hi] = RECOVERY_RANGE[key] || [0, 9];
@@ -262,12 +245,6 @@ const BulkTrader = observer(() => {
     const [auto_running, setAutoRunning] = useState(false);
     const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
-    // Over 1 scanner
-    const [scanner_on, setScannerOn] = useState(false);
-    const [scanning, setScanning] = useState(false);
-    const [scan_pct, setScanPct] = useState<Record<string, number[]>>({});
-    const [scan_status, setScanStatus] = useState('');
-
     // Extra trade connections so a batch is fired side by side instead of queuing on one socket.
     useEffect(() => {
         if (!is_logged_in) return;
@@ -289,7 +266,6 @@ const BulkTrader = observer(() => {
     const contract_batch = useRef<Map<number, number>>(new Map());
     const batch_seq = useRef(0);
     const live = useRef<any>({});
-    const fire_ref = useRef<any>(null);
     live.current = { stake, current_stake, martingale, multiplier, recovery, recovery_prediction, prediction };
 
     const type_def = TRADE_TYPES.find(t => t.key === trade_type) || TRADE_TYPES[0];
@@ -474,7 +450,7 @@ const BulkTrader = observer(() => {
     const badges = digits.slice(-8).map(d => getBadge(trade_type, d, prediction));
 
     // ---- trading ----
-    const buyOne = async (side: { key: string; label: string; barrier: boolean }, lane_index = 0, symbol = market) => {
+    const buyOne = async (side: { key: string; label: string; barrier: boolean }, lane_index = 0) => {
         const amount = live.current.current_stake;
         const parameters: Record<string, any> = {
             amount,
@@ -483,7 +459,7 @@ const BulkTrader = observer(() => {
             currency,
             duration: clamp(Math.round(duration) || 1, 1, 10),
             duration_unit: 't',
-            underlying_symbol: symbol,
+            underlying_symbol: market,
         };
         if (side.barrier) parameters.barrier = String(side.barrier_value ?? prediction);
         const res = await batch_lanes.send(lane_index, { buy: '1', price: Number(amount), parameters }, request =>
@@ -507,15 +483,12 @@ const BulkTrader = observer(() => {
             });
         });
 
-    const fire = async (
-        side: { key: string; label: string; barrier: boolean },
-        opts: { symbol?: string; scanner?: boolean } = {}
-    ) => {
+    const fire = async (side: { key: string; label: string; barrier: boolean }) => {
         if (!is_logged_in) {
             setMessage({ type: 'error', text: localize('Please log in to trade.') });
             return;
         }
-        if (!opts.scanner && !manual_on && !auto_on) {
+        if (!manual_on && !auto_on) {
             setMessage({ type: 'error', text: localize('Tick Manual or Automated first.') });
             return;
         }
@@ -538,7 +511,7 @@ const BulkTrader = observer(() => {
 
         // Fire `count` contracts at the same moment and group them for martingale
         const fireBatch = async (batch_side = side) => {
-            const results = await Promise.allSettled(Array.from({ length: count }, (_, i) => buyOne(batch_side, i, opts.symbol)));
+            const results = await Promise.allSettled(Array.from({ length: count }, (_, i) => buyOne(batch_side, i)));
             const ids = results.filter(r => r.status === 'fulfilled').map((r: any) => r.value as number);
             const first_error = (results.find(r => r.status === 'rejected') as any)?.reason;
             if (ids.length) {
@@ -550,7 +523,7 @@ const BulkTrader = observer(() => {
         };
 
         try {
-            if (auto_on && !opts.scanner) {
+            if (auto_on) {
                 // Automated: keep firing the batch again as soon as the last one has finished, until Stop
                 setAutoRunning(true);
                 let in_recovery = false;
@@ -582,8 +555,6 @@ const BulkTrader = observer(() => {
         }
     };
 
-    fire_ref.current = fire;
-
     // Stop: no more trades are started and the screen leaves "running" straight away
     const stopAuto = () => {
         stop_ref.current = true;
@@ -593,141 +564,6 @@ const BulkTrader = observer(() => {
         setBusy(false);
     };
 
-    // ---- Over 1 scanner: watch all 10 volatilities, trade the first one that meets the rule ----
-    useEffect(() => {
-        if (!scanning) return;
-        if (!api_base.api) {
-            setScanStatus(localize('Connecting to live markets…'));
-            setScanning(false);
-            return;
-        }
-        let cancelled = false;
-        let loaded_all = false;
-        let fired = false;
-        const bufs: Record<string, number[]> = {};
-        const dps: Record<string, number> = {};
-        const seen: Record<string, number> = {};
-        const pct_now: Record<string, number[]> = {};
-        const own_subs: string[] = [];
-        const failed: string[] = [];
-
-        setScanPct({});
-        setScanStatus(localize('Analysing the volatilities…'));
-
-        const check = () => {
-            if (fired || cancelled || !loaded_all) return;
-            const hit = MARKETS.find(m => pct_now[m.symbol] && meetsOver1(pct_now[m.symbol]));
-            if (!hit) return;
-            fired = true;
-            setScanStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Placing Over 1…')}`);
-            setMarket(hit.symbol);
-            fire_ref.current?.(OVER1_SIDE, { symbol: hit.symbol, scanner: true });
-            setScanning(false);
-        };
-
-        const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
-            if (data?.msg_type !== 'tick') return;
-            const sym = data.tick?.symbol;
-            if (!bufs[sym]) return;
-            if (data.tick.pip_size !== undefined) dps[sym] = Number(data.tick.pip_size);
-            bufs[sym].push(toDigit(data.tick.quote, dps[sym]));
-            if (bufs[sym].length > ticks_count) bufs[sym].shift();
-            seen[sym] = Date.now();
-            pct_now[sym] = digitPercents(bufs[sym]);
-            setScanPct(prev => ({ ...prev, [sym]: pct_now[sym] }));
-            check();
-        });
-
-        const load = async () => {
-            for (let i = 0; i < MARKETS.length; i++) {
-                if (cancelled) return;
-                const m = MARKETS[i];
-                const base = { ticks_history: m.symbol, adjust_start_time: 1, count: ticks_count, end: 'latest', style: 'ticks' };
-                try {
-                    let res;
-                    try {
-                        res = await api_base.api.send({ ...base, subscribe: 1 });
-                        const id = res?.subscription?.id;
-                        if (id) {
-                            if (cancelled) api_base.api.send({ forget: id }).catch(() => {});
-                            else own_subs.push(id);
-                        }
-                    } catch (e) {
-                        // already streamed by the chart / main feed: read the history, ticks still reach us
-                        if (e?.error?.code !== 'AlreadySubscribed') throw e;
-                        res = await api_base.api.send(base);
-                    }
-                    if (cancelled) return;
-                    dps[m.symbol] = res?.pip_size !== undefined ? Number(res.pip_size) : m.dp;
-                    const prices = res?.history?.prices || [];
-                    bufs[m.symbol] = prices.map((q: number) => toDigit(q, dps[m.symbol])).slice(-ticks_count);
-                    seen[m.symbol] = Date.now();
-                    pct_now[m.symbol] = digitPercents(bufs[m.symbol]);
-                    setScanPct(prev => ({ ...prev, [m.symbol]: pct_now[m.symbol] }));
-                } catch (e) {
-                    failed.push(m.name);
-                }
-                setScanStatus(`${localize('Analysing the volatilities…')} ${i + 1}/${MARKETS.length}`);
-            }
-            if (cancelled) return;
-            loaded_all = true;
-            setScanStatus(
-                failed.length
-                    ? `${localize('Watching live ticks. Could not load:')} ${failed.join(', ')}`
-                    : localize('Analysis done. Watching live ticks for a signal…')
-            );
-            check();
-        };
-        load();
-
-        // a market that went quiet (its stream was closed by someone else) is subscribed again
-        const watchdog = setInterval(() => {
-            if (!loaded_all) return;
-            MARKETS.forEach(m => {
-                if (!bufs[m.symbol] || Date.now() - (seen[m.symbol] || 0) < 8000) return;
-                api_base.api
-                    .send({ ticks: m.symbol, subscribe: 1 })
-                    .then((r: any) => r?.subscription?.id && own_subs.push(r.subscription.id))
-                    .catch(() => {});
-            });
-        }, 8000);
-
-        return () => {
-            cancelled = true;
-            sub.unsubscribe();
-            clearInterval(watchdog);
-            if (api_base.api) own_subs.forEach(id => api_base.api.send({ forget: id }).catch(() => {}));
-            // let the main digits feed pick its own stream up again
-            if (own_subs.length) setRetry(r => r + 1);
-        };
-    }, [scanning, ticks_count]);
-
-    const startScan = () => {
-        if (!is_logged_in) {
-            setMessage({ type: 'error', text: localize('Please log in to trade.') });
-            return;
-        }
-        if (auto_running || busy) {
-            setMessage({ type: 'error', text: localize('Automated trading is running. Press Stop first.') });
-            return;
-        }
-        if (!(live.current.current_stake >= 0.35)) {
-            setMessage({ type: 'error', text: localize('Minimum stake is 0.35.') });
-            return;
-        }
-        setMessage(null);
-        setScanning(true);
-    };
-
-    const stopScan = () => {
-        setScanning(false);
-        setScanStatus(localize('Stopped.'));
-    };
-
-    const toggleScanner = () => {
-        if (scanner_on) setScanning(false);
-        setScannerOn(on => !on);
-    };
 
     return (
         <div className='bulk' ref={root_ref}>
@@ -907,60 +743,6 @@ const BulkTrader = observer(() => {
             >
                 {auto_running ? localize('Stop') : localize('Run')}
             </button>
-
-            <div className='bulk__scan'>
-                <Check checked={scanner_on} onChange={toggleScanner} label={localize('Over 1 (scan all 10 volatilities)')} />
-                {scanner_on && (
-                    <div className='bulk__scan-box'>
-                        <p className='bulk__hint'>
-                            {`${localize('Run scans all 10 volatilities and trades Over 1 on the first one where')} ${OVER1_RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}. ${localize('It stops after it trades, using your stake, number of trades and ticks.')}`}
-                        </p>
-                        <button
-                            type='button'
-                            className={classNames('bulk__run', { 'bulk__run--stop': scanning })}
-                            disabled={busy && !scanning}
-                            onClick={scanning ? stopScan : startScan}
-                        >
-                            {scanning ? localize('Stop') : localize('Run')}
-                        </button>
-                        {scan_status && <p className='bulk__muted'>{scan_status}</p>}
-                        {message?.type === 'error' && <p className='bulk__bad'>{message.text}</p>}
-                        <div className='bulk__scan-list'>
-                            {MARKETS.map(m => {
-                                const pct = scan_pct[m.symbol];
-                                const ok = !!pct && meetsOver1(pct);
-                                return (
-                                    <div key={m.symbol} className={classNames('bulk__scan-row', { 'bulk__scan-row--hit': ok })}>
-                                        <div className='bulk__scan-name'>
-                                            {m.name}
-                                            {ok ? '  ✓' : ''}
-                                        </div>
-                                        <div className='bulk__scan-cells'>
-                                            {DIGITS.map(d => {
-                                                const rule = OVER1_RULES.find(r => r.digit === d);
-                                                const v = pct ? pct[d] : null;
-                                                const pass = !!rule && v !== null && Number(v.toFixed(1)) >= rule.min;
-                                                return (
-                                                    <div
-                                                        key={d}
-                                                        className={classNames('bulk__scan-cell', {
-                                                            'bulk__scan-cell--rule': !!rule,
-                                                            'bulk__scan-cell--pass': pass,
-                                                        })}
-                                                    >
-                                                        <strong>{d}</strong>
-                                                        <small>{v === null ? '—' : `${v.toFixed(1)}%`}</small>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
         </div>
     );
 });
