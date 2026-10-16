@@ -65,7 +65,6 @@ const OverOne = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
-    const [sound_on, setSoundOn] = useState(true);
 
     const [scanning, setScanning] = useState(false);
     const [trading, setTrading] = useState(false);
@@ -83,7 +82,6 @@ const OverOne = observer(() => {
         stake,
         duration,
         auto_trade,
-        sound_on,
         currency,
         is_logged_in,
         transactions,
@@ -128,14 +126,38 @@ const OverOne = observer(() => {
         }
     }, []);
 
-    // a soft tick every second or so while the scan is running
+    // A soft beep that loops on the audio clock while scanning. It needs no timer, so it keeps
+    // going when you switch to another tab or app.
     useEffect(() => {
         if (!scanning) return;
-        const t = setInterval(() => {
-            if (cfg.current.sound_on) tone(660, 0.07, 0.06);
-        }, 1200);
-        return () => clearInterval(t);
-    }, [scanning, tone]);
+        const ctx = audio.current;
+        if (!ctx) return;
+        let src: any = null;
+        try {
+            const rate = ctx.sampleRate;
+            const buf = ctx.createBuffer(1, Math.floor(rate * 1.2), rate);
+            const data = buf.getChannelData(0);
+            const beep = Math.floor(rate * 0.09);
+            for (let i = 0; i < beep; i++) {
+                const fade = Math.sin((Math.PI * i) / beep); // fades in and out, so no click
+                data[i] = Math.sin((2 * Math.PI * 660 * i) / rate) * fade * 0.12;
+            }
+            src = ctx.createBufferSource();
+            src.buffer = buf;
+            src.loop = true;
+            src.connect(ctx.destination);
+            src.start();
+        } catch (e) {
+            // no sound available
+        }
+        return () => {
+            try {
+                src?.stop();
+            } catch (e) {
+                // already stopped
+            }
+        };
+    }, [scanning]);
 
     // debounce the "number of ticks" box
     useEffect(() => {
@@ -291,12 +313,10 @@ const OverOne = observer(() => {
             if (!hit) return;
             fired = true;
             setScanning(false);
-            if (cfg.current.sound_on) {
-                // signal found: three rising beeps
-                tone(880, 0.16, 0.2);
-                tone(1100, 0.16, 0.2, 0.2);
-                tone(1320, 0.28, 0.2, 0.4);
-            }
+            // signal found: three soft rising beeps
+            tone(880, 0.16, 0.1);
+            tone(1100, 0.16, 0.1, 0.2);
+            tone(1320, 0.28, 0.1, 0.4);
             if (!cfg.current.auto_trade) {
                 setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Auto trade is off, so no trade was placed.')}`);
                 return;
@@ -450,7 +470,6 @@ const OverOne = observer(() => {
 
             <div className='bulk__modes'>
                 <Check checked={auto_trade} onChange={() => setAutoTrade(v => !v)} label={localize('Auto trade after a signal')} />
-                <Check checked={sound_on} onChange={() => setSoundOn(v => !v)} label={localize('Sound')} />
             </div>
 
             <div className='bulk__martingale'>
