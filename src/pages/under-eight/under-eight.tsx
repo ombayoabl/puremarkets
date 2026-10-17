@@ -28,7 +28,6 @@ const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 //               red bar (least frequent digit) on any digit except 6, 8, 9.
 // Strategy No2: digits 8, 6, 4 each below 10%; green bar on any odd digit but not 9;
 //               red bar on any even digit but not 8.
-const TRADE_GAP_MS = 1000; // pause between one trade and the next
 const STRATEGIES: Record<
     number,
     { name: string; hint: string; low_digits: number[]; low_below: number; green: number[]; red: number[] }
@@ -105,6 +104,7 @@ const UnderEight = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
+    const [speed, setSpeed] = useState<'normal' | 'fast'>('normal');
     const [enabled, setEnabled] = useState<number[]>(Object.keys(STRATEGIES).map(Number));
 
     const [scanning, setScanning] = useState(false);
@@ -120,6 +120,7 @@ const UnderEight = observer(() => {
     const audio = useRef<any>(null);
     const cancel_wait = useRef<(() => void) | null>(null);
     cfg.current = {
+        speed,
         enabled,
         stake,
         duration,
@@ -277,6 +278,117 @@ const UnderEight = observer(() => {
 
     // Trade one contract at a time on `symbol`: Under 8, or the recovery contract after a loss,
     // until Stop is pressed or take profit / stop loss is reached
+    // FAST mode: one new trade on every tick, straight away, without waiting for the earlier trades
+    // to finish. Results are collected in the background for profit/loss, take profit, stop loss
+    // and the recovery stake.
+    const runFast = useCallback(async (symbol: string, my_run: number, name: string) => {
+        let total = 0;
+        let n = 0;
+        let losses = 0;
+        let stopped = false;
+        let stop_at = 0;
+        const pending = new Set<number>();
+        const subs: string[] = [];
+        const alive = () => run_id.current === my_run && !stopped;
+        setPl({ n: 0, total: 0 });
+        setStatus(`${localize('Fast mode: trading')} ${name} ${localize('on every tick…')}`);
+
+        await new Promise<void>(resolve => {
+            let finished = false;
+            const cleanup = () => {
+                if (finished) return;
+                finished = true;
+                msg.unsubscribe();
+                clearInterval(guard);
+                subs.forEach(id => api_base.api.send({ forget: id }).catch(() => {}));
+                resolve();
+            };
+            const handleContract = (poc: any, sub_id?: string) => {
+                if (!poc || !pending.has(poc.contract_id)) return;
+                try {
+                    cfg.current.transactions?.onBotContractEvent?.(poc);
+                } catch (e) {
+                    // the side panel is optional
+                }
+                if (!poc.is_sold) return;
+                pending.delete(poc.contract_id);
+                const id = sub_id || '';
+                if (id) api_base.api.send({ forget: id }).catch(() => {});
+                const profit = Number(poc.profit);
+                total = round2(total + profit);
+                n += 1;
+                losses = profit < 0 ? losses + 1 : 0;
+                setPl({ n, total });
+                const c = cfg.current;
+                if (!stopped && c.take_profit > 0 && total >= c.take_profit) {
+                    stopped = true;
+                    setStatus(localize('Take profit reached. Trading stopped.'));
+                } else if (!stopped && c.stop_loss > 0 && total <= -c.stop_loss) {
+                    stopped = true;
+                    setStatus(localize('Stop loss reached. Trading stopped.'));
+                }
+            };
+            const fire = () => {
+                const c = cfg.current;
+                const recovering = c.rec_on && losses > 0;
+                const [lo, hi] = REC_RANGE[c.rec_type];
+                const rec_digit_ok = clamp(Math.round(c.rec_digit) || lo, lo, hi);
+                const key = recovering ? (c.rec_type === 'under' ? 'DIGITUNDER' : 'DIGITOVER') : MAIN_TRADE.key;
+                const barrier = recovering ? rec_digit_ok : MAIN_TRADE.digit;
+                const amount = recovering ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
+                api_base.api
+                    .send({
+                        buy: '1',
+                        price: Number(amount),
+                        parameters: {
+                            amount,
+                            basis: 'stake',
+                            contract_type: key,
+                            barrier: String(barrier),
+                            currency: c.currency,
+                            duration: clamp(Math.round(c.duration) || 1, 1, 10),
+                            duration_unit: 't',
+                            underlying_symbol: symbol,
+                        },
+                    })
+                    .then((res: any) => {
+                        const cid = res.buy.contract_id;
+                        pending.add(cid);
+                        return api_base.api
+                            .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
+                            .then((r: any) => {
+                                const id = r?.subscription?.id;
+                                if (id) subs.push(id);
+                                handleContract(r?.proposal_open_contract, id);
+                            });
+                    })
+                    .catch((e: any) => {
+                        if (!alive()) return;
+                        stopped = true;
+                        setError(errMsg(e));
+                    });
+            };
+            const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
+                if (data?.msg_type === 'tick' && data.tick?.symbol === symbol) {
+                    if (alive()) fire();
+                } else if (data?.msg_type === 'proposal_open_contract') {
+                    handleContract(data.proposal_open_contract, data.subscription?.id);
+                }
+            });
+            // make sure ticks of this market are flowing (if another page already streams it, they still reach us)
+            api_base.api
+                .send({ ticks: symbol, subscribe: 1 })
+                .then((r: any) => r?.subscription?.id && subs.push(r.subscription.id))
+                .catch(() => {});
+            // after stopping, wait a little for the last trades to settle, then clean up
+            const guard = setInterval(() => {
+                if (alive()) return;
+                if (!stop_at) stop_at = Date.now();
+                if (pending.size === 0 || Date.now() - stop_at > 30000) cleanup();
+            }, 500);
+        });
+    }, []);
+
     const runTrades = useCallback(
         async (symbol: string) => {
             run_id.current += 1;
@@ -288,6 +400,10 @@ const UnderEight = observer(() => {
             setPl({ n: 0, total: 0 });
             setTrading(true);
             try {
+                if (cfg.current.speed === 'fast') {
+                    await runFast(symbol, my_run, name);
+                    return;
+                }
                 while (run_id.current === my_run) {
                     const c = cfg.current;
                     const recovering = c.rec_on && losses > 0;
@@ -339,13 +455,12 @@ const UnderEight = observer(() => {
                         setStatus(`${localize('Stop loss reached. Trading stopped.')}`);
                         break;
                     }
-                    await new Promise(r => setTimeout(r, TRADE_GAP_MS));
                 }
             } finally {
                 if (run_id.current === my_run) setTrading(false);
             }
         },
-        [waitForResult]
+        [waitForResult, runFast]
     );
 
     // ---- scan all 10 volatilities, trade the first one that meets the rule ----
@@ -528,7 +643,7 @@ const UnderEight = observer(() => {
                     ))}
             </div>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities for every ticked strategy at once. As soon as any one of them is found it starts trading Under 8 immediately, one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
+                {`${localize('Run scans all 10 volatilities for every ticked strategy at once. As soon as any one of them is found it starts trading Under 8 immediately. Normal mode trades one at a time with no delay; Fast mode trades on every tick. It runs until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
             {on_list.map(n => (
                 <p key={n} className='bulk__muted'>
@@ -563,6 +678,10 @@ const UnderEight = observer(() => {
 
             <div className='bulk__modes'>
                 <Check checked={auto_trade} onChange={() => setAutoTrade(v => !v)} label={localize('Auto trade after a signal')} />
+            </div>
+            <div className='bulk__modes'>
+                <Check checked={speed === 'normal'} onChange={() => !active && setSpeed('normal')} label={localize('Normal (next trade right after the last one)')} />
+                <Check checked={speed === 'fast'} onChange={() => !active && setSpeed('fast')} label={localize('Fast (a trade on every tick)')} />
             </div>
 
             <div className='bulk__martingale'>
