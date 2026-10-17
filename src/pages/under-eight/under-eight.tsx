@@ -23,17 +23,33 @@ const MARKETS = [
 ];
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-// ---- STRATEGY No1 ----
-// Signal on a volatility when ALL are true (percentages compared as shown, 1 decimal):
-//  - digits 7, 8 and 9 are each below 9.5%
-//  - the green bar (most frequent digit) is on 0 to 4
-//  - the red bar (least frequent digit) is on any digit except 6, 8 and 9
-const STRATEGY_NAME = 'Strategy No1';
+// ---- STRATEGIES (percentages compared as shown, 1 decimal) ----
+// Strategy No1: digits 7, 8, 9 each below 9.5%; green bar (most frequent digit) on 0-4;
+//               red bar (least frequent digit) on any digit except 6, 8, 9.
+// Strategy No2: digits 8, 6, 4 each below 10%; green bar on any odd digit but not 9;
+//               red bar on any even digit but not 8.
 const TRADE_GAP_MS = 1000; // pause between one trade and the next
-const LOW_DIGITS = [7, 8, 9];
-const LOW_BELOW = 9.5;
-const GREEN_ALLOWED = [0, 1, 2, 3, 4];
-const RED_BLOCKED = [6, 8, 9];
+const STRATEGIES: Record<
+    number,
+    { name: string; hint: string; low_digits: number[]; low_below: number; green: number[]; red: number[] }
+> = {
+    1: {
+        name: 'Strategy No1',
+        hint: 'Signal: digits 7, 8, 9 all below 9.5%, green bar on 0-4, red bar not on 6, 8, 9.',
+        low_digits: [7, 8, 9],
+        low_below: 9.5,
+        green: [0, 1, 2, 3, 4],
+        red: [0, 1, 2, 3, 4, 5, 7],
+    },
+    2: {
+        name: 'Strategy No2',
+        hint: 'Signal: digits 8, 6, 4 all below 10%, green bar on an odd digit but not 9, red bar on an even digit but not 8.',
+        low_digits: [8, 6, 4],
+        low_below: 10,
+        green: [1, 3, 5, 7],
+        red: [0, 2, 4, 6],
+    },
+};
 const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
@@ -58,14 +74,11 @@ const barDigits = (pct: number[]) => {
     return { green: vals.indexOf(hi), red: vals.indexOf(lo) };
 };
 // compared the way they are shown (1 decimal), so a box that reads 9.4% counts as 9.4%
-const meets = (pct: number[]) => {
+const meets = (pct: number[], strategy: number) => {
+    const st = STRATEGIES[strategy] || STRATEGIES[1];
     if (!pct || pct.length < 10) return false;
     const { green, red } = barDigits(pct);
-    return (
-        LOW_DIGITS.every(d => shown(pct[d]) < LOW_BELOW) &&
-        GREEN_ALLOWED.includes(green) &&
-        !RED_BLOCKED.includes(red)
-    );
+    return st.low_digits.every(d => shown(pct[d]) < st.low_below) && st.green.includes(green) && st.red.includes(red);
 };
 
 const UnderEight = observer(() => {
@@ -84,6 +97,7 @@ const UnderEight = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
+    const [strategy, setStrategy] = useState<number>(1);
 
     const [scanning, setScanning] = useState(false);
     const [trading, setTrading] = useState(false);
@@ -98,6 +112,7 @@ const UnderEight = observer(() => {
     const audio = useRef<any>(null);
     const cancel_wait = useRef<(() => void) | null>(null);
     cfg.current = {
+        strategy,
         stake,
         duration,
         auto_trade,
@@ -348,7 +363,7 @@ const UnderEight = observer(() => {
 
         const check = () => {
             if (fired || cancelled || !loaded_all) return;
-            const hit = MARKETS.find(m => pct_now[m.symbol] && meets(pct_now[m.symbol]));
+            const hit = MARKETS.find(m => pct_now[m.symbol] && meets(pct_now[m.symbol], cfg.current.strategy));
             if (!hit) return;
             fired = true;
             setScanning(false);
@@ -475,14 +490,25 @@ const UnderEight = observer(() => {
     );
 
     const active = scanning || trading;
+    const ST = STRATEGIES[strategy] || STRATEGIES[1];
 
     return (
         <div className='bulk'>
             <h3 className='bulk__title' style={{ margin: '0 0 8px', fontWeight: 700 }}>
-                {STRATEGY_NAME}
+                {ST.name}
             </h3>
+            <div className='bulk__modes'>
+                {[1, 2].map(n => (
+                    <Check
+                        key={n}
+                        checked={strategy === n}
+                        onChange={() => !active && setStrategy(n)}
+                        label={STRATEGIES[n].name}
+                    />
+                ))}
+            </div>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities. Signal: digits 7, 8, 9 all below 9.5%, green bar on 0-4, red bar not on 6, 8, 9. Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
+                {`${localize('Run scans all 10 volatilities.')} ${localize(ST.hint)} ${localize('Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
 
             <div className='bulk__grid bulk__grid--three'>
@@ -575,7 +601,7 @@ const UnderEight = observer(() => {
             <div className='bulk__scan-list'>
                 {MARKETS.map(m => {
                     const pct = scan_pct[m.symbol];
-                    const ok = !!pct && meets(pct);
+                    const ok = !!pct && meets(pct, strategy);
                     const bars = pct ? barDigits(pct) : null;
                     return (
                         <div key={m.symbol} className={classNames('bulk__scan-row', { 'bulk__scan-row--hit': ok })}>
@@ -585,9 +611,9 @@ const UnderEight = observer(() => {
                             </div>
                             <div className='bulk__scan-cells'>
                                 {DIGITS.map(d => {
-                                    const rule = LOW_DIGITS.includes(d);
+                                    const rule = ST.low_digits.includes(d);
                                     const v = pct ? pct[d] : null;
-                                    const pass = rule && v !== null && shown(v) < LOW_BELOW;
+                                    const pass = rule && v !== null && shown(v) < ST.low_below;
                                     const is_green = !!bars && bars.green === d;
                                     const is_red = !!bars && bars.red === d;
                                     return (
