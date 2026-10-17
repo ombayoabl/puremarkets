@@ -81,6 +81,14 @@ const meets = (pct: number[], strategy: number) => {
     return st.low_digits.every(d => shown(pct[d]) < st.low_below) && st.green.includes(green) && st.red.includes(red);
 };
 
+// the first enabled strategy whose signal is on these percentages (null if none)
+const matchStrategy = (pct: number[], enabled: number[]) => {
+    const id = Object.keys(STRATEGIES)
+        .map(Number)
+        .find(n => enabled.includes(n) && meets(pct, n));
+    return id === undefined ? null : id;
+};
+
 const UnderEight = observer(() => {
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
@@ -97,7 +105,7 @@ const UnderEight = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
-    const [strategy, setStrategy] = useState<number>(1);
+    const [enabled, setEnabled] = useState<number[]>(Object.keys(STRATEGIES).map(Number));
 
     const [scanning, setScanning] = useState(false);
     const [trading, setTrading] = useState(false);
@@ -112,7 +120,7 @@ const UnderEight = observer(() => {
     const audio = useRef<any>(null);
     const cancel_wait = useRef<(() => void) | null>(null);
     cfg.current = {
-        strategy,
+        enabled,
         stake,
         duration,
         auto_trade,
@@ -363,8 +371,14 @@ const UnderEight = observer(() => {
 
         const check = () => {
             if (fired || cancelled || !loaded_all) return;
-            const hit = MARKETS.find(m => pct_now[m.symbol] && meets(pct_now[m.symbol], cfg.current.strategy));
-            if (!hit) return;
+            let hit_id: number | null = null;
+            const hit = MARKETS.find(m => {
+                if (!pct_now[m.symbol]) return false;
+                hit_id = matchStrategy(pct_now[m.symbol], cfg.current.enabled);
+                return hit_id !== null;
+            });
+            if (!hit || hit_id === null) return;
+            const sname = STRATEGIES[hit_id].name;
             fired = true;
             setScanning(false);
             // signal found: three soft rising beeps
@@ -372,10 +386,10 @@ const UnderEight = observer(() => {
             tone(1100, 0.16, 0.1, 0.2);
             tone(1320, 0.28, 0.1, 0.4);
             if (!cfg.current.auto_trade) {
-                setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Auto trade is off, so no trade was placed.')}`);
+                setStatus(`${localize('Signal found on')} ${hit.name} (${sname}). ${localize('Auto trade is off, so no trade was placed.')}`);
                 return;
             }
-            setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Placing Under 8…')}`);
+            setStatus(`${localize('Signal found on')} ${hit.name} (${sname}). ${localize('Placing Under 8…')}`);
             runTrades(hit.symbol);
         };
 
@@ -490,26 +504,37 @@ const UnderEight = observer(() => {
     );
 
     const active = scanning || trading;
-    const ST = STRATEGIES[strategy] || STRATEGIES[1];
+    const on_list = Object.keys(STRATEGIES).map(Number).filter(n => enabled.includes(n));
+    const toggleStrategy = (n: number) => {
+        if (active) return;
+        setEnabled(prev => (prev.includes(n) ? (prev.length > 1 ? prev.filter(x => x !== n) : prev) : [...prev, n]));
+    };
 
     return (
         <div className='bulk'>
             <h3 className='bulk__title' style={{ margin: '0 0 8px', fontWeight: 700 }}>
-                {ST.name}
+                {on_list.map(n => STRATEGIES[n].name).join(' + ')}
             </h3>
             <div className='bulk__modes'>
-                {[1, 2].map(n => (
-                    <Check
-                        key={n}
-                        checked={strategy === n}
-                        onChange={() => !active && setStrategy(n)}
-                        label={STRATEGIES[n].name}
-                    />
-                ))}
+                {Object.keys(STRATEGIES)
+                    .map(Number)
+                    .map(n => (
+                        <Check
+                            key={n}
+                            checked={enabled.includes(n)}
+                            onChange={() => toggleStrategy(n)}
+                            label={STRATEGIES[n].name}
+                        />
+                    ))}
             </div>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities.')} ${localize(ST.hint)} ${localize('Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
+                {`${localize('Run scans all 10 volatilities for every ticked strategy at once. As soon as any one of them is found it starts trading Under 8 immediately, one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
+            {on_list.map(n => (
+                <p key={n} className='bulk__muted'>
+                    {`${STRATEGIES[n].name} — ${localize(STRATEGIES[n].hint)}`}
+                </p>
+            ))}
 
             <div className='bulk__grid bulk__grid--three'>
                 <div className='bulk__field'>
@@ -601,7 +626,7 @@ const UnderEight = observer(() => {
             <div className='bulk__scan-list'>
                 {MARKETS.map(m => {
                     const pct = scan_pct[m.symbol];
-                    const ok = !!pct && meets(pct, strategy);
+                    const ok = !!pct && matchStrategy(pct, enabled) !== null;
                     const bars = pct ? barDigits(pct) : null;
                     return (
                         <div key={m.symbol} className={classNames('bulk__scan-row', { 'bulk__scan-row--hit': ok })}>
@@ -611,9 +636,11 @@ const UnderEight = observer(() => {
                             </div>
                             <div className='bulk__scan-cells'>
                                 {DIGITS.map(d => {
-                                    const rule = ST.low_digits.includes(d);
+                                    const rule = on_list.some(n => STRATEGIES[n].low_digits.includes(d));
                                     const v = pct ? pct[d] : null;
-                                    const pass = rule && v !== null && shown(v) < ST.low_below;
+                                    const pass =
+                                        v !== null &&
+                                        on_list.some(n => STRATEGIES[n].low_digits.includes(d) && shown(v) < STRATEGIES[n].low_below);
                                     const is_green = !!bars && bars.green === d;
                                     const is_red = !!bars && bars.red === d;
                                     return (
