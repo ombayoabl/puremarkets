@@ -23,11 +23,17 @@ const MARKETS = [
 ];
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-// ---- UNDER 8 STRATEGY ----
-// Trade Under 8 on the first volatility whose digit percentages satisfy ALL of these rules.
-// Each rule means: digit `digit` must be at least `min` percent. Fill this in with your Under 8 strategy.
-// While it is empty, Run will not trade (so it can never fire by accident).
-const RULES: { digit: number; min: number }[] = [];
+// ---- STRATEGY No1 ----
+// Signal on a volatility when ALL are true (percentages compared as shown, 1 decimal):
+//  - digits 7, 8 and 9 are each below 9%
+//  - the green bar (most frequent digit) is on 0 to 4
+//  - the red bar (least frequent digit) is on any digit except 6, 8 and 9
+const STRATEGY_NAME = 'Strategy No1';
+const TRADE_GAP_MS = 1000; // pause between one trade and the next
+const LOW_DIGITS = [7, 8, 9];
+const LOW_BELOW = 9;
+const GREEN_ALLOWED = [0, 1, 2, 3, 4];
+const RED_BLOCKED = [6, 8, 9];
 const MAX_TICKS = 5000;
 const SETTLE_TIMEOUT_MS = 60000;
 
@@ -44,8 +50,23 @@ const digitPercents = (list: number[]) => {
     const total = list.length || 1;
     return counts.map(n => (n / total) * 100);
 };
-// compared the way they are shown (1 decimal), so a box that reads 9.2% counts as 9.2%
-const meets = (pct: number[]) => RULES.length > 0 && RULES.every(r => Number(pct[r.digit].toFixed(1)) >= r.min);
+const shown = (v: number) => Number(v.toFixed(1));
+const barDigits = (pct: number[]) => {
+    const vals = pct.map(shown);
+    const hi = Math.max(...vals);
+    const lo = Math.min(...vals);
+    return { green: vals.indexOf(hi), red: vals.indexOf(lo) };
+};
+// compared the way they are shown (1 decimal), so a box that reads 8.9% counts as 8.9%
+const meets = (pct: number[]) => {
+    if (!pct || pct.length < 10) return false;
+    const { green, red } = barDigits(pct);
+    return (
+        LOW_DIGITS.every(d => shown(pct[d]) < LOW_BELOW) &&
+        GREEN_ALLOWED.includes(green) &&
+        !RED_BLOCKED.includes(red)
+    );
+};
 
 const UnderEight = observer(() => {
     const { client, transactions } = useStore();
@@ -295,6 +316,7 @@ const UnderEight = observer(() => {
                         setStatus(`${localize('Stop loss reached. Trading stopped.')}`);
                         break;
                     }
+                    await new Promise(r => setTimeout(r, TRADE_GAP_MS));
                 }
             } finally {
                 if (run_id.current === my_run) setTrading(false);
@@ -421,10 +443,6 @@ const UnderEight = observer(() => {
 
     const startScan = () => {
         unlockAudio(); // browsers only allow sound after a click
-        if (!RULES.length) {
-            setError(localize('The Under 8 strategy rules have not been added yet.'));
-            return;
-        }
         if (auto_trade && !is_logged_in) {
             setError(localize('Please log in to trade.'));
             return;
@@ -460,10 +478,11 @@ const UnderEight = observer(() => {
 
     return (
         <div className='bulk'>
+            <h3 className='bulk__title' style={{ margin: '0 0 8px', fontWeight: 700 }}>
+                {STRATEGY_NAME}
+            </h3>
             <p className='bulk__hint'>
-                {RULES.length
-                    ? `${localize('Run scans all 10 volatilities and, on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}, ${localize('trades Under 8 one trade at a time until you press Stop or your take profit / stop loss is reached.')}`
-                    : localize('Under 8 strategy not set yet. Run is disabled until the signal rules are added.')}
+                {`${localize('Run scans all 10 volatilities. Signal: digits 7, 8, 9 all below 9%, green bar on 0-4, red bar not on 6, 8, 9. Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
 
             <div className='bulk__grid bulk__grid--three'>
@@ -557,6 +576,7 @@ const UnderEight = observer(() => {
                 {MARKETS.map(m => {
                     const pct = scan_pct[m.symbol];
                     const ok = !!pct && meets(pct);
+                    const bars = pct ? barDigits(pct) : null;
                     return (
                         <div key={m.symbol} className={classNames('bulk__scan-row', { 'bulk__scan-row--hit': ok })}>
                             <div className='bulk__scan-name'>
@@ -565,16 +585,25 @@ const UnderEight = observer(() => {
                             </div>
                             <div className='bulk__scan-cells'>
                                 {DIGITS.map(d => {
-                                    const rule = RULES.find(r => r.digit === d);
+                                    const rule = LOW_DIGITS.includes(d);
                                     const v = pct ? pct[d] : null;
-                                    const pass = !!rule && v !== null && Number(v.toFixed(1)) >= rule.min;
+                                    const pass = rule && v !== null && shown(v) < LOW_BELOW;
+                                    const is_green = !!bars && bars.green === d;
+                                    const is_red = !!bars && bars.red === d;
                                     return (
                                         <div
                                             key={d}
                                             className={classNames('bulk__scan-cell', {
-                                                'bulk__scan-cell--rule': !!rule,
+                                                'bulk__scan-cell--rule': rule,
                                                 'bulk__scan-cell--pass': pass,
                                             })}
+                                            style={
+                                                is_green
+                                                    ? { background: 'rgba(0, 168, 90, 0.28)' }
+                                                    : is_red
+                                                      ? { background: 'rgba(230, 40, 60, 0.28)' }
+                                                      : undefined
+                                            }
                                         >
                                             <strong>{d}</strong>
                                             <small>{v === null ? '—' : `${v.toFixed(1)}%`}</small>
