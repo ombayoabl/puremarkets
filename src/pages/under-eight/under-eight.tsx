@@ -238,10 +238,10 @@ const UnderEight = observer(() => {
 
     // Wait until one contract is sold (pushed updates, with a slow poll as a safety net)
     const waitForResult = useCallback(
-        (cid: number, my_run: number) =>
+        (cid: number, my_run: number, pre?: { sub_id: string; early: any[] }) =>
             new Promise<number | null>(resolve => {
                 let done = false;
-                let sub_id = '';
+                let sub_id = pre?.sub_id || '';
                 const finish = (v: number | null) => {
                     if (done) return;
                     done = true;
@@ -273,6 +273,11 @@ const UnderEight = observer(() => {
                         .catch(() => {});
                 }, 3000);
                 cancel_wait.current = () => finish(null);
+                if (pre) {
+                    // the buy request already subscribed to this contract: no extra round trip
+                    pre.early.forEach(handle);
+                    return;
+                }
                 api_base.api
                     .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
                     .then((r: any) => {
@@ -474,10 +479,18 @@ const UnderEight = observer(() => {
                     setStatus(`${localize('Trading')} ${name}: ${label}, ${localize('stake')} ${amount} ${c.currency}…`);
 
                     let cid: number;
+                    // listen before buying and ask the buy itself to stream the contract, so the result
+                    // is seen the moment it settles (no separate subscribe request, no waiting)
+                    const early: any[] = [];
+                    const early_sub = api_base.api.onMessage().subscribe(({ data }: any) => {
+                        if (data?.msg_type === 'proposal_open_contract') early.push(data.proposal_open_contract);
+                    });
+                    let pre: { sub_id: string; early: any[] } | undefined;
                     try {
                         const res = await api_base.api.send({
                             buy: '1',
                             price: Number(amount),
+                            subscribe: 1,
                             parameters: {
                                 amount,
                                 basis: 'stake',
@@ -490,11 +503,15 @@ const UnderEight = observer(() => {
                             },
                         });
                         cid = res.buy.contract_id;
+                        if (res.subscription?.id) pre = { sub_id: res.subscription.id, early };
                     } catch (e) {
+                        early_sub.unsubscribe();
                         if (run_id.current === my_run) setError(errMsg(e));
                         break;
                     }
-                    const profit = await waitForResult(cid, my_run);
+                    const result = waitForResult(cid, my_run, pre);
+                    early_sub.unsubscribe();
+                    const profit = await result;
                     if (run_id.current !== my_run) break;
                     if (profit === null) {
                         setError(localize('Could not confirm the result of the last trade, so trading stopped.'));
