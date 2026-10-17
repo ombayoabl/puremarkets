@@ -28,6 +28,7 @@ const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 //               red bar (least frequent digit) on any digit except 6, 8, 9.
 // Strategy No2: digits 8, 6, 4 each below 10%; green bar on any odd digit but not 9;
 //               red bar on any even digit but not 8.
+// Strategy No3: digit 8 below 10%; green bar and red bar both on any digit but not 8.
 const STRATEGIES: Record<
     number,
     { name: string; hint: string; low_digits: number[]; low_below: number; green: number[]; red: number[] }
@@ -47,6 +48,14 @@ const STRATEGIES: Record<
         low_below: 10,
         green: [1, 3, 5, 7],
         red: [0, 2, 4, 6],
+    },
+    3: {
+        name: 'Strategy No3',
+        hint: 'Signal: digit 8 below 10%, green bar and red bar both on any digit but not 8.',
+        low_digits: [8],
+        low_below: 10,
+        green: [0, 1, 2, 3, 4, 5, 6, 7, 9],
+        red: [0, 1, 2, 3, 4, 5, 6, 7, 9],
     },
 };
 const MAX_TICKS = 5000;
