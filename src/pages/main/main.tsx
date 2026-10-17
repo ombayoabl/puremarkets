@@ -50,6 +50,7 @@ const Tutorial = lazy(() => import('../tutorials'));
 const BulkTrader = lazy(() => import('../bulk-trader/bulk-trader'));
 const SuperAnalysis = lazy(() => import('../super-analysis/super-analysis'));
 const OverOne = lazy(() => import('../over-one/over-one'));
+const UnderEight = lazy(() => import('../under-eight/under-eight'));
 const TradingBots = lazy(() => import('../trading-bots/trading-bots'));
 
 const AppWrapper = observer(() => {
@@ -84,7 +85,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -498,6 +499,11 @@ const AppWrapper = observer(() => {
                             <div label='Over One' id='id-over-one'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Over One...')} />}>
                                     <OverOne />
+                                </Suspense>
+                            </div>
+                            <div label='Under Eight' id='id-under-eight'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Under Eight...')} />}>
+                                    <UnderEight />
                                 </Suspense>
                             </div>
                         </Tabs>

@@ -21,11 +21,12 @@ export const DBOT_TABS: TDashboardTabIndex = Object.freeze({
     SUPER_ANALYSIS: 6,
     TRADING_BOTS: 7,
     OVER_ONE: 8,
+    UNDER_EIGHT: 9,
 });
 
 export const MAX_STRATEGIES = 10;
 
-export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one'];
+export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one', 'id-under-eight'];
 
 export const DEBOUNCE_INTERVAL_TIME = 500;
 
@@ -50,6 +51,6 @@ export const NAV_ITEMS: TNavItem[] = [
     { key: 'trading_view', label: 'Trading View', type: 'trading_view' },
     { key: 'analysis', label: 'Analysis', type: 'soon' },
     { key: 'over_one', label: 'Over One', type: 'tab', tab_index: DBOT_TABS.OVER_ONE },
-    { key: 'under_eight', label: 'Under Eight', type: 'soon' },
+    { key: 'under_eight', label: 'Under Eight', type: 'tab', tab_index: DBOT_TABS.UNDER_EIGHT },
     { key: 'copy_trading', label: 'Copy Trading', type: 'soon' },
 ];
