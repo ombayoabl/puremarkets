@@ -284,9 +284,14 @@ const UnderEight = observer(() => {
     const runFast = useCallback(async (symbol: string, my_run: number, name: string) => {
         let total = 0;
         let n = 0;
-        let losses = 0;
         let stopped = false;
         let stop_at = 0;
+        let tick_n = 0; // ticks of this market seen since the run started
+        let seq = 0; // trades placed
+        // every trade placed, with its result as soon as it is known: worked out from the tick it ends on
+        // (so the next tick can already use it) and then confirmed by the real result when that arrives
+        const trades = new Map<number, { key: string; barrier: number; settle_at: number; loss?: boolean }>();
+        const by_contract = new Map<number, number>();
         const pending = new Set<number>();
         const subs: string[] = [];
         const alive = () => run_id.current === my_run && !stopped;
@@ -303,6 +308,17 @@ const UnderEight = observer(() => {
                 subs.forEach(id => api_base.api.send({ forget: id }).catch(() => {}));
                 resolve();
             };
+            // losses in a row, counting the newest known result first (martingale step for the next tick)
+            const streak = () => {
+                let k = 0;
+                for (let i = seq; i >= 1 && i > seq - 500; i--) {
+                    const t = trades.get(i);
+                    if (!t || t.loss === undefined) continue;
+                    if (!t.loss) break;
+                    k += 1;
+                }
+                return k;
+            };
             const handleContract = (poc: any, sub_id?: string) => {
                 if (!poc || !pending.has(poc.contract_id)) return;
                 try {
@@ -317,7 +333,8 @@ const UnderEight = observer(() => {
                 const profit = Number(poc.profit);
                 total = round2(total + profit);
                 n += 1;
-                losses = profit < 0 ? losses + 1 : 0;
+                const tr = trades.get(by_contract.get(poc.contract_id) || 0);
+                if (tr) tr.loss = profit < 0; // the real result replaces the one worked out from the tick
                 setPl({ n, total });
                 const c = cfg.current;
                 if (!stopped && c.take_profit > 0 && total >= c.take_profit) {
@@ -330,12 +347,18 @@ const UnderEight = observer(() => {
             };
             const fire = () => {
                 const c = cfg.current;
+                const losses = streak();
                 const recovering = c.rec_on && losses > 0;
                 const [lo, hi] = REC_RANGE[c.rec_type];
                 const rec_digit_ok = clamp(Math.round(c.rec_digit) || lo, lo, hi);
                 const key = recovering ? (c.rec_type === 'under' ? 'DIGITUNDER' : 'DIGITOVER') : MAIN_TRADE.key;
                 const barrier = recovering ? rec_digit_ok : MAIN_TRADE.digit;
                 const amount = recovering ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
+                const dur = clamp(Math.round(c.duration) || 1, 1, 10);
+                seq += 1;
+                const my_seq = seq;
+                trades.set(my_seq, { key, barrier, settle_at: tick_n + dur });
+                trades.delete(my_seq - 600);
                 api_base.api
                     .send({
                         buy: '1',
@@ -354,6 +377,7 @@ const UnderEight = observer(() => {
                     .then((res: any) => {
                         const cid = res.buy.contract_id;
                         pending.add(cid);
+                        by_contract.set(cid, my_seq);
                         return api_base.api
                             .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
                             .then((r: any) => {
@@ -370,6 +394,15 @@ const UnderEight = observer(() => {
             };
             const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
                 if (data?.msg_type === 'tick' && data.tick?.symbol === symbol) {
+                    tick_n += 1;
+                    // work out how the trades ending on this tick finished, so this tick's stake already counts them
+                    const dp = data.tick.pip_size !== undefined ? Number(data.tick.pip_size) : MARKETS.find(m => m.symbol === symbol)?.dp ?? 2;
+                    const digit = toDigit(data.tick.quote, dp);
+                    trades.forEach(t => {
+                        if (t.loss !== undefined || t.settle_at !== tick_n) return;
+                        const win = t.key === 'DIGITUNDER' ? digit < t.barrier : digit > t.barrier;
+                        t.loss = !win;
+                    });
                     if (alive()) fire();
                 } else if (data?.msg_type === 'proposal_open_contract') {
                     handleContract(data.proposal_open_contract, data.subscription?.id);
