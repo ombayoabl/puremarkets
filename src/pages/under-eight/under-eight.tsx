@@ -25,13 +25,13 @@ const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 // ---- STRATEGY No1 ----
 // Signal on a volatility when ALL are true (percentages compared as shown, 1 decimal):
-//  - digits 7, 8 and 9 are each below 9%
+//  - digits 7, 8 and 9 are each below 9.5%
 //  - the green bar (most frequent digit) is on 0 to 4
 //  - the red bar (least frequent digit) is on any digit except 6, 8 and 9
 const STRATEGY_NAME = 'Strategy No1';
 const TRADE_GAP_MS = 1000; // pause between one trade and the next
 const LOW_DIGITS = [7, 8, 9];
-const LOW_BELOW = 9;
+const LOW_BELOW = 9.5;
 const GREEN_ALLOWED = [0, 1, 2, 3, 4];
 const RED_BLOCKED = [6, 8, 9];
 const MAX_TICKS = 5000;
@@ -57,7 +57,7 @@ const barDigits = (pct: number[]) => {
     const lo = Math.min(...vals);
     return { green: vals.indexOf(hi), red: vals.indexOf(lo) };
 };
-// compared the way they are shown (1 decimal), so a box that reads 8.9% counts as 8.9%
+// compared the way they are shown (1 decimal), so a box that reads 9.4% counts as 9.4%
 const meets = (pct: number[]) => {
     if (!pct || pct.length < 10) return false;
     const { green, red } = barDigits(pct);
@@ -482,7 +482,7 @@ const UnderEight = observer(() => {
                 {STRATEGY_NAME}
             </h3>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities. Signal: digits 7, 8, 9 all below 9%, green bar on 0-4, red bar not on 6, 8, 9. Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
+                {`${localize('Run scans all 10 volatilities. Signal: digits 7, 8, 9 all below 9.5%, green bar on 0-4, red bar not on 6, 8, 9. Then it trades Under 8 one trade at a time, 1 second apart, until you press Stop or your take profit / stop loss is reached.')}`}
             </p>
 
             <div className='bulk__grid bulk__grid--three'>
