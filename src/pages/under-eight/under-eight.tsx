@@ -286,11 +286,23 @@ const UnderEight = observer(() => {
         let n = 0;
         let stopped = false;
         let stop_at = 0;
-        let tick_n = 0; // ticks of this market seen since the run started
         let seq = 0; // trades placed
         // every trade placed, with its result as soon as it is known: worked out from the tick it ends on
         // (so the next tick can already use it) and then confirmed by the real result when that arrives
-        const trades = new Map<number, { key: string; barrier: number; settle_at: number; loss?: boolean }>();
+        const trades = new Map<
+            number,
+            { key: string; barrier: number; dur: number; start?: number; seen: number; loss?: boolean }
+        >();
+        const recent: { epoch: number; digit: number }[] = []; // last few ticks, to catch up a late buy confirmation
+        // a trade ends on its `dur`-th tick after the start time Deriv confirmed for it
+        const applyTick = (t: any, epoch: number, digit: number) => {
+            if (t.loss !== undefined || t.start === undefined || epoch <= t.start) return;
+            t.seen += 1;
+            if (t.seen === t.dur) {
+                const win = t.key === 'DIGITUNDER' ? digit < t.barrier : digit > t.barrier;
+                t.loss = !win;
+            }
+        };
         const by_contract = new Map<number, number>();
         const pending = new Set<number>();
         const subs: string[] = [];
@@ -357,7 +369,7 @@ const UnderEight = observer(() => {
                 const dur = clamp(Math.round(c.duration) || 1, 1, 10);
                 seq += 1;
                 const my_seq = seq;
-                trades.set(my_seq, { key, barrier, settle_at: tick_n + dur });
+                trades.set(my_seq, { key, barrier, dur, seen: 0 });
                 trades.delete(my_seq - 600);
                 api_base.api
                     .send({
@@ -378,6 +390,12 @@ const UnderEight = observer(() => {
                         const cid = res.buy.contract_id;
                         pending.add(cid);
                         by_contract.set(cid, my_seq);
+                        const tr0 = trades.get(my_seq);
+                        if (tr0 && tr0.start === undefined) {
+                            tr0.start = Number(res.buy.start_time || res.buy.purchase_time || 0);
+                            // ticks that arrived before the confirmation did
+                            recent.forEach(r => applyTick(tr0, r.epoch, r.digit));
+                        }
                         return api_base.api
                             .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
                             .then((r: any) => {
@@ -394,15 +412,13 @@ const UnderEight = observer(() => {
             };
             const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
                 if (data?.msg_type === 'tick' && data.tick?.symbol === symbol) {
-                    tick_n += 1;
                     // work out how the trades ending on this tick finished, so this tick's stake already counts them
                     const dp = data.tick.pip_size !== undefined ? Number(data.tick.pip_size) : MARKETS.find(m => m.symbol === symbol)?.dp ?? 2;
                     const digit = toDigit(data.tick.quote, dp);
-                    trades.forEach(t => {
-                        if (t.loss !== undefined || t.settle_at !== tick_n) return;
-                        const win = t.key === 'DIGITUNDER' ? digit < t.barrier : digit > t.barrier;
-                        t.loss = !win;
-                    });
+                    const epoch = Number(data.tick.epoch || 0);
+                    recent.push({ epoch, digit });
+                    if (recent.length > 20) recent.shift();
+                    trades.forEach(t => applyTick(t, epoch, digit));
                     if (alive()) fire();
                 } else if (data?.msg_type === 'proposal_open_contract') {
                     handleContract(data.proposal_open_contract, data.subscription?.id);
