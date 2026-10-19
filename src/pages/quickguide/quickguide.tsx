@@ -10,6 +10,18 @@ export const QUICKGUIDE_LINKS = {
     book_mentorship: '',
 };
 
+// Where the social buttons at the bottom go. Same rules as above: leave a link empty
+// until you have it (the button then does nothing), then paste the full https:// address.
+export const QUICKGUIDE_SOCIAL_LINKS = {
+    whatsapp: '',
+    tiktok: '',
+    facebook: '',
+    youtube: '',
+    telegram: '',
+};
+
+type TSocialKey = keyof typeof QUICKGUIDE_SOCIAL_LINKS;
+
 const openLink = (link: string) => {
     if (!link) return;
     if (link.startsWith('#') || link.startsWith('/')) {
@@ -53,6 +65,59 @@ const Candlesticks = () => (
         })}
     </svg>
 );
+
+const SOCIAL_ICONS: Record<TSocialKey, React.ReactNode> = {
+    whatsapp: (
+        <svg width='24' height='24' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+            <path
+                d='M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z'
+                stroke='currentColor'
+                strokeWidth='1.8'
+                strokeLinejoin='round'
+            />
+            <path
+                d='M9 8.2c.3 2.6 3.2 5.5 6.2 6.2l1.4-1.4-2.1-1-1 .9c-.9-.4-1.8-1.3-2.3-2.3l.9-1-1-2.1z'
+                fill='currentColor'
+            />
+        </svg>
+    ),
+    tiktok: (
+        <svg width='24' height='24' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+            <path
+                d='M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5'
+                stroke='currentColor'
+                strokeWidth='2.2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+            />
+            <path d='M14 3c.4 2.6 2 4.1 4.6 4.3' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' />
+        </svg>
+    ),
+    facebook: (
+        <svg width='24' height='24' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+            <path d='M14 8h3V4h-3a4 4 0 0 0-4 4v2H7v4h3v8h4v-8h3l1-4h-4V8z' />
+        </svg>
+    ),
+    youtube: (
+        <svg width='24' height='24' viewBox='0 0 24 24' fill='none' aria-hidden='true'>
+            <rect x='2' y='5' width='20' height='14' rx='4.5' stroke='currentColor' strokeWidth='1.8' />
+            <path d='M10 9l5.5 3-5.5 3z' fill='currentColor' />
+        </svg>
+    ),
+    telegram: (
+        <svg width='24' height='24' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+            <path d='M21.5 3.5 2.8 10.7c-.9.4-.9 1.1-.2 1.3l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3-14.3c.3-1.2-.4-1.7-1.2-1.4z' />
+        </svg>
+    ),
+};
+
+const SOCIALS: { key: TSocialKey; label: string }[] = [
+    { key: 'whatsapp', label: 'WhatsApp' },
+    { key: 'tiktok', label: 'TikTok' },
+    { key: 'facebook', label: 'Facebook' },
+    { key: 'youtube', label: 'YouTube' },
+    { key: 'telegram', label: 'Telegram' },
+];
 
 const QuickGuide = () => (
     <div className='quickguide'>
@@ -100,6 +165,20 @@ const QuickGuide = () => (
                     >
                         {localize('BOOK MENTORSHIP')}
                     </button>
+                </div>
+                <div className='quickguide__socials'>
+                    {SOCIALS.map(({ key, label }) => (
+                        <button
+                            key={key}
+                            type='button'
+                            className={`quickguide__social quickguide__social--${key}`}
+                            aria-label={label}
+                            onClick={() => openLink(QUICKGUIDE_SOCIAL_LINKS[key])}
+                        >
+                            <span className='quickguide__social-icon'>{SOCIAL_ICONS[key]}</span>
+                            <span className='quickguide__social-label'>{label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

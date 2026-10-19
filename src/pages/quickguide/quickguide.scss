@@ -204,6 +204,72 @@ $candle-down: #ff8f8f; // light red
         gap: 1.6rem;
     }
 
+    // Social buttons at the bottom of the card. Each one gets its link in QUICKGUIDE_SOCIAL_LINKS.
+    &__socials {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 1.6rem 2rem;
+        margin-top: 2.4rem;
+        padding-top: 2rem;
+        border-top: 0.1rem solid var(--border-normal);
+    }
+
+    &__social {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        min-width: 7rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text-prominent);
+        cursor: pointer;
+
+        &:hover .quickguide__social-icon {
+            transform: translateY(-0.2rem);
+            box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.25);
+        }
+
+        &--whatsapp .quickguide__social-icon {
+            background: #25d366;
+        }
+
+        &--tiktok .quickguide__social-icon {
+            background: #111;
+        }
+
+        &--facebook .quickguide__social-icon {
+            background: #1877f2;
+        }
+
+        &--youtube .quickguide__social-icon {
+            background: #ff0000;
+        }
+
+        &--telegram .quickguide__social-icon {
+            background: #229ed9;
+        }
+    }
+
+    &__social-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4.8rem;
+        height: 4.8rem;
+        border-radius: 50%;
+        color: #fff;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    &__social-label {
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
     &__btn {
         min-width: 17rem;
         padding: 1.6rem 3rem;
