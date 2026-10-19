@@ -53,6 +53,7 @@ const OverOne = lazy(() => import('../over-one/over-one'));
 const UnderEight = lazy(() => import('../under-eight/under-eight'));
 const TradingBots = lazy(() => import('../trading-bots/trading-bots'));
 const QuickGuide = lazy(() => import('../quickguide/quickguide'));
+const DTrader = lazy(() => import('../dtrader/dtrader'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -86,7 +87,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide', 'dtrader'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -510,6 +511,11 @@ const AppWrapper = observer(() => {
                             <div label='Quickguide' id='id-quickguide'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Quickguide...')} />}>
                                     <QuickGuide />
+                                </Suspense>
+                            </div>
+                            <div label='DTrader' id='id-dtrader'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading DTrader...')} />}>
+                                    <DTrader />
                                 </Suspense>
                             </div>
                         </Tabs>

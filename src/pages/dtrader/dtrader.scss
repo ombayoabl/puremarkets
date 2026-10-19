@@ -1,0 +1,319 @@
+// Manual trading page (DTrader/Circles)
+$green: #0f9d6e;
+$red: #ec3f3f;
+$blue: #3b82f6;
+
+.dtrader {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 112rem;
+    margin: 0 auto;
+    padding: 1.6rem 1.6rem calc(6rem + env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - 19rem);
+    height: calc(100dvh - 19rem);
+    min-height: 30rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    color: var(--text-general);
+    font-size: 1.4rem;
+
+    @media (max-width: 1024px) {
+        height: calc(100vh - 15rem);
+        height: calc(100dvh - 15rem);
+    }
+
+    &__top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+
+    &__select,
+    &__field input,
+    &__field select {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 1rem 1.2rem;
+        border: 0.1rem solid var(--border-normal);
+        border-radius: 0.8rem;
+        background: var(--general-section-1);
+        color: var(--text-prominent);
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    &__select {
+        flex: 1 1 24rem;
+        max-width: 38rem;
+    }
+
+    &__price {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    &__price-value {
+        color: var(--text-prominent);
+        font-size: 2.4rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__feed {
+        font-size: 1.2rem;
+        opacity: 0.8;
+    }
+
+    &__types {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 1.4rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    &__type {
+        flex: 1 0 auto;
+        padding: 0.9rem 1.4rem;
+        border: 0.1rem solid var(--border-normal);
+        border-radius: 99rem;
+        background: var(--general-section-1);
+        color: var(--text-general);
+        font-size: 1.3rem;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &--active {
+            border-color: $blue;
+            background: $blue;
+            color: #fff;
+        }
+    }
+
+    // The ten last-digit circles
+    &__circles {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: clamp(0.4rem, 1vw, 1.2rem);
+
+        @media (max-width: 640px) {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.8rem 0.6rem;
+        }
+    }
+
+    &__circle {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        aspect-ratio: 1;
+        min-width: 0;
+        padding: 0;
+        border: 0.2rem solid var(--border-normal);
+        border-radius: 50%;
+        background: var(--general-section-1);
+        color: var(--text-prominent);
+        cursor: pointer;
+        transition: transform 0.12s ease;
+
+        &:disabled {
+            cursor: default;
+            opacity: 1;
+        }
+
+        &:not(:disabled):hover {
+            transform: scale(1.05);
+        }
+
+        &--high {
+            border-color: $green;
+            background: color-mix(in srgb, $green 22%, var(--general-section-1));
+        }
+
+        &--low {
+            border-color: $red;
+            background: color-mix(in srgb, $red 22%, var(--general-section-1));
+        }
+
+        &--picked {
+            box-shadow: 0 0 0 0.3rem $blue;
+        }
+    }
+
+    &__pointer {
+        position: absolute;
+        top: -1.7rem;
+        color: $blue;
+        font-size: 1.3rem;
+        line-height: 1;
+    }
+
+    &__digit {
+        font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    &__pct {
+        font-size: clamp(0.9rem, 1.1vw, 1.2rem);
+        font-weight: 700;
+        opacity: 0.85;
+    }
+
+    &__hint {
+        margin: 1.6rem 0 1.4rem;
+        font-size: 1.2rem;
+        opacity: 0.8;
+    }
+
+    &__form {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.4rem;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        min-width: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    &__buys {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    &__buy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 1.4rem 1rem;
+        border: 0;
+        border-radius: 1rem;
+        color: #fff;
+        cursor: pointer;
+
+        &--a {
+            background: $green;
+        }
+
+        &--b {
+            background: $red;
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+    }
+
+    &__buy-name {
+        font-size: 1.8rem;
+        font-weight: 800;
+    }
+
+    &__buy-payout {
+        font-size: 1.2rem;
+        opacity: 0.95;
+    }
+
+    &__error {
+        margin: 1rem 0 0;
+        color: $red;
+        font-weight: 700;
+    }
+
+    &__trades {
+        margin-top: 2rem;
+        border: 0.1rem solid var(--border-normal);
+        border-radius: 1rem;
+        background: var(--general-section-1);
+    }
+
+    &__trades-head {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 1.4rem;
+        border-bottom: 0.1rem solid var(--border-normal);
+        color: var(--text-prominent);
+        font-weight: 800;
+    }
+
+    &__empty {
+        margin: 0;
+        padding: 1.4rem;
+        opacity: 0.8;
+    }
+
+    &__trade {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.4rem;
+        border-left: 0.4rem solid transparent;
+
+        & + & {
+            border-top: 0.1rem solid var(--border-normal);
+        }
+
+        &--won {
+            border-left-color: $green;
+        }
+
+        &--lost {
+            border-left-color: $red;
+        }
+
+        &--open {
+            border-left-color: $blue;
+        }
+    }
+
+    &__trade-main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+
+        small {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            opacity: 0.75;
+        }
+    }
+
+    &__trade-result {
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    &__trade--won &__trade-result,
+    &__win {
+        color: $green;
+    }
+
+    &__trade--lost &__trade-result,
+    &__loss {
+        color: $red;
+    }
+}
