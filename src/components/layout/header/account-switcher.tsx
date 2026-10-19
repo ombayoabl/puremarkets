@@ -4,7 +4,9 @@ import { observer } from 'mobx-react-lite';
 import { CurrencyIcon } from '@/components/currency/currency-icon';
 import { addComma, getCurrencyDisplayCode, getDecimalPlaces } from '@/components/shared';
 import Text from '@/components/shared_ui/text';
+import { getAuthInfo } from '@/external/deriv-core';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
+import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import { isDemoAccount } from '@/utils/account-helpers';
@@ -21,6 +23,8 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
 
     const is_bot_running = run_panel?.is_running || api_base.is_running;
     const isSingleAccount = !accountList || accountList.length <= 1;
+    const [resetStatus, setResetStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+    const [resetError, setResetError] = useState('');
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -39,10 +43,13 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
         };
     }, []);
 
+    // With one account there is nothing to switch to, but a demo account still needs the menu for Reset balance.
+    const canOpenMenu = !isSingleAccount || isDemoAccount(activeLoginid);
+
     const toggleDropdown = useCallback(() => {
-        if (is_bot_running || isSingleAccount) return;
+        if (is_bot_running || !canOpenMenu) return;
         setIsOpen(prev => !prev);
-    }, [is_bot_running, isSingleAccount]);
+    }, [is_bot_running, canOpenMenu]);
 
     const handleAccountSelect = useCallback(
         (loginid: string) => {
@@ -51,6 +58,29 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
             setIsOpen(false);
         },
         [client]
+    );
+
+    const handleResetDemo = useCallback(
+        async (loginid: string) => {
+            if (resetStatus === 'loading') return;
+            if (!window.confirm('Reset your demo balance to 10,000 USD?')) return;
+
+            setResetStatus('loading');
+            setResetError('');
+            try {
+                const token = getAuthInfo()?.access_token;
+                if (!token) throw new Error('Please log in again to reset your demo balance.');
+                await DerivWSAccountsService.resetDemoBalance(token, loginid);
+                // Reconnect so the header and the bot pick up the new balance straight away.
+                await api_base.init(true);
+                setResetStatus('done');
+                setTimeout(() => setResetStatus('idle'), 3000);
+            } catch (error) {
+                setResetError(error instanceof Error ? error.message : 'Could not reset the demo balance.');
+                setResetStatus('error');
+            }
+        },
+        [resetStatus]
     );
 
     const formattedAccounts = useMemo(() => {
@@ -69,7 +99,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     if (!activeAccount) return null;
 
     const { currency, isVirtual, balance } = activeAccount;
-    const showChevron = !isSingleAccount && !is_bot_running;
+    const showChevron = canOpenMenu && !is_bot_running;
 
     return (
         <div className='acc-info__wrapper' ref={wrapperRef}>
@@ -188,8 +218,33 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     )}
                                 </Text>
                             </span>
+                            {account.isVirtual && (
+                                <button
+                                    type='button'
+                                    className='acc-dropdown__reset'
+                                    disabled={resetStatus === 'loading'}
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        handleResetDemo(account.loginid);
+                                    }}
+                                    onKeyDown={e => e.stopPropagation()}
+                                >
+                                    {resetStatus === 'loading' ? (
+                                        <Localize i18n_default_text='Resetting...' />
+                                    ) : resetStatus === 'done' ? (
+                                        <Localize i18n_default_text='Balance reset' />
+                                    ) : (
+                                        <Localize i18n_default_text='Reset balance' />
+                                    )}
+                                </button>
+                            )}
                         </div>
                     ))}
+                    {resetStatus === 'error' && (
+                        <p className='acc-dropdown__reset-error' role='alert'>
+                            {resetError}
+                        </p>
+                    )}
                 </div>
             )}
         </div>

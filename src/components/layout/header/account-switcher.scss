@@ -801,3 +801,36 @@
         }
     }
 }
+
+// Reset balance button on demo accounts, and the message if a reset fails.
+.acc-dropdown {
+    &__reset {
+        flex: 0 0 auto;
+        margin-left: 1rem;
+        padding: 0.6rem 1.2rem;
+        border: 0.1rem solid var(--status-success);
+        border-radius: 0.8rem;
+        background: transparent;
+        color: var(--status-success);
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+            background: var(--status-success);
+            color: #fff;
+        }
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+    }
+
+    &__reset-error {
+        margin: 0;
+        padding: 0.8rem 1.6rem 1.2rem;
+        color: var(--status-danger);
+        font-size: 1.2rem;
+    }
+}
