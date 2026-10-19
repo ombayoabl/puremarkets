@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { localize } from '@deriv-com/translations';
 import './quickguide.scss';
 
@@ -57,7 +57,12 @@ const Candlesticks = () => (
             const top = toY(Math.max(open, close));
             const height = Math.max(Math.abs(toY(open) - toY(close)), 2);
             return (
-                <g key={i} className={up ? 'quickguide__candle quickguide__candle--up' : 'quickguide__candle quickguide__candle--down'}>
+                <g
+                    key={i}
+                    className={
+                        up ? 'quickguide__candle quickguide__candle--up' : 'quickguide__candle quickguide__candle--down'
+                    }
+                >
                     <line x1={x} x2={x} y1={toY(high)} y2={toY(low)} />
                     <rect x={x - 7} y={top} width={14} height={height} rx={2} />
                 </g>
@@ -119,70 +124,109 @@ const SOCIALS: { key: TSocialKey; label: string }[] = [
     { key: 'youtube', label: 'YouTube' },
 ];
 
-const QuickGuide = () => (
-    <div className='quickguide'>
-        <div className='quickguide__card'>
-            <div className='quickguide__visual'>
-                <div className='quickguide__indicator' aria-hidden='true'>
-                    <span className='quickguide__dot quickguide__dot--up' />
-                    <span className='quickguide__dot quickguide__dot--down' />
+// Makes the page exactly as tall as the space left under the header/tabs, on every screen
+// (phone browser bars and rotation included), so the card fills the whole screen.
+const useFillScreen = (ref: React.RefObject<HTMLDivElement>) => {
+    useEffect(() => {
+        const fit = () => {
+            const el = ref.current;
+            if (!el || el.offsetParent === null) return;
+            const top = el.getBoundingClientRect().top;
+            const viewport_height = window.visualViewport?.height ?? window.innerHeight;
+            el.style.height = `${Math.max(Math.floor(viewport_height - top), 280)}px`;
+        };
+        fit();
+        const timer = window.setTimeout(fit, 150);
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', fit);
+        window.visualViewport?.addEventListener('resize', fit);
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener('resize', fit);
+            window.removeEventListener('orientationchange', fit);
+            window.visualViewport?.removeEventListener('resize', fit);
+        };
+    }, [ref]);
+};
+
+const QuickGuide = () => {
+    const page_ref = useRef<HTMLDivElement>(null);
+    useFillScreen(page_ref);
+
+    return (
+        <div className='quickguide' ref={page_ref}>
+            <div className='quickguide__card'>
+                <div className='quickguide__visual'>
+                    <div className='quickguide__indicator' aria-hidden='true'>
+                        <span className='quickguide__dot quickguide__dot--up' />
+                        <span className='quickguide__dot quickguide__dot--down' />
+                    </div>
+                    <div className='quickguide__socials'>
+                        {SOCIALS.map(({ key, label }) => (
+                            <button
+                                key={key}
+                                type='button'
+                                className={`quickguide__social quickguide__social--${key}`}
+                                aria-label={label}
+                                title={label}
+                                onClick={() => openLink(QUICKGUIDE_SOCIAL_LINKS[key])}
+                            >
+                                {SOCIAL_ICONS[key]}
+                            </button>
+                        ))}
+                    </div>
+                    <div className='quickguide__visual-text'>
+                        <h1 className='quickguide__welcome'>{localize('WELCOME TO')}</h1>
+                        <h1 className='quickguide__brand'>{localize('PUREMARKETS')}</h1>
+                    </div>
+                    <Candlesticks />
+                    <div className='quickguide__tag'>
+                        <span className='quickguide__tag-text'>{localize('TRADE STRATEGICALLY')}</span>
+                        <span className='quickguide__arrow' aria-hidden='true'>
+                            <svg
+                                width='22'
+                                height='22'
+                                viewBox='0 0 24 24'
+                                fill='none'
+                                stroke='currentColor'
+                                strokeWidth='2.6'
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                            >
+                                <path d='M12 19V5' />
+                                <path d='m5 12 7-7 7 7' />
+                            </svg>
+                        </span>
+                    </div>
                 </div>
-                <div className='quickguide__socials'>
-                    {SOCIALS.map(({ key, label }) => (
+                <div className='quickguide__content'>
+                    <span className='quickguide__badge'>{localize('OFFICIAL GUIDE')}</span>
+                    <h2 className='quickguide__title'>{localize('Start With Guidance. Trade With Structure.')}</h2>
+                    <p className='quickguide__text'>
+                        {localize(
+                            'Access the right, pure, innovative and powerful trading tools through the puremarkets ecosystem.'
+                        )}
+                    </p>
+                    <div className='quickguide__actions'>
                         <button
-                            key={key}
                             type='button'
-                            className={`quickguide__social quickguide__social--${key}`}
-                            aria-label={label}
-                            title={label}
-                            onClick={() => openLink(QUICKGUIDE_SOCIAL_LINKS[key])}
+                            className='quickguide__btn quickguide__btn--primary'
+                            onClick={() => openLink(QUICKGUIDE_LINKS.start_here)}
                         >
-                            {SOCIAL_ICONS[key]}
+                            {localize('START HERE')}
                         </button>
-                    ))}
-                </div>
-                <div className='quickguide__visual-text'>
-                    <h1 className='quickguide__welcome'>{localize('WELCOME TO')}</h1>
-                    <h1 className='quickguide__brand'>{localize('PUREMARKETS')}</h1>
-                </div>
-                <Candlesticks />
-                <div className='quickguide__tag'>
-                    <span className='quickguide__tag-text'>{localize('TRADE STRATEGICALLY')}</span>
-                    <span className='quickguide__arrow' aria-hidden='true'>
-                        <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.6' strokeLinecap='round' strokeLinejoin='round'>
-                            <path d='M12 19V5' />
-                            <path d='m5 12 7-7 7 7' />
-                        </svg>
-                    </span>
-                </div>
-            </div>
-            <div className='quickguide__content'>
-                <span className='quickguide__badge'>{localize('OFFICIAL GUIDE')}</span>
-                <h2 className='quickguide__title'>{localize('Start With Guidance. Trade With Structure.')}</h2>
-                <p className='quickguide__text'>
-                    {localize(
-                        'Access the right, pure, innovative and powerful trading tools through the puremarkets ecosystem.'
-                    )}
-                </p>
-                <div className='quickguide__actions'>
-                    <button
-                        type='button'
-                        className='quickguide__btn quickguide__btn--primary'
-                        onClick={() => openLink(QUICKGUIDE_LINKS.start_here)}
-                    >
-                        {localize('START HERE')}
-                    </button>
-                    <button
-                        type='button'
-                        className='quickguide__btn quickguide__btn--secondary'
-                        onClick={() => openLink(QUICKGUIDE_LINKS.book_mentorship)}
-                    >
-                        {localize('BOOK MENTORSHIP')}
-                    </button>
+                        <button
+                            type='button'
+                            className='quickguide__btn quickguide__btn--secondary'
+                            onClick={() => openLink(QUICKGUIDE_LINKS.book_mentorship)}
+                        >
+                            {localize('BOOK MENTORSHIP')}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default QuickGuide;

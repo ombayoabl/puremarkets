@@ -295,15 +295,22 @@ $candle-down: #ff8f8f; // light red
 
     // Phones and small tablets: photo on top, text underneath, everything sized to fit the screen.
     @media (max-width: 768px) {
-        padding: clamp(0.6rem, 1.2vh, 1.2rem);
+        height: calc(100vh - 12rem);
+        height: calc(100dvh - 12rem);
+        padding: 0;
 
+        // The card fills the whole screen edge to edge.
         &__card {
             flex-direction: column;
+            max-width: none;
+            border-radius: 0;
+            box-shadow: none;
         }
 
+        // The photo takes whatever height the text underneath does not need.
         &__visual {
             --qg-pad: clamp(1.2rem, 2.2vh, 2rem);
-            flex: 0 0 auto;
+            flex: 1 1 0;
             gap: clamp(0.6rem, 1.4vh, 1.2rem);
         }
 
@@ -336,7 +343,7 @@ $candle-down: #ff8f8f; // light red
         }
 
         &__content {
-            flex: 1 1 0;
+            flex: 0 0 auto;
             padding: clamp(1rem, 2vh, 2.4rem) 1.6rem;
         }
 
