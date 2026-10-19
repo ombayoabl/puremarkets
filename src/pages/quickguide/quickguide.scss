@@ -8,17 +8,19 @@ $candle-down: #ff8f8f; // light red
     display: flex;
     // The page can scroll on its own, so on a small screen every word can be reached
     // even when the card is taller than the space under the header.
-    min-height: min(50rem, calc(100dvh - 14rem));
-    max-height: calc(100dvh - 14rem);
-    padding: 2.4rem 1.6rem;
+    height: calc(100vh - 14rem);
+    height: calc(100dvh - 14rem);
+    padding: clamp(0.8rem, 2vh, 2.4rem) 1.6rem;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 
     &__card {
-        margin: auto; // keeps the card centred, and lets it scroll from the top when it is taller than the space
+        margin: auto; // keeps the card centred
         display: flex;
         width: 100%;
+        height: 100%;
+        max-height: 100%;
         max-width: 112rem;
         overflow: hidden;
         border-radius: 1.2rem;
@@ -33,9 +35,10 @@ $candle-down: #ff8f8f; // light red
         flex: 0 0 46%;
         flex-direction: column;
         justify-content: flex-start;
-        gap: 2.4rem;
-        min-height: 46rem;
-        padding: 3.2rem;
+        --qg-pad: clamp(1.4rem, 3.5vh, 3.2rem);
+        gap: clamp(1rem, 2.2vh, 2.4rem);
+        min-height: 0;
+        padding: var(--qg-pad);
         background:
             linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.25) 55%, rgba(0, 0, 0, 0.55) 100%),
             url('../main/tab-background.jpg') center 62% / cover no-repeat;
@@ -44,10 +47,10 @@ $candle-down: #ff8f8f; // light red
     // Candlestick chart across the photo: fills the space between the welcome text and the tag below it.
     &__candles {
         flex: 1 1 0;
-        width: calc(100% + 6.4rem);
+        width: calc(100% + 2 * var(--qg-pad));
         height: 0;
-        min-height: 14rem;
-        margin: 0 -3.2rem;
+        min-height: 6rem;
+        margin: 0 calc(-1 * var(--qg-pad));
         box-sizing: border-box;
         padding: 0 2rem;
         opacity: 0.92;
@@ -104,7 +107,7 @@ $candle-down: #ff8f8f; // light red
     &__welcome,
     &__brand {
         margin: 0;
-        font-size: 4.4rem;
+        font-size: clamp(2.4rem, min(6.5vh, 4vw), 4.4rem);
         font-weight: 800;
         line-height: 1.1;
         letter-spacing: 0.02em;
@@ -123,7 +126,7 @@ $candle-down: #ff8f8f; // light red
         align-items: center;
         gap: 1.2rem;
         align-self: flex-start;
-        padding: 1rem 1.6rem;
+        padding: clamp(0.6rem, 1.4vh, 1rem) 1.6rem;
         border: 0.1rem solid rgba(255, 255, 255, 0.3);
         border-radius: 1rem;
         background: rgba(0, 0, 0, 0.55);
@@ -132,7 +135,7 @@ $candle-down: #ff8f8f; // light red
 
     &__tag-text {
         color: #fff;
-        font-size: 2.4rem;
+        font-size: clamp(1.6rem, 3.4vh, 2.4rem);
         font-weight: 800;
         letter-spacing: 0.03em;
     }
@@ -141,8 +144,8 @@ $candle-down: #ff8f8f; // light red
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 3.6rem;
-        height: 3.6rem;
+        width: clamp(2.8rem, 5vh, 3.6rem);
+        height: clamp(2.8rem, 5vh, 3.6rem);
         border-radius: 50%;
         background: #19d65c;
         color: #0b2a14;
@@ -156,16 +159,17 @@ $candle-down: #ff8f8f; // light red
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 3.2rem 4rem;
+        min-height: 0;
+        padding: clamp(1.4rem, 3vh, 3.2rem) clamp(2rem, 3vw, 4rem);
         text-align: center;
     }
 
     &__badge {
-        padding: 0.9rem 2rem;
+        padding: clamp(0.6rem, 1.2vh, 0.9rem) 2rem;
         border-radius: 99rem;
         background: $quickguide-green;
         color: #fff;
-        font-size: 1.4rem;
+        font-size: clamp(1.1rem, 1.8vh, 1.4rem);
         font-weight: 800;
         letter-spacing: 0.12em;
     }
@@ -179,18 +183,18 @@ $candle-down: #ff8f8f; // light red
     }
 
     &__title {
-        margin: 2.4rem 0 1.6rem;
+        margin: clamp(1rem, 2.2vh, 2.4rem) 0 clamp(0.8rem, 1.6vh, 1.6rem);
         color: var(--text-prominent);
-        font-size: 3.6rem;
+        font-size: clamp(2.2rem, 4.8vh, 3.6rem);
         font-weight: 800;
         line-height: 1.15;
     }
 
     &__text {
         max-width: 48rem;
-        margin: 0 0 3.2rem;
+        margin: 0 0 clamp(1.2rem, 3vh, 3.2rem);
         color: var(--text-general);
-        font-size: 1.8rem;
+        font-size: clamp(1.3rem, 2.4vh, 1.8rem);
         line-height: 1.6;
     }
 
@@ -211,8 +215,8 @@ $candle-down: #ff8f8f; // light red
         display: flex;
         flex-wrap: nowrap;
         align-items: center;
-        gap: 0.8rem;
-        max-width: calc(100% - 7rem);
+        gap: clamp(0.6rem, 1.2vw, 1.2rem);
+        max-width: calc(100% - 8rem);
     }
 
     &__social {
@@ -221,7 +225,7 @@ $candle-down: #ff8f8f; // light red
         align-items: center;
         justify-content: center;
         min-width: 0;
-        max-width: 3.8rem;
+        max-width: clamp(3.4rem, 5.6vh, 4.8rem);
         aspect-ratio: 1;
         padding: 0;
         border: 0.1rem solid rgba(255, 255, 255, 0.35);
@@ -263,10 +267,10 @@ $candle-down: #ff8f8f; // light red
 
     &__btn {
         min-width: 17rem;
-        padding: 1.6rem 3rem;
+        padding: clamp(1rem, 2vh, 1.6rem) 3rem;
         border: 0.1rem solid transparent;
         border-radius: 1rem;
-        font-size: 1.6rem;
+        font-size: clamp(1.3rem, 2vh, 1.6rem);
         font-weight: 800;
         letter-spacing: 0.04em;
         cursor: pointer;
@@ -289,81 +293,74 @@ $candle-down: #ff8f8f; // light red
         }
     }
 
-    // Phones and small tablets: photo on top, text underneath.
+    // Phones and small tablets: photo on top, text underneath, everything sized to fit the screen.
     @media (max-width: 768px) {
-        padding: 1.6rem 1.2rem;
+        padding: clamp(0.6rem, 1.2vh, 1.2rem);
 
         &__card {
             flex-direction: column;
         }
 
         &__visual {
+            --qg-pad: clamp(1.2rem, 2.2vh, 2rem);
             flex: 0 0 auto;
-            min-height: 26rem;
-            gap: 1.6rem;
-            padding: 2rem;
-        }
-
-        &__candles {
-            width: calc(100% + 4rem);
-            min-height: 10rem;
-            margin: 0 -2rem;
-        }
-
-        &__tag {
-            max-width: 100%;
-            padding: 0.8rem 1.2rem;
-        }
-
-        &__welcome,
-        &__brand {
-            font-size: 3.2rem;
-        }
-
-        &__tag-text {
-            font-size: 1.8rem;
-        }
-
-        &__content {
-            padding: 2.4rem 1.6rem 3rem;
-        }
-
-        &__title {
-            font-size: 2.6rem;
-        }
-
-        &__text {
-            font-size: 1.6rem;
-        }
-
-        &__btn {
-            width: 100%;
+            gap: clamp(0.6rem, 1.4vh, 1.2rem);
         }
 
         &__socials {
             gap: 0.5rem;
+            max-width: calc(100% - 6rem);
         }
-    }
 
-    // Very narrow phones: slightly smaller type so nothing is squeezed out.
-    @media (max-width: 380px) {
+        &__indicator {
+            top: var(--qg-pad);
+            right: var(--qg-pad);
+        }
+
+        &__candles {
+            min-height: clamp(4.5rem, 9vh, 9rem);
+        }
+
+        &__tag {
+            max-width: 100%;
+            padding: clamp(0.5rem, 1vh, 0.8rem) 1.2rem;
+        }
+
         &__welcome,
         &__brand {
-            font-size: 2.8rem;
+            font-size: clamp(2.2rem, min(4.6vh, 8.4vw), 3.2rem);
         }
 
         &__tag-text {
-            font-size: 1.5rem;
+            font-size: clamp(1.4rem, 2.6vh, 1.8rem);
         }
 
-        &__arrow {
-            flex: 0 0 auto;
-            width: 3rem;
-            height: 3rem;
+        &__content {
+            flex: 1 1 0;
+            padding: clamp(1rem, 2vh, 2.4rem) 1.6rem;
         }
 
         &__title {
-            font-size: 2.3rem;
+            font-size: clamp(1.9rem, 3.4vh, 2.6rem);
+        }
+
+        &__text {
+            margin-bottom: clamp(1rem, 2vh, 2rem);
+            font-size: clamp(1.25rem, 2vh, 1.6rem);
+            line-height: 1.45;
+        }
+
+        &__actions {
+            flex-wrap: nowrap;
+            width: 100%;
+            gap: 1rem;
+        }
+
+        &__btn {
+            flex: 1 1 0;
+            min-width: 0;
+            padding-right: 1rem;
+            padding-left: 1rem;
         }
     }
 }
