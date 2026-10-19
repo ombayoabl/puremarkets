@@ -13,9 +13,6 @@ import { TAccountSwitcher } from './common/types';
 import AccountInfoWrapper from './account-info-wrapper';
 import './account-switcher.scss';
 
-// Demo accounts that get the US flag icon (they are still labelled "Demo account")
-const USA_FLAG_ACCOUNTS = ['DOT91449192'];
-
 const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -98,11 +95,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                 >
                     <span className='acc-info__id' aria-hidden='true'>
                         <span className='acc-info__id-icon'>
-                            {activeAccount.loginid && USA_FLAG_ACCOUNTS.includes(activeAccount.loginid) ? (
-                                <CurrencyIcon currency='usd' />
-                            ) : (
-                                <CurrencyIcon currency={currency} isVirtual={isVirtual} />
-                            )}
+                            <CurrencyIcon currency={currency} isVirtual={isVirtual} />
                         </span>
                     </span>
                     <div className='acc-info__content'>
@@ -172,11 +165,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             }}
                         >
                             <span className='acc-dropdown__icon' aria-hidden='true'>
-                                {USA_FLAG_ACCOUNTS.includes(account.loginid) ? (
-                                    <CurrencyIcon currency='usd' />
-                                ) : (
-                                    <CurrencyIcon currency={account.currency} isVirtual={account.isVirtual} />
-                                )}
+                                <CurrencyIcon currency={account.currency} isVirtual={account.isVirtual} />
                             </span>
                             <span className='acc-dropdown__text'>
                                 <Text
