@@ -11,6 +11,8 @@ import {
 } from '@/external/bot-skeleton';
 import { inject_workspace_options, updateXmlValues } from '@/external/bot-skeleton/scratch/utils';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
+import { botNotification } from '@/components/bot-notification/bot-notification';
+import { notification_message } from '@/components/bot-notification/bot-notification-utils';
 import { TStores } from '@deriv/stores/types';
 import { localize } from '@deriv-com/translations';
 import { TStrategy } from 'Types';
@@ -414,10 +416,15 @@ export default class LoadModalStore {
             ({ files } = event.target);
         }
 
-        const [file] = files;
+        const file = files?.[0];
+
+        // Nothing was picked (e.g. the file window was closed): do nothing instead of crashing.
+        if (!file) return true;
 
         if (!is_body) {
-            if (file.name.includes('xml')) {
+            // Accept .xml in any letter case (BOT.XML), or any file the browser says is XML.
+            const is_xml_file = /\.xml$/i.test(file.name) || /xml/i.test(file.type || '');
+            if (is_xml_file) {
                 this.setLoadedLocalFile(file);
                 this.getDashboardStrategies();
             } else {
@@ -425,7 +432,7 @@ export default class LoadModalStore {
             }
         }
         this.readFile(!is_body, event as DragEvent, file);
-        (event.target as HTMLInputElement).value = '';
+        if (event.target && 'value' in event.target) (event.target as HTMLInputElement).value = '';
         return true;
     };
 
@@ -433,22 +440,37 @@ export default class LoadModalStore {
         const reader = new FileReader();
         const file_name = file?.name.replace(/\.[^/.]+$/, '') || '';
 
-        reader.onload = action(async e => {
-            const load_options = {
-                block_string: e?.target?.result,
-                drop_event,
-                from: save_types.LOCAL,
-                workspace: null as window.Blockly.WorkspaceSvg | null,
-                file_name,
-                strategy_id: '',
-                showIncompatibleStrategyDialog: false,
-            };
-            if (this.local_workspace) {
-                this.local_workspace.dispose();
-                this.local_workspace = null;
-            }
-            this.loadStrategyOnModalLocalPreview(load_options);
+        const onUploadFailed = (error?: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('Bot upload failed:', error);
+            this.is_open_button_loading = false;
+            this.setLoadedLocalFile(null);
             this.setOpenButtonDisabled(false);
+            botNotification(notification_message().invalid_xml);
+        };
+
+        reader.onerror = () => onUploadFailed(reader.error);
+
+        reader.onload = action(async e => {
+            try {
+                const load_options = {
+                    block_string: e?.target?.result,
+                    drop_event,
+                    from: save_types.LOCAL,
+                    workspace: null as window.Blockly.WorkspaceSvg | null,
+                    file_name,
+                    strategy_id: '',
+                    showIncompatibleStrategyDialog: false,
+                };
+                if (this.local_workspace) {
+                    this.local_workspace.dispose();
+                    this.local_workspace = null;
+                }
+                await this.loadStrategyOnModalLocalPreview(load_options);
+                this.setOpenButtonDisabled(false);
+            } catch (error) {
+                onUploadFailed(error);
+            }
         });
 
         reader.readAsText(file);
@@ -465,17 +487,25 @@ export default class LoadModalStore {
     };
 
     loadStrategyOnBotBuilder = async () => {
-        const {
-            strategy_id = window.Blockly.utils.idGenerator.genUid(),
-            convertedDom,
-            block_string,
-        } = window.Blockly.xmlValues;
-        const derivWorkspace = window.Blockly.derivWorkspace;
+        try {
+            const xml_values = window.Blockly?.xmlValues;
+            const derivWorkspace = window.Blockly?.derivWorkspace;
+            // The file was not read successfully (or is still being read): do nothing instead of crashing.
+            if (!xml_values?.convertedDom || !derivWorkspace) {
+                botNotification(notification_message().invalid_xml);
+                return;
+            }
+            const { strategy_id = window.Blockly.utils.idGenerator.genUid(), convertedDom } = xml_values;
 
-        window.Blockly.Xml.clearWorkspaceAndLoadFromXml(convertedDom, derivWorkspace);
-        derivWorkspace.cleanUp();
-        derivWorkspace.clearUndo();
-        derivWorkspace.current_strategy_id = strategy_id;
+            window.Blockly.Xml.clearWorkspaceAndLoadFromXml(convertedDom, derivWorkspace);
+            derivWorkspace.cleanUp();
+            derivWorkspace.clearUndo();
+            derivWorkspace.current_strategy_id = strategy_id;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Could not open the bot in Bot Builder:', error);
+            botNotification(notification_message().invalid_xml);
+        }
 
         /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
         /* [/AI] */

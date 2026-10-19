@@ -77,7 +77,7 @@ const LocalComponent = observer(() => {
                 <input
                     type='file'
                     ref={file_input_ref}
-                    accept='application/xml, text/xml'
+                    accept='.xml,application/xml,text/xml'
                     style={{ display: 'none' }}
                     onChange={e => {
                         const is_supported = handleFileChange(e, false);
@@ -101,8 +101,14 @@ const LocalComponent = observer(() => {
                 <div
                     data-testid='dt__local-dropzone-area'
                     className='load-strategy__local-dropzone-area'
+                    onDragOver={e => e.preventDefault()}
                     onDrop={e => {
-                        handleFileChange(e, false);
+                        const is_supported = handleFileChange(e, false);
+                        !is_supported &&
+                            botNotification(notification_message().xml_import_error, undefined, {
+                                className: 'error-toast',
+                            });
+                        setIsFileSupported(is_supported);
                     }}
                 >
                     {!isDesktop ? (

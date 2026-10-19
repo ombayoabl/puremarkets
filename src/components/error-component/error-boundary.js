@@ -10,6 +10,8 @@ class ErrorBoundary extends React.Component {
 
     componentDidCatch = (error, info) => {
         if (window.TrackJS) window.TrackJS.console.log(this.props.root_store);
+        // eslint-disable-next-line no-console
+        console.error('App crashed:', error, info?.componentStack);
 
         this.setState({
             hasError: true,
@@ -17,7 +19,12 @@ class ErrorBoundary extends React.Component {
             info,
         });
     };
-    render = () => (this.state.hasError ? <ErrorComponent should_show_refresh={true} /> : this.props.children);
+    render = () =>
+        this.state.hasError ? (
+            <ErrorComponent should_show_refresh={true} message={this.state.error?.message} />
+        ) : (
+            this.props.children
+        );
 }
 
 ErrorBoundary.propTypes = {
