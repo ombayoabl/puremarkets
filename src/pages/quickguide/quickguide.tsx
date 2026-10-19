@@ -13,7 +13,7 @@ export const QUICKGUIDE_LINKS = {
 // Where the social buttons at the bottom go. Same rules as above: leave a link empty
 // until you have it (the button then does nothing), then paste the full https:// address.
 export const QUICKGUIDE_SOCIAL_LINKS = {
-    whatsapp: 'https://wa.me/25405491022',
+    whatsapp: 'https://wa.me/254705491022',
     facebook: '',
     tiktok: '',
     telegram: '',
