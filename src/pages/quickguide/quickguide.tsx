@@ -14,10 +14,10 @@ export const QUICKGUIDE_LINKS = {
 // until you have it (the button then does nothing), then paste the full https:// address.
 export const QUICKGUIDE_SOCIAL_LINKS = {
     whatsapp: '',
-    tiktok: '',
     facebook: '',
-    youtube: '',
+    tiktok: '',
     telegram: '',
+    youtube: '',
 };
 
 type TSocialKey = keyof typeof QUICKGUIDE_SOCIAL_LINKS;
@@ -113,10 +113,10 @@ const SOCIAL_ICONS: Record<TSocialKey, React.ReactNode> = {
 
 const SOCIALS: { key: TSocialKey; label: string }[] = [
     { key: 'whatsapp', label: 'WhatsApp' },
-    { key: 'tiktok', label: 'TikTok' },
     { key: 'facebook', label: 'Facebook' },
-    { key: 'youtube', label: 'YouTube' },
+    { key: 'tiktok', label: 'TikTok' },
     { key: 'telegram', label: 'Telegram' },
+    { key: 'youtube', label: 'YouTube' },
 ];
 
 const QuickGuide = () => (

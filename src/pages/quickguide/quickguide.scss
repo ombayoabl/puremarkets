@@ -342,6 +342,37 @@ $candle-down: #ff8f8f; // light red
         &__btn {
             width: 100%;
         }
+
+        // All five social buttons stay on one straight line and shrink to fit the screen width.
+        &__socials {
+            flex-wrap: nowrap;
+            gap: 0.4rem;
+        }
+
+        &__social {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        &__social-icon {
+            width: 100%;
+            max-width: 4.8rem;
+            height: auto;
+            aspect-ratio: 1;
+
+            svg {
+                width: 50%;
+                height: 50%;
+            }
+        }
+
+        &__social-label {
+            max-width: 100%;
+            overflow: hidden;
+            font-size: clamp(0.85rem, 2.9vw, 1.2rem);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     }
 
     // Very narrow phones: slightly smaller type so nothing is squeezed out.
