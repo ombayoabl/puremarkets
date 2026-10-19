@@ -127,6 +127,20 @@ const QuickGuide = () => (
                     <span className='quickguide__dot quickguide__dot--up' />
                     <span className='quickguide__dot quickguide__dot--down' />
                 </div>
+                <div className='quickguide__socials'>
+                    {SOCIALS.map(({ key, label }) => (
+                        <button
+                            key={key}
+                            type='button'
+                            className={`quickguide__social quickguide__social--${key}`}
+                            aria-label={label}
+                            title={label}
+                            onClick={() => openLink(QUICKGUIDE_SOCIAL_LINKS[key])}
+                        >
+                            {SOCIAL_ICONS[key]}
+                        </button>
+                    ))}
+                </div>
                 <div className='quickguide__visual-text'>
                     <h1 className='quickguide__welcome'>{localize('WELCOME TO')}</h1>
                     <h1 className='quickguide__brand'>{localize('PUREMARKETS')}</h1>
@@ -165,20 +179,6 @@ const QuickGuide = () => (
                     >
                         {localize('BOOK MENTORSHIP')}
                     </button>
-                </div>
-                <div className='quickguide__socials'>
-                    {SOCIALS.map(({ key, label }) => (
-                        <button
-                            key={key}
-                            type='button'
-                            className={`quickguide__social quickguide__social--${key}`}
-                            aria-label={label}
-                            onClick={() => openLink(QUICKGUIDE_SOCIAL_LINKS[key])}
-                        >
-                            <span className='quickguide__social-icon'>{SOCIAL_ICONS[key]}</span>
-                            <span className='quickguide__social-label'>{label}</span>
-                        </button>
-                    ))}
                 </div>
             </div>
         </div>

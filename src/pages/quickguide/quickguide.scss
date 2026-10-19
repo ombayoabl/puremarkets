@@ -204,70 +204,62 @@ $candle-down: #ff8f8f; // light red
         gap: 1.6rem;
     }
 
-    // Social buttons at the bottom of the card. Each one gets its link in QUICKGUIDE_SOCIAL_LINKS.
+    // Social buttons: one straight line at the top of the photo, left of the indicator lights.
+    // Each one gets its link in QUICKGUIDE_SOCIAL_LINKS.
     &__socials {
+        position: relative;
+        z-index: 1;
         display: flex;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        justify-content: center;
-        gap: 1.6rem 2rem;
-        margin-top: 2.4rem;
-        padding-top: 2rem;
-        border-top: 0.1rem solid var(--border-normal);
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.8rem;
+        max-width: calc(100% - 7rem);
     }
 
     &__social {
         display: flex;
-        flex-direction: column;
+        flex: 1 1 0;
         align-items: center;
-        gap: 0.6rem;
-        min-width: 7rem;
+        justify-content: center;
+        min-width: 0;
+        max-width: 3.8rem;
+        aspect-ratio: 1;
         padding: 0;
-        border: 0;
-        background: transparent;
-        color: var(--text-prominent);
+        border: 0.1rem solid rgba(255, 255, 255, 0.35);
+        border-radius: 50%;
+        color: #fff;
         cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
 
-        &:hover .quickguide__social-icon {
-            transform: translateY(-0.2rem);
-            box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.25);
+        svg {
+            width: 55%;
+            height: 55%;
         }
 
-        &--whatsapp .quickguide__social-icon {
+        &:hover {
+            transform: translateY(-0.2rem);
+            box-shadow: 0 0.5rem 1.2rem rgba(0, 0, 0, 0.4);
+        }
+
+        &--whatsapp {
             background: #25d366;
         }
 
-        &--tiktok .quickguide__social-icon {
-            background: #111;
-        }
-
-        &--facebook .quickguide__social-icon {
+        &--facebook {
             background: #1877f2;
         }
 
-        &--youtube .quickguide__social-icon {
-            background: #ff0000;
+        &--tiktok {
+            background: #111;
         }
 
-        &--telegram .quickguide__social-icon {
+        &--telegram {
             background: #229ed9;
         }
-    }
 
-    &__social-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 4.8rem;
-        height: 4.8rem;
-        border-radius: 50%;
-        color: #fff;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    &__social-label {
-        font-size: 1.2rem;
-        font-weight: 700;
+        &--youtube {
+            background: #ff0000;
+        }
     }
 
     &__btn {
@@ -343,35 +335,8 @@ $candle-down: #ff8f8f; // light red
             width: 100%;
         }
 
-        // All five social buttons stay on one straight line and shrink to fit the screen width.
         &__socials {
-            flex-wrap: nowrap;
-            gap: 0.4rem;
-        }
-
-        &__social {
-            flex: 1 1 0;
-            min-width: 0;
-        }
-
-        &__social-icon {
-            width: 100%;
-            max-width: 4.8rem;
-            height: auto;
-            aspect-ratio: 1;
-
-            svg {
-                width: 50%;
-                height: 50%;
-            }
-        }
-
-        &__social-label {
-            max-width: 100%;
-            overflow: hidden;
-            font-size: clamp(0.85rem, 2.9vw, 1.2rem);
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            gap: 0.5rem;
         }
     }
 
