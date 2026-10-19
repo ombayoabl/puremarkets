@@ -1,6 +1,8 @@
 // Quickguide page: a welcome card with the car photo on one side and the guide text on the other.
 $quickguide-red: #ec3f3f;
 $quickguide-green: #0f9d6e;
+$candle-up: #7ee2a8; // light green
+$candle-down: #ff8f8f; // light red
 
 .quickguide {
     display: flex;
@@ -25,12 +27,74 @@ $quickguide-green: #0f9d6e;
         display: flex;
         flex: 0 0 46%;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: flex-start;
+        gap: 2.4rem;
         min-height: 46rem;
         padding: 3.2rem;
         background:
             linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.25) 55%, rgba(0, 0, 0, 0.55) 100%),
             url('../main/tab-background.jpg') center 62% / cover no-repeat;
+    }
+
+    // Candlestick chart across the bottom of the photo.
+    &__candles {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 38%;
+        box-sizing: border-box;
+        padding: 0 2rem 1.6rem;
+        opacity: 0.92;
+        pointer-events: none;
+    }
+
+    &__candle {
+        &--up {
+            fill: $candle-up;
+            stroke: $candle-up;
+        }
+
+        &--down {
+            fill: $candle-down;
+            stroke: $candle-down;
+        }
+
+        line {
+            stroke-width: 2;
+            vector-effect: non-scaling-stroke;
+        }
+    }
+
+    // Light green and light red indicator lights in the top corner.
+    &__indicator {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+        display: flex;
+        gap: 0.8rem;
+        padding: 0.7rem 1rem;
+        border-radius: 99rem;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    &__dot {
+        width: 1.2rem;
+        height: 1.2rem;
+        border-radius: 50%;
+        animation: quickguide-pulse 1.8s ease-in-out infinite;
+
+        &--up {
+            background: $candle-up;
+            box-shadow: 0 0 1rem $candle-up;
+        }
+
+        &--down {
+            background: $candle-down;
+            box-shadow: 0 0 1rem $candle-down;
+            animation-delay: 0.9s;
+        }
     }
 
     &__welcome,
@@ -193,5 +257,22 @@ $quickguide-green: #0f9d6e;
         &__btn {
             width: 100%;
         }
+    }
+}
+
+@keyframes quickguide-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quickguide__dot {
+        animation: none;
     }
 }
