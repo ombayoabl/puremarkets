@@ -13,12 +13,17 @@ const GRAY = '#8a94a6';
 
 // Each icon is drawn with its own colours (a soft fill plus a solid outline).
 const ICONS: Record<string, React.ReactNode> = {
-    // open book
+    // open book (pages swapped: amber left, blue right) with 4 candlesticks inside: 2 green, 2 red
     quickguide: (
         <>
-            <path d='M12 6.5C10 4.8 7 4.2 3.5 4.5v13c3.5-.3 6.5.3 8.5 2z' fill={`${BLUE}33`} stroke={BLUE} />
-            <path d='M12 6.5c2-1.7 5-2.3 8.5-2v13c-3.5-.3-6.5.3-8.5 2z' fill={`${AMBER}33`} stroke={AMBER} />
-            <path d='M6 9h3M6 12h3M15 9h3M15 12h3' stroke={ORANGE} />
+            <path d='M12 6.5C10 4.8 7 4.2 3.5 4.5v13c3.5-.3 6.5.3 8.5 2z' fill={`${AMBER}33`} stroke={AMBER} />
+            <path d='M12 6.5c2-1.7 5-2.3 8.5-2v13c-3.5-.3-6.5.3-8.5 2z' fill={`${BLUE}33`} stroke={BLUE} />
+            <path d='M6.3 7.5v8M14.5 7.5v8' stroke={GREEN} strokeWidth={1.2} />
+            <rect x='5.5' y='9.5' width='1.6' height='4' rx='0.4' fill={GREEN} stroke={GREEN} strokeWidth={1} />
+            <rect x='13.7' y='9.5' width='1.6' height='4' rx='0.4' fill={GREEN} stroke={GREEN} strokeWidth={1} />
+            <path d='M9.5 8.5v8M17.7 8.5v8' stroke={RED} strokeWidth={1.2} />
+            <rect x='8.7' y='10.5' width='1.6' height='3.5' rx='0.4' fill={RED} stroke={RED} strokeWidth={1} />
+            <rect x='16.9' y='10.5' width='1.6' height='3.5' rx='0.4' fill={RED} stroke={RED} strokeWidth={1} />
         </>
     ),
     dashboard: (
