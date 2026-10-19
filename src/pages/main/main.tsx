@@ -52,6 +52,7 @@ const SuperAnalysis = lazy(() => import('../super-analysis/super-analysis'));
 const OverOne = lazy(() => import('../over-one/over-one'));
 const UnderEight = lazy(() => import('../under-eight/under-eight'));
 const TradingBots = lazy(() => import('../trading-bots/trading-bots'));
+const QuickGuide = lazy(() => import('../quickguide/quickguide'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -479,7 +480,13 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
-                                <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
+                                {coming_soon_item?.key === 'quickguide' ? (
+                                    <Suspense fallback={<ChunkLoader message={localize('Loading Quickguide...')} />}>
+                                        <QuickGuide />
+                                    </Suspense>
+                                ) : (
+                                    <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
+                                )}
                             </div>
                             <div label='Bulk Trader' id='id-bulk-trader'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Bulk Trader...')} />}>

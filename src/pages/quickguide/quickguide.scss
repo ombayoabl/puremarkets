@@ -1,0 +1,197 @@
+// Quickguide page: a welcome card with the car photo on one side and the guide text on the other.
+$quickguide-red: #ec3f3f;
+$quickguide-green: #0f9d6e;
+
+.quickguide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50rem;
+    padding: 2.4rem 1.6rem;
+
+    &__card {
+        display: flex;
+        width: 100%;
+        max-width: 112rem;
+        overflow: hidden;
+        border-radius: 1.2rem;
+        background: var(--general-main-1);
+        box-shadow: 0 1.2rem 3.6rem rgba(0, 0, 0, 0.18);
+    }
+
+    // Left side: the car photo with the welcome text over it.
+    &__visual {
+        position: relative;
+        display: flex;
+        flex: 0 0 46%;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 46rem;
+        padding: 3.2rem;
+        background:
+            linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.25) 55%, rgba(0, 0, 0, 0.55) 100%),
+            url('../main/tab-background.jpg') center 62% / cover no-repeat;
+    }
+
+    &__welcome,
+    &__brand {
+        margin: 0;
+        font-size: 4.4rem;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: 0.02em;
+    }
+
+    &__welcome {
+        color: #fff;
+    }
+
+    &__brand {
+        color: $quickguide-red;
+    }
+
+    &__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 1.2rem;
+        align-self: flex-start;
+        padding: 1rem 1.6rem;
+        border: 0.1rem solid rgba(255, 255, 255, 0.3);
+        border-radius: 1rem;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(0.4rem);
+    }
+
+    &__tag-text {
+        color: #fff;
+        font-size: 2.4rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+    }
+
+    &__arrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.6rem;
+        height: 3.6rem;
+        border-radius: 50%;
+        background: #19d65c;
+        color: #0b2a14;
+        box-shadow: 0 0 1.4rem rgba(25, 214, 92, 0.7);
+    }
+
+    // Right side: the guide text.
+    &__content {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3.2rem 4rem;
+        text-align: center;
+    }
+
+    &__badge {
+        padding: 0.9rem 2rem;
+        border-radius: 99rem;
+        background: $quickguide-green;
+        color: #fff;
+        font-size: 1.4rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+    }
+
+    &__title {
+        margin: 2.4rem 0 1.6rem;
+        color: var(--text-prominent);
+        font-size: 3.6rem;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    &__text {
+        max-width: 48rem;
+        margin: 0 0 3.2rem;
+        color: var(--text-general);
+        font-size: 1.8rem;
+        line-height: 1.6;
+    }
+
+    // Both buttons sit together in the middle. Each one gets its link in QUICKGUIDE_LINKS.
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 1.6rem;
+    }
+
+    &__btn {
+        min-width: 17rem;
+        padding: 1.6rem 3rem;
+        border: 0.1rem solid transparent;
+        border-radius: 1rem;
+        font-size: 1.6rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+        &:hover {
+            transform: translateY(-0.2rem);
+        }
+
+        &--primary {
+            background: linear-gradient(180deg, #e9363a, #b81d22);
+            color: #fff;
+            box-shadow: 0 0.8rem 1.8rem rgba(236, 63, 63, 0.35);
+        }
+
+        &--secondary {
+            border-color: var(--border-normal);
+            background: var(--general-section-1);
+            color: var(--text-prominent);
+        }
+    }
+
+    // Phones and small tablets: photo on top, text underneath.
+    @media (max-width: 768px) {
+        padding: 1.6rem 1.2rem;
+
+        &__card {
+            flex-direction: column;
+        }
+
+        &__visual {
+            flex: 0 0 auto;
+            min-height: 30rem;
+            padding: 2.4rem;
+        }
+
+        &__welcome,
+        &__brand {
+            font-size: 3.2rem;
+        }
+
+        &__tag-text {
+            font-size: 1.8rem;
+        }
+
+        &__content {
+            padding: 2.4rem 1.6rem 3rem;
+        }
+
+        &__title {
+            font-size: 2.6rem;
+        }
+
+        &__text {
+            font-size: 1.6rem;
+        }
+
+        &__btn {
+            width: 100%;
+        }
+    }
+}
