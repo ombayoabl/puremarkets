@@ -6,12 +6,17 @@ $candle-down: #ff8f8f; // light red
 
 .quickguide {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 50rem;
+    // The page can scroll on its own, so on a small screen every word can be reached
+    // even when the card is taller than the space under the header.
+    min-height: min(50rem, calc(100dvh - 14rem));
+    max-height: calc(100dvh - 14rem);
     padding: 2.4rem 1.6rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 
     &__card {
+        margin: auto; // keeps the card centred, and lets it scroll from the top when it is taller than the space
         display: flex;
         width: 100%;
         max-width: 112rem;
@@ -166,6 +171,14 @@ $candle-down: #ff8f8f; // light red
         letter-spacing: 0.12em;
     }
 
+    &__title,
+    &__text,
+    &__tag-text,
+    &__welcome,
+    &__brand {
+        overflow-wrap: anywhere;
+    }
+
     &__title {
         margin: 2.4rem 0 1.6rem;
         color: var(--text-prominent);
@@ -229,8 +242,14 @@ $candle-down: #ff8f8f; // light red
 
         &__visual {
             flex: 0 0 auto;
-            min-height: 30rem;
-            padding: 2.4rem;
+            min-height: 26rem;
+            gap: 1.6rem;
+            padding: 2rem;
+        }
+
+        &__tag {
+            max-width: 100%;
+            padding: 0.8rem 1.2rem;
         }
 
         &__welcome,
@@ -256,6 +275,28 @@ $candle-down: #ff8f8f; // light red
 
         &__btn {
             width: 100%;
+        }
+    }
+
+    // Very narrow phones: slightly smaller type so nothing is squeezed out.
+    @media (max-width: 380px) {
+        &__welcome,
+        &__brand {
+            font-size: 2.8rem;
+        }
+
+        &__tag-text {
+            font-size: 1.5rem;
+        }
+
+        &__arrow {
+            flex: 0 0 auto;
+            width: 3rem;
+            height: 3rem;
+        }
+
+        &__title {
+            font-size: 2.3rem;
         }
     }
 }
