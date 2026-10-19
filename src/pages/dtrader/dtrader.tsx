@@ -316,115 +316,117 @@ const DTrader = observer(() => {
 
     return (
         <div className='dtrader'>
-            <div className='dtrader__top'>
-                <select className='dtrader__select' value={symbol} onChange={e => setSymbol(e.target.value)}>
-                    {MARKETS.map(m => (
-                        <option key={m.symbol} value={m.symbol}>
-                            {m.name}
-                        </option>
-                    ))}
-                </select>
-                <div className='dtrader__price'>
-                    <span className='dtrader__price-value'>{last?.quote ?? '—'}</span>
-                    <span className='dtrader__feed'>{feed_status}</span>
-                </div>
-            </div>
-
-            <div className='dtrader__types'>
-                {TYPES.map(t => (
-                    <button
-                        key={t.key}
-                        type='button'
-                        className={classNames('dtrader__type', { 'dtrader__type--active': t.key === type_key })}
-                        onClick={() => setTypeKey(t.key)}
-                    >
-                        {localize(t.label)}
-                    </button>
-                ))}
-            </div>
-
-            <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
-                {DIGITS.map(d => {
-                    const is_hi = has_data && pct[d] === hi;
-                    const is_lo = has_data && pct[d] === lo;
-                    const picks = type.barrier;
-                    return (
-                        <button
-                            key={d}
-                            type='button'
-                            disabled={!picks}
-                            onClick={() => {
-                                const lo_ok = Math.max(type.a.range[0], type.b.range[0]);
-                                const hi_ok = Math.min(type.a.range[1], type.b.range[1]);
-                                if (d >= lo_ok && d <= hi_ok) setBarrier(d);
-                            }}
-                            className={classNames('dtrader__circle', {
-                                'dtrader__circle--high': is_hi,
-                                'dtrader__circle--low': is_lo && !is_hi,
-                                'dtrader__circle--picked': picks && barrier === d,
-                            })}
-                        >
-                            <span className='dtrader__pointer' aria-hidden='true'>
-                                {last?.digit === d ? '▼' : ''}
-                            </span>
-                            <span className='dtrader__digit'>{d}</span>
-                            <span className='dtrader__pct'>{has_data ? `${pct[d].toFixed(1)}%` : '—'}</span>
-                        </button>
-                    );
-                })}
-            </div>
-            <p className='dtrader__hint'>
-                {type.barrier
-                    ? localize(
-                          'Tap a circle to choose your digit. Green = most often, red = least often. ▼ = last digit.'
-                      )
-                    : localize('Green = most often, red = least often. ▼ = last digit.')}
-            </p>
-
-            <div className='dtrader__form'>
-                <label className='dtrader__field'>
-                    <span>
-                        {localize('Stake')} ({currency})
-                    </span>
-                    <input
-                        type='number'
-                        inputMode='decimal'
-                        min='0.35'
-                        step='0.01'
-                        value={stake}
-                        onChange={e => setStake(e.target.value)}
-                    />
-                </label>
-                <label className='dtrader__field'>
-                    <span>{localize('Ticks')}</span>
-                    <input
-                        type='number'
-                        inputMode='numeric'
-                        min={min_ticks}
-                        max='10'
-                        step='1'
-                        value={duration}
-                        onChange={e => setDuration(e.target.value)}
-                        onBlur={() => setDuration(duration_n)}
-                    />
-                </label>
-                <label className='dtrader__field'>
-                    <span>{localize('Analyse last')}</span>
-                    <select value={ticks_count} onChange={e => setTicksCount(Number(e.target.value))}>
-                        {[100, 250, 500, 1000, 2000, 5000].map(n => (
-                            <option key={n} value={n}>
-                                {n} {localize('ticks')}
+            <div className='dtrader__main'>
+                <div className='dtrader__top'>
+                    <select className='dtrader__select' value={symbol} onChange={e => setSymbol(e.target.value)}>
+                        {MARKETS.map(m => (
+                            <option key={m.symbol} value={m.symbol}>
+                                {m.name}
                             </option>
                         ))}
                     </select>
-                </label>
-            </div>
+                    <div className='dtrader__price'>
+                        <span className='dtrader__price-value'>{last?.quote ?? '—'}</span>
+                        <span className='dtrader__feed'>{feed_status}</span>
+                    </div>
+                </div>
 
-            <div className='dtrader__buys'>
-                {renderBuy(type.a, quotes.a, 'a')}
-                {renderBuy(type.b, quotes.b, 'b')}
+                <div className='dtrader__types'>
+                    {TYPES.map(t => (
+                        <button
+                            key={t.key}
+                            type='button'
+                            className={classNames('dtrader__type', { 'dtrader__type--active': t.key === type_key })}
+                            onClick={() => setTypeKey(t.key)}
+                        >
+                            {localize(t.label)}
+                        </button>
+                    ))}
+                </div>
+
+                <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
+                    {DIGITS.map(d => {
+                        const is_hi = has_data && pct[d] === hi;
+                        const is_lo = has_data && pct[d] === lo;
+                        const picks = type.barrier;
+                        return (
+                            <button
+                                key={d}
+                                type='button'
+                                disabled={!picks}
+                                onClick={() => {
+                                    const lo_ok = Math.max(type.a.range[0], type.b.range[0]);
+                                    const hi_ok = Math.min(type.a.range[1], type.b.range[1]);
+                                    if (d >= lo_ok && d <= hi_ok) setBarrier(d);
+                                }}
+                                className={classNames('dtrader__circle', {
+                                    'dtrader__circle--high': is_hi,
+                                    'dtrader__circle--low': is_lo && !is_hi,
+                                    'dtrader__circle--picked': picks && barrier === d,
+                                })}
+                            >
+                                <span className='dtrader__pointer' aria-hidden='true'>
+                                    {last?.digit === d ? '▼' : ''}
+                                </span>
+                                <span className='dtrader__digit'>{d}</span>
+                                <span className='dtrader__pct'>{has_data ? `${pct[d].toFixed(1)}%` : '—'}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+                <p className='dtrader__hint'>
+                    {type.barrier
+                        ? localize(
+                              'Tap a circle to choose your digit. Green = most often, red = least often. ▼ = last digit.'
+                          )
+                        : localize('Green = most often, red = least often. ▼ = last digit.')}
+                </p>
+
+                <div className='dtrader__form'>
+                    <label className='dtrader__field'>
+                        <span>
+                            {localize('Stake')} ({currency})
+                        </span>
+                        <input
+                            type='number'
+                            inputMode='decimal'
+                            min='0.35'
+                            step='0.01'
+                            value={stake}
+                            onChange={e => setStake(e.target.value)}
+                        />
+                    </label>
+                    <label className='dtrader__field'>
+                        <span>{localize('Ticks')}</span>
+                        <input
+                            type='number'
+                            inputMode='numeric'
+                            min={min_ticks}
+                            max='10'
+                            step='1'
+                            value={duration}
+                            onChange={e => setDuration(e.target.value)}
+                            onBlur={() => setDuration(duration_n)}
+                        />
+                    </label>
+                    <label className='dtrader__field'>
+                        <span>{localize('Analyse last')}</span>
+                        <select value={ticks_count} onChange={e => setTicksCount(Number(e.target.value))}>
+                            {[100, 250, 500, 1000, 2000, 5000].map(n => (
+                                <option key={n} value={n}>
+                                    {n} {localize('ticks')}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+
+                <div className='dtrader__buys'>
+                    {renderBuy(type.a, quotes.a, 'a')}
+                    {renderBuy(type.b, quotes.b, 'b')}
+                </div>
+                {(error || quotes.a?.error) && <p className='dtrader__error'>{error || quotes.a?.error}</p>}
             </div>
-            {(error || quotes.a?.error) && <p className='dtrader__error'>{error || quotes.a?.error}</p>}
 
             <div className='dtrader__trades'>
                 <div className='dtrader__trades-head'>

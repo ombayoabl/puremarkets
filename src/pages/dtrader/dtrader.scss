@@ -19,9 +19,23 @@ $blue: #3b82f6;
     color: var(--text-general);
     font-size: 1.4rem;
 
+    // Laptop: trading on the left, trades list on the right
+    @media (min-width: 1025px) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 34rem;
+        align-items: start;
+        gap: 2.4rem;
+    }
+
+    // Phone and tablet: one column, a little shorter page frame
     @media (max-width: 1024px) {
         height: calc(100vh - 15rem);
         height: calc(100dvh - 15rem);
+        padding: 1.2rem 1.2rem calc(6rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    &__main {
+        min-width: 0;
     }
 
     &__top {
@@ -105,11 +119,12 @@ $blue: #3b82f6;
     &__circles {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr));
-        gap: clamp(0.4rem, 1vw, 1.2rem);
+        gap: 2rem clamp(0.4rem, 0.8vw, 1rem);
+        margin-top: 2.4rem;
 
         @media (max-width: 640px) {
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 0.8rem 0.6rem;
+            gap: 2.2rem 0.6rem;
         }
     }
 
@@ -184,6 +199,10 @@ $blue: #3b82f6;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
         margin-bottom: 1.4rem;
+
+        @media (max-width: 420px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     &__field {
@@ -227,7 +246,7 @@ $blue: #3b82f6;
     }
 
     &__buy-name {
-        font-size: 1.8rem;
+        font-size: clamp(1.5rem, 4.2vw, 1.8rem);
         font-weight: 800;
     }
 
@@ -244,6 +263,11 @@ $blue: #3b82f6;
 
     &__trades {
         margin-top: 2rem;
+
+        @media (min-width: 1025px) {
+            margin-top: 0;
+        }
+
         border: 0.1rem solid var(--border-normal);
         border-radius: 1rem;
         background: var(--general-section-1);
