@@ -41,16 +41,15 @@ $candle-down: #ff8f8f; // light red
             url('../main/tab-background.jpg') center 62% / cover no-repeat;
     }
 
-    // Candlestick chart across the bottom of the photo.
+    // Candlestick chart across the photo: fills the space between the welcome text and the tag below it.
     &__candles {
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 38%;
+        flex: 1 1 0;
+        width: calc(100% + 6.4rem);
+        height: 0;
+        min-height: 14rem;
+        margin: 0 -3.2rem;
         box-sizing: border-box;
-        padding: 0 2rem 1.6rem;
+        padding: 0 2rem;
         opacity: 0.92;
         pointer-events: none;
     }
@@ -303,6 +302,12 @@ $candle-down: #ff8f8f; // light red
             min-height: 26rem;
             gap: 1.6rem;
             padding: 2rem;
+        }
+
+        &__candles {
+            width: calc(100% + 4rem);
+            min-height: 10rem;
+            margin: 0 -2rem;
         }
 
         &__tag {

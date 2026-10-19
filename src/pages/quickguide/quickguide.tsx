@@ -13,7 +13,7 @@ export const QUICKGUIDE_LINKS = {
 // Where the social buttons at the bottom go. Same rules as above: leave a link empty
 // until you have it (the button then does nothing), then paste the full https:// address.
 export const QUICKGUIDE_SOCIAL_LINKS = {
-    whatsapp: '',
+    whatsapp: 'https://wa.me/25405491022',
     facebook: '',
     tiktok: '',
     telegram: '',
@@ -145,6 +145,7 @@ const QuickGuide = () => (
                     <h1 className='quickguide__welcome'>{localize('WELCOME TO')}</h1>
                     <h1 className='quickguide__brand'>{localize('PUREMARKETS')}</h1>
                 </div>
+                <Candlesticks />
                 <div className='quickguide__tag'>
                     <span className='quickguide__tag-text'>{localize('TRADE STRATEGICALLY')}</span>
                     <span className='quickguide__arrow' aria-hidden='true'>
@@ -154,7 +155,6 @@ const QuickGuide = () => (
                         </svg>
                     </span>
                 </div>
-                <Candlesticks />
             </div>
             <div className='quickguide__content'>
                 <span className='quickguide__badge'>{localize('OFFICIAL GUIDE')}</span>
