@@ -40,6 +40,7 @@ export type TNavItem = {
 
 // Header navigation row, in display order. Items without a feature yet are 'soon'.
 export const NAV_ITEMS: TNavItem[] = [
+    { key: 'quickguide', label: 'Quickguide', type: 'soon' },
     { key: 'dashboard', label: 'Dashboard', type: 'tab', tab_index: DBOT_TABS.DASHBOARD },
     { key: 'bulk_trader', label: 'Bulk Trader', type: 'tab', tab_index: DBOT_TABS.BULK_TRADER },
     { key: 'market_insights', label: 'Market Insights', type: 'soon' },

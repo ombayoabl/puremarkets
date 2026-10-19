@@ -13,6 +13,14 @@ const GRAY = '#8a94a6';
 
 // Each icon is drawn with its own colours (a soft fill plus a solid outline).
 const ICONS: Record<string, React.ReactNode> = {
+    // open book
+    quickguide: (
+        <>
+            <path d='M12 6.5C10 4.8 7 4.2 3.5 4.5v13c3.5-.3 6.5.3 8.5 2z' fill={`${BLUE}33`} stroke={BLUE} />
+            <path d='M12 6.5c2-1.7 5-2.3 8.5-2v13c-3.5-.3-6.5.3-8.5 2z' fill={`${AMBER}33`} stroke={AMBER} />
+            <path d='M6 9h3M6 12h3M15 9h3M15 12h3' stroke={ORANGE} />
+        </>
+    ),
     dashboard: (
         <>
             <rect x='3' y='3' width='8' height='8' rx='2' fill={`${BLUE}33`} stroke={BLUE} />
