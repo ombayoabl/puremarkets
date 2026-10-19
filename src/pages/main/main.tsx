@@ -86,7 +86,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -134,7 +134,7 @@ const AppWrapper = observer(() => {
     let tab_value: number | string = active_tab;
     const GetHashedValue = (tab: number) => {
         tab_value = location.hash?.split('#')[1];
-        if (!tab_value) return is_preview_mode ? BOT_BUILDER : tab;
+        if (!tab_value) return is_preview_mode ? BOT_BUILDER : DBOT_TABS.QUICKGUIDE;
         return Number(hash.indexOf(String(tab_value)));
     };
     const active_hash_tab = GetHashedValue(active_tab);
@@ -480,13 +480,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
-                                {coming_soon_item?.key === 'quickguide' ? (
-                                    <Suspense fallback={<ChunkLoader message={localize('Loading Quickguide...')} />}>
-                                        <QuickGuide />
-                                    </Suspense>
-                                ) : (
-                                    <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
-                                )}
+                                <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
                             </div>
                             <div label='Bulk Trader' id='id-bulk-trader'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Bulk Trader...')} />}>
@@ -511,6 +505,11 @@ const AppWrapper = observer(() => {
                             <div label='Under Eight' id='id-under-eight'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Under Eight...')} />}>
                                     <UnderEight />
+                                </Suspense>
+                            </div>
+                            <div label='Quickguide' id='id-quickguide'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Quickguide...')} />}>
+                                    <QuickGuide />
                                 </Suspense>
                             </div>
                         </Tabs>
