@@ -467,6 +467,12 @@ const BulkTrader = observer(() => {
         );
         const cid = res.buy.contract_id;
         own.current.add(cid);
+        // Follow the contract live right away (the reply is its first update), so it shows up in the
+        // log and settles the moment it is sold instead of waiting for the next poll round.
+        api_base.api
+            .send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 })
+            .then((r: any) => onContract(r?.proposal_open_contract))
+            .catch(() => {});
         trackContract(cid);
         return cid;
     };
@@ -541,7 +547,7 @@ const BulkTrader = observer(() => {
                     if (known.length) in_recovery = known.reduce((a, b) => a + b, 0) < 0;
                 }
             } else {
-                setBusy(true);
+                // Manual: never lock the buttons, so the next press goes out immediately
                 const { first_error } = await fireBatch();
                 if (first_error) setMessage({ type: 'error', text: errMsg(first_error) });
             }
