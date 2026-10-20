@@ -448,6 +448,24 @@
         &:hover, &.active { background: #e6e9ea; }
     }
 
+    /* ---------- laptops / desktops: fill the whole frame like the other tabs ---------- */
+    @media (min-width: 1025px) {
+        width: 100%;
+        height: calc(100vh - 19rem);
+        height: calc(100dvh - 19rem);
+        min-height: 30rem;
+        overflow-x: hidden;
+        overflow-y: auto; // the frame is a fixed height, so the trader scrolls inside it
+        align-items: stretch;
+        .dtrader__center { display: flex; flex-direction: column; min-height: 46rem; }
+        .dtrader__plot { flex: 1 1 auto; min-height: 36rem; }
+        .dtrader__chart--smart { height: 100%; min-height: 36rem; }
+        .dtrader__foot { flex: 0 0 auto; }
+    }
+    @media (min-width: 1101px) {
+        .dtrader__positions { max-height: none; min-height: 0; }
+    }
+
     /* ---------- phones / small screens ---------- */
     @media (max-width: 1100px) {
         grid-template-columns: minmax(0, 1fr) 260px;
