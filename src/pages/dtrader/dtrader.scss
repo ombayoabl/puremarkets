@@ -1,343 +1,897 @@
-// Manual trading page (DTrader/Circles)
+// DTrader (Deriv DTrader look)
 $green: #0f9d6e;
-$red: #ec3f3f;
+$red: #e5484d;
+$teal: #4bb4b3;
+$teal-dark: #3a9b9a;
 $blue: #3b82f6;
+$card: var(--general-section-1, #f2f3f4);
+$bg: var(--general-main-1, #ffffff);
+$line: var(--border-normal, #e6e9e9);
+$text: var(--text-general, #333);
+$strong: var(--text-prominent, #0e0e0e);
+$muted: var(--text-less-prominent, #6e7377);
 
 .dtrader {
+    position: relative;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    max-width: 112rem;
     margin: 0 auto;
-    padding: 1.6rem 1.6rem calc(6rem + env(safe-area-inset-bottom, 0px));
+    padding: 1.2rem 1.2rem calc(6rem + env(safe-area-inset-bottom, 0px));
     height: calc(100vh - 19rem);
     height: calc(100dvh - 19rem);
-    min-height: 30rem;
+    min-height: 40rem;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    color: var(--text-general);
-    font-size: 1.4rem;
+    color: $text;
+    font-size: 1.3rem;
+    display: grid;
+    gap: 1.2rem;
+    align-items: stretch;
+    grid-template-columns: 26rem minmax(0, 1fr) 27rem;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+    padding-bottom: 1.2rem;
 
-    // Laptop: trading on the left, trades list on the right
-    @media (min-width: 1025px) {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 34rem;
-        align-items: start;
-        gap: 2.4rem;
-    }
-
-    // Phone and tablet: one column, a little shorter page frame
-    @media (max-width: 1024px) {
-        height: calc(100vh - 15rem);
-        height: calc(100dvh - 15rem);
-        padding: 1.2rem 1.2rem calc(6rem + env(safe-area-inset-bottom, 0px));
-    }
-
-    &__main {
-        min-width: 0;
-    }
-
-    &__top {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 1.2rem;
-    }
-
-    &__select,
-    &__field input,
-    &__field select {
-        box-sizing: border-box;
-        width: 100%;
-        padding: 1rem 1.2rem;
-        border: 0.1rem solid var(--border-normal);
-        border-radius: 0.8rem;
-        background: var(--general-section-1);
-        color: var(--text-prominent);
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    &__select {
-        flex: 1 1 24rem;
-        max-width: 38rem;
-    }
-
-    &__price {
+    @media (max-width: 1100px) {
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: calc(100dvh - 15rem);
+        padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     }
 
-    &__price-value {
-        color: var(--text-prominent);
-        font-size: 2.4rem;
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-    }
-
-    &__feed {
-        font-size: 1.2rem;
-        opacity: 0.8;
-    }
-
-    &__types {
-        display: flex;
-        gap: 0.6rem;
-        margin-bottom: 1.4rem;
-        overflow-x: auto;
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar {
-            display: none;
-        }
-    }
-
-    &__type {
-        flex: 1 0 auto;
-        padding: 0.9rem 1.4rem;
-        border: 0.1rem solid var(--border-normal);
-        border-radius: 99rem;
-        background: var(--general-section-1);
-        color: var(--text-general);
-        font-size: 1.3rem;
-        font-weight: 700;
-        white-space: nowrap;
+    button {
+        font-family: inherit;
         cursor: pointer;
-
-        &--active {
-            border-color: $blue;
-            background: $blue;
-            color: #fff;
-        }
     }
 
-    // The ten last-digit circles
-    &__circles {
-        display: grid;
-        grid-template-columns: repeat(10, minmax(0, 1fr));
-        gap: 2rem clamp(0.4rem, 0.8vw, 1rem);
-        margin-top: 2.4rem;
+    // ---------- open positions ----------
+    &__positions {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: $card;
+        border-radius: 0.8rem;
+        padding: 1.2rem;
+        overflow: hidden;
 
-        @media (max-width: 640px) {
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 2.2rem 0.6rem;
+        @media (max-width: 1100px) {
+            order: 3;
+            min-height: 12rem;
+        }
+        &--closed {
+            align-self: flex-start;
+            min-height: 0;
         }
     }
-
-    &__circle {
-        position: relative;
+    &__positions-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: $strong;
+        font-size: 1.3rem;
+        button {
+            border: 0;
+            background: transparent;
+            font-size: 2rem;
+            line-height: 1;
+            color: $strong;
+        }
+    }
+    &__positions-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        margin-top: 0.8rem;
+    }
+    &__empty {
+        height: 100%;
+        min-height: 16rem;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        aspect-ratio: 1;
+        color: $muted;
+        text-align: center;
+        p {
+            margin: 0.8rem 0 0;
+        }
+    }
+    &__total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.4rem 0 0.8rem;
+        button {
+            border: 0;
+            background: transparent;
+            color: $blue;
+            font-size: 1.2rem;
+        }
+    }
+    &__pos {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.6rem;
+        background: $bg;
+        border-radius: 0.6rem;
+        border-left: 0.3rem solid $teal;
+        &--won {
+            border-left-color: $green;
+            opacity: 0.85;
+        }
+        &--lost {
+            border-left-color: $red;
+            opacity: 0.85;
+        }
+    }
+    &__pos-main,
+    &__pos-side {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
         min-width: 0;
-        padding: 0;
-        border: 0.2rem solid var(--border-normal);
-        border-radius: 50%;
-        background: var(--general-section-1);
-        color: var(--text-prominent);
-        cursor: pointer;
-        transition: transform 0.12s ease;
+        small {
+            color: $muted;
+            font-size: 1.1rem;
+        }
+    }
+    &__pos-side {
+        align-items: flex-end;
+        button {
+            border: 0.1rem solid $red;
+            color: $red;
+            background: transparent;
+            border-radius: 0.4rem;
+            padding: 0.2rem 0.8rem;
+            font-size: 1.1rem;
+        }
+    }
+    &__win {
+        color: $green;
+        font-style: normal;
+    }
+    &__loss {
+        color: $red;
+        font-style: normal;
+    }
 
+    // ---------- chart stage ----------
+    &__stage {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        background: $bg;
+        border-radius: 0.8rem;
+        overflow: hidden;
+
+        @media (max-width: 1100px) {
+            order: 1;
+            height: 52rem;
+            height: min(58dvh, 52rem);
+            flex: none;
+        }
+    }
+    &__symbol {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        z-index: 5;
+    }
+    &__symbol-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.6rem 1rem;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.6rem;
+        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.08);
+        color: $strong;
+        text-align: left;
+    }
+    &__symbol-text {
+        display: flex;
+        flex-direction: column;
+        strong {
+            font-size: 1.4rem;
+        }
+        small {
+            color: $muted;
+            font-size: 1.1rem;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+    &__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 3rem;
+        height: 2.2rem;
+        padding: 0 0.4rem;
+        border-radius: 0.4rem;
+        background: #111;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+    &__symbol-menu {
+        position: absolute;
+        top: calc(100% + 0.4rem);
+        left: 0;
+        min-width: 28rem;
+        max-height: 36rem;
+        overflow-y: auto;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.6rem;
+        box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.15);
+        button {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            border: 0;
+            background: transparent;
+            color: $strong;
+            font-size: 1.3rem;
+            text-align: left;
+            &:hover,
+            &.dtrader__symbol-on {
+                background: $card;
+            }
+        }
+    }
+    &__toolbar {
+        position: absolute;
+        top: 8.2rem;
+        left: 1rem;
+        z-index: 4;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.4rem;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.6rem;
+        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.06);
+        button {
+            display: flex;
+            padding: 0.7rem;
+            border: 0;
+            border-radius: 0.4rem;
+            background: transparent;
+            color: $muted;
+            &.on,
+            &:hover {
+                color: $strong;
+                background: $card;
+            }
+        }
+    }
+    &__chart {
+        position: absolute;
+        inset: 0;
+    }
+    &__chart-empty {
+        display: flex;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        color: $muted;
+    }
+    &__svg {
+        display: block;
+        font-family: inherit;
+        touch-action: pan-y;
+    }
+    &__grid {
+        stroke: $line;
+        stroke-width: 1;
+    }
+    &__axis-text {
+        font-size: 10.5px;
+        fill: $muted;
+    }
+    &__line {
+        fill: none;
+        stroke: #2b2b2b;
+        stroke-width: 1.4;
+        stroke-linejoin: round;
+    }
+    &__last-line {
+        stroke: #222;
+        stroke-width: 1;
+        stroke-dasharray: 2 3;
+    }
+    &__dot {
+        fill: #111;
+        stroke: #fff;
+        stroke-width: 1.5;
+    }
+    &__cross {
+        stroke: #999;
+        stroke-width: 1;
+    }
+    &__tag {
+        fill: #111;
+        &--blue {
+            fill: #fff;
+            stroke: $blue;
+        }
+        &--red {
+            fill: #fff;
+            stroke: $red;
+        }
+    }
+    &__tag-text {
+        font-size: 11px;
+        font-weight: 700;
+        fill: #fff;
+    }
+    &__tag--blue + &__tag-text,
+    &__tag--red + &__tag-text {
+        fill: $blue;
+    }
+    &__level {
+        stroke-width: 1;
+        stroke-dasharray: 2 3;
+        &--blue {
+            stroke: $blue;
+        }
+        &--red {
+            stroke: $red;
+        }
+    }
+    &__level-title {
+        font-size: 11px;
+        font-weight: 700;
+        &--red {
+            fill: $red;
+        }
+        &--blue {
+            fill: $blue;
+        }
+    }
+    &__box {
+        fill: rgba(59, 130, 246, 0.12);
+    }
+    &__box-line {
+        stroke: $blue;
+        stroke-width: 1.2;
+    }
+    &__box-text {
+        font-size: 11px;
+        fill: $blue;
+    }
+    &__tip {
+        position: absolute;
+        z-index: 3;
+        pointer-events: none;
+        padding: 0.6rem 1rem;
+        background: rgba(30, 30, 30, 0.82);
+        color: #fff;
+        border-radius: 0.4rem;
+        font-size: 1.1rem;
+        line-height: 1.5;
+        span {
+            opacity: 0.8;
+        }
+    }
+    &__zoom {
+        position: absolute;
+        left: 1rem;
+        bottom: 9rem;
+        z-index: 4;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.3rem;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.6rem;
+        button {
+            width: 3rem;
+            height: 3rem;
+            border: 0;
+            border-radius: 0.4rem;
+            background: transparent;
+            color: $strong;
+            font-size: 1.8rem;
+            line-height: 1;
+            &:hover {
+                background: $card;
+            }
+        }
+    }
+
+    // ---------- last digit circles ----------
+    &__circles {
+        position: absolute;
+        left: 50%;
+        bottom: 1rem;
+        transform: translateX(-50%);
+        z-index: 3;
+        display: flex;
+        gap: 0.6rem;
+        max-width: calc(100% - 9rem);
+        padding: 0.4rem 0.2rem 0.2rem;
+    }
+    &__circle-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+    }
+    &__circle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 4.4rem;
+        height: 4.4rem;
+        padding: 0;
+        border-radius: 50%;
+        border: 0.3rem solid #d6d9da;
+        background: $bg;
+        color: $strong;
+        line-height: 1.05;
+        b {
+            font-size: 1.3rem;
+        }
+        small {
+            font-size: 0.8rem;
+            color: $muted;
+        }
         &:disabled {
             cursor: default;
-            opacity: 1;
         }
-
-        &:not(:disabled):hover {
-            transform: scale(1.05);
-        }
-
         &--high {
-            border-color: $green;
-            background: color-mix(in srgb, $green 22%, var(--general-section-1));
+            border-color: $teal;
         }
-
         &--low {
             border-color: $red;
-            background: color-mix(in srgb, $red 22%, var(--general-section-1));
         }
-
         &--picked {
-            box-shadow: 0 0 0 0.3rem $blue;
+            background: $card;
+            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.28);
+        }
+        &--last {
+            transform: scale(1.1);
+        }
+        @media (max-width: 700px) {
+            width: 3.2rem;
+            height: 3.2rem;
+            border-width: 0.25rem;
+            b {
+                font-size: 1.1rem;
+            }
+            small {
+                font-size: 0.65rem;
+            }
         }
     }
-
+    &__circles {
+        @media (max-width: 700px) {
+            gap: 0.3rem;
+            max-width: calc(100% - 5rem);
+            left: calc(50% + 2rem);
+        }
+    }
     &__pointer {
-        position: absolute;
-        top: -1.7rem;
-        color: $blue;
-        font-size: 1.3rem;
+        height: 1rem;
+        font-size: 1rem;
         line-height: 1;
+        color: #ff6b3d;
     }
 
-    &__digit {
-        font-size: clamp(1.6rem, 2.6vw, 2.6rem);
-        font-weight: 800;
-        line-height: 1.1;
-    }
-
-    &__pct {
-        font-size: clamp(0.9rem, 1.1vw, 1.2rem);
-        font-weight: 700;
-        opacity: 0.85;
-    }
-
-    &__hint {
-        margin: 1.6rem 0 1.4rem;
-        font-size: 1.2rem;
-        opacity: 0.8;
-    }
-
-    &__form {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.4rem;
-
-        @media (max-width: 420px) {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+    // ---------- right panel ----------
+    &__panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        background: $card;
+        border-radius: 0.8rem;
+        padding: 1rem 1.2rem;
+        overflow: hidden;
+        @media (max-width: 1100px) {
+            order: 2;
+            flex: none;
         }
     }
-
-    &__field {
+    &__learn {
+        font-size: 1.1rem;
+        color: $muted;
+        text-decoration: underline dotted;
+        margin-bottom: 0.4rem;
+    }
+    &__typebtn {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.8rem;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.6rem;
+        color: $strong;
+        font-size: 1.3rem;
+        strong {
+            margin-left: 0.2rem;
+        }
+    }
+    &__panel-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        padding-bottom: 0.4rem;
+    }
+    &__card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        padding: 0.8rem;
+        background: $bg;
+        border-radius: 0.6rem;
+        &--flat {
+            gap: 0.6rem;
+        }
+    }
+    &__card-title {
+        text-align: center;
+        color: $strong;
+        font-size: 1.3rem;
+    }
+    &__muted {
+        color: $muted;
+        font-size: 1.05rem;
+    }
+    &__seg {
+        display: flex;
+        background: $card;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        button {
+            flex: 1;
+            padding: 0.9rem 0.4rem;
+            border: 0;
+            background: transparent;
+            color: $muted;
+            font-size: 1.3rem;
+        }
+        .dtrader__seg--on {
+            background: #e0e3e4;
+            color: $strong;
+            font-weight: 800;
+        }
+    }
+    &__stepper {
+        display: flex;
+        align-items: center;
+        border: 0.1rem solid $line;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        button {
+            width: 3.6rem;
+            align-self: stretch;
+            border: 0;
+            background: transparent;
+            color: $strong;
+            font-size: 1.8rem;
+        }
+        input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            text-align: center;
+            color: $strong;
+            font-size: 1.4rem;
+            padding: 0.9rem 0;
+            -moz-appearance: textfield;
+            &::-webkit-outer-spin-button,
+            &::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        }
+    }
+    &__select-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        border: 0.1rem solid $line;
+        border-radius: 0.5rem;
+        padding: 0 0.8rem;
+        color: $muted;
+        select {
+            flex: 1;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            text-align: center;
+            text-align-last: center;
+            color: $strong;
+            font-size: 1.4rem;
+            padding: 0.9rem 0;
+            margin-right: 1.4rem;
+        }
+    }
+    &__time {
+        padding: 0.9rem;
+        border: 0.1rem solid $line;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: $strong;
+        font-size: 1.4rem;
+    }
+    &__rates {
+        display: flex;
+        background: $card;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        button {
+            flex: 1;
+            padding: 0.9rem 0;
+            border: 0;
+            background: transparent;
+            color: $text;
+            font-size: 1.3rem;
+        }
+        .dtrader__rate-on {
+            background: #e0e3e4;
+            color: $strong;
+            font-weight: 800;
+        }
+    }
+    &__check {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        color: $strong;
+        cursor: pointer;
+        &--off {
+            opacity: 0.5;
+            cursor: default;
+        }
+        input {
+            width: 1.6rem;
+            height: 1.6rem;
+        }
+    }
+    &__facts {
         display: flex;
         flex-direction: column;
         gap: 0.4rem;
-        min-width: 0;
-        font-size: 1.2rem;
-        font-weight: 700;
+        padding: 0.8rem;
+        background: $bg;
+        border-radius: 0.6rem;
+        div {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        span {
+            color: $strong;
+            font-weight: 700;
+        }
+        strong {
+            color: $muted;
+            font-weight: 500;
+            text-decoration: underline dotted;
+        }
     }
-
-    &__buys {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    &__payout {
+        display: flex;
+        justify-content: space-between;
         gap: 1rem;
+        color: $muted;
+        font-size: 1.2rem;
+        strong {
+            color: $strong;
+            font-variant-numeric: tabular-nums;
+        }
     }
-
+    &__digits-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.4rem;
+        button {
+            padding: 0.8rem 0;
+            border: 0;
+            border-radius: 0.4rem;
+            background: $card;
+            color: $strong;
+            font-size: 1.3rem;
+            &:disabled {
+                opacity: 0.35;
+                cursor: default;
+            }
+        }
+        .dtrader__digit-on {
+            background: #cfd3d4;
+            font-weight: 800;
+        }
+    }
+    &__range {
+        width: 100%;
+        accent-color: $strong;
+    }
+    &__range-label {
+        text-align: center;
+        font-weight: 700;
+        color: $strong;
+    }
+    &__buys {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-top: 0.2rem;
+    }
     &__buy {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.2rem;
-        padding: 1.4rem 1rem;
-        border: 0;
-        border-radius: 1rem;
-        color: #fff;
-        cursor: pointer;
-
-        &--a {
-            background: $green;
-        }
-
-        &--b {
-            background: $red;
-        }
-
-        &:disabled {
-            cursor: not-allowed;
-            opacity: 0.55;
-        }
-    }
-
-    &__buy-name {
-        font-size: clamp(1.5rem, 4.2vw, 1.8rem);
-        font-weight: 800;
-    }
-
-    &__buy-payout {
-        font-size: 1.2rem;
-        opacity: 0.95;
-    }
-
-    &__error {
-        margin: 1rem 0 0;
-        color: $red;
-        font-weight: 700;
-    }
-
-    &__trades {
-        margin-top: 2rem;
-
-        @media (min-width: 1025px) {
-            margin-top: 0;
-        }
-
-        border: 0.1rem solid var(--border-normal);
-        border-radius: 1rem;
-        background: var(--general-section-1);
-    }
-
-    &__trades-head {
-        display: flex;
-        justify-content: space-between;
-        padding: 1rem 1.4rem;
-        border-bottom: 0.1rem solid var(--border-normal);
-        color: var(--text-prominent);
-        font-weight: 800;
-    }
-
-    &__empty {
-        margin: 0;
-        padding: 1.4rem;
-        opacity: 0.8;
-    }
-
-    &__trade {
-        display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        padding: 1rem 1.4rem;
-        border-left: 0.4rem solid transparent;
-
-        & + & {
-            border-top: 0.1rem solid var(--border-normal);
-        }
-
-        &--won {
-            border-left-color: $green;
-        }
-
-        &--lost {
-            border-left-color: $red;
-        }
-
-        &--open {
-            border-left-color: $blue;
-        }
-    }
-
-    &__trade-main {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-
-        small {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            opacity: 0.75;
-        }
-    }
-
-    &__trade-result {
+        padding: 1.4rem 1.4rem;
+        border: 0;
+        border-radius: 0.5rem;
+        color: #fff;
+        font-size: 1.4rem;
         font-weight: 800;
-        white-space: nowrap;
+        &--a {
+            background: linear-gradient(100deg, $teal 60%, $teal-dark 60%);
+        }
+        &--b {
+            background: linear-gradient(100deg, #ee4b50 60%, #d63a3f 60%);
+        }
+        &:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
     }
-
-    &__trade--won &__trade-result,
-    &__win {
-        color: $green;
+    &__buy-name {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        svg {
+            filter: brightness(0) invert(1);
+        }
     }
-
-    &__trade--lost &__trade-result,
-    &__loss {
+    &__buy-amount {
+        font-variant-numeric: tabular-nums;
+    }
+    &__error {
+        margin: 0;
         color: $red;
+        font-size: 1.2rem;
+    }
+
+    // ---------- trade types popup ----------
+    &__backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: transparent;
+    }
+    &__menu {
+        position: absolute;
+        z-index: 41;
+        top: 4rem;
+        right: calc(27rem + 2.4rem);
+        width: 56rem;
+        max-width: calc(100% - 2.4rem);
+        height: min(48rem, calc(100% - 6rem));
+        display: flex;
+        background: $bg;
+        border: 0.1rem solid $line;
+        border-radius: 0.8rem;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        @media (max-width: 1100px) {
+            position: fixed;
+            top: 8rem;
+            right: 1.2rem;
+            left: 1.2rem;
+            width: auto;
+            max-width: none;
+            height: min(56rem, calc(100dvh - 12rem));
+        }
+    }
+    &__menu-side {
+        flex: none;
+        width: 16rem;
+        background: $card;
+        padding: 1.2rem 0;
+        h4 {
+            margin: 0 1.4rem 1rem;
+            color: $strong;
+            font-size: 1.5rem;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.4rem;
+            border: 0;
+            border-left: 0.3rem solid transparent;
+            background: transparent;
+            color: $text;
+            text-align: left;
+            font-size: 1.3rem;
+            &.on {
+                border-left-color: $red;
+                background: $bg;
+                color: $strong;
+                font-weight: 700;
+            }
+        }
+    }
+    &__menu-main {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        padding: 1.2rem;
+    }
+    &__search {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border: 0.1rem solid $line;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: $strong;
+        font-size: 1.3rem;
+    }
+    &__learn-more {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 1rem 0 0.4rem;
+        padding: 1rem 1.2rem;
+        background: $card;
+        border-radius: 0.5rem;
+        color: $text;
+        text-decoration: none;
+    }
+    &__group {
+        margin-top: 1.4rem;
+        h5 {
+            margin: 0 0 0.6rem;
+            color: $strong;
+            font-size: 1.3rem;
+        }
+    }
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.3rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: $strong;
+        font-size: 1.3rem;
+        span {
+            margin-left: 0.6rem;
+        }
+        &:hover,
+        &.on {
+            background: $card;
+        }
     }
 }
