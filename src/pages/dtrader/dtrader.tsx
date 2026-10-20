@@ -106,129 +106,6 @@ const absPrice = (v: any, spot: number) => {
     return /^[+-]/.test(s) ? spot + Number(s) : Number(s);
 };
 
-// ---------------- chart ----------------
-const PriceChart = ({ ticks, dp, lines, band, zoom }: any) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 900, h: 420 });
-    useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-        const measure = () => setSize({ w: el.clientWidth || 900, h: el.clientHeight || 420 });
-        measure();
-        const ro = new ResizeObserver(measure);
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-
-    const { w, h } = size;
-    const AX = 66;
-    const PT = 12;
-    const PB = 30;
-    const plotW = Math.max(100, w - AX);
-    const plotH = Math.max(80, h - PT - PB);
-    const view = ticks.slice(-zoom);
-    const n = view.length;
-
-    let body = null;
-    if (n > 1) {
-        const lastX = plotW * 0.8;
-        const stepX = lastX / (zoom - 1);
-        const xs = view.map((_: any, i: number) => lastX - (n - 1 - i) * stepX);
-        const vals = view.map((t: any) => t.quote);
-        (lines || []).forEach((l: any) => Number.isFinite(l.price) && vals.push(l.price));
-        if (band && Number.isFinite(band.hi) && Number.isFinite(band.lo)) vals.push(band.hi, band.lo);
-        let mn = Math.min(...vals);
-        let mx = Math.max(...vals);
-        if (mx === mn) {
-            mx += 1;
-            mn -= 1;
-        }
-        const pad = (mx - mn) * 0.08;
-        mn -= pad;
-        mx += pad;
-        const y = (v: number) => PT + ((mx - v) / (mx - mn)) * plotH;
-        const step = niceStep((mx - mn) / 6);
-        const grid: number[] = [];
-        for (let g = Math.ceil(mn / step) * step; g <= mx; g += step) grid.push(g);
-        const d = view.map((t: any, i: number) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(t.quote).toFixed(1)}`).join(' ');
-        const area = `${d} L${xs[n - 1].toFixed(1)},${PT + plotH} L${xs[0].toFixed(1)},${PT + plotH} Z`;
-        const last = view[n - 1];
-        const ly = y(last.quote);
-        const every = Math.max(1, Math.round(n / 8));
-        const xlabels: any[] = [];
-        for (let i = n - 1; i >= 0; i -= every) xlabels.push(i);
-
-        body = (
-            <>
-                <defs>
-                    <linearGradient id='dtr-fill' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='0%' stopColor='#000' stopOpacity='0.1' />
-                        <stop offset='100%' stopColor='#000' stopOpacity='0' />
-                    </linearGradient>
-                </defs>
-                {grid.map(g => (
-                    <g key={g}>
-                        <line x1={0} x2={plotW} y1={y(g)} y2={y(g)} className='dtr-grid' />
-                        <text x={plotW + 8} y={y(g) + 3} className='dtr-axis'>
-                            {g.toFixed(dp > 2 ? 2 : Math.max(2, dp))}
-                        </text>
-                    </g>
-                ))}
-                {xlabels.map(i => (
-                    <g key={i}>
-                        <line x1={xs[i]} x2={xs[i]} y1={PT} y2={PT + plotH} className='dtr-grid' />
-                        <text x={xs[i]} y={h - 10} textAnchor='middle' className='dtr-axis'>
-                            {hms(view[i].epoch)}
-                        </text>
-                    </g>
-                ))}
-                {band && Number.isFinite(band.hi) && Number.isFinite(band.lo) && (
-                    <g>
-                        <rect x={lastX} y={y(band.hi)} width={plotW - lastX} height={Math.abs(y(band.lo) - y(band.hi))} className='dtr-band' />
-                        <line x1={lastX} x2={plotW} y1={y(band.hi)} y2={y(band.hi)} className='dtr-band-line' />
-                        <line x1={lastX} x2={plotW} y1={y(band.lo)} y2={y(band.lo)} className='dtr-band-line' />
-                        <text x={plotW - 4} y={y(band.hi) - 4} textAnchor='end' className='dtr-band-text'>
-                            {band.hi_label}
-                        </text>
-                        <text x={plotW - 4} y={y(band.lo) + 12} textAnchor='end' className='dtr-band-text'>
-                            {band.lo_label}
-                        </text>
-                    </g>
-                )}
-                <path d={area} fill='url(#dtr-fill)' />
-                <path d={d} className='dtr-line' />
-                {(lines || []).map(
-                    (l: any, i: number) =>
-                        Number.isFinite(l.price) && (
-                            <g key={i}>
-                                <line x1={0} x2={plotW} y1={y(l.price)} y2={y(l.price)} className={`dtr-ref dtr-ref--${l.tone || 'blue'}`} />
-                                <rect x={plotW + 2} y={y(l.price) - 9} width={AX - 6} height={18} rx={2} className={`dtr-tag dtr-tag--${l.tone || 'blue'}`} />
-                                <text x={plotW + 2 + (AX - 6) / 2} y={y(l.price) + 4} textAnchor='middle' className='dtr-tag-text'>
-                                    {l.label}
-                                </text>
-                            </g>
-                        )
-                )}
-                <line x1={xs[n - 1]} x2={plotW} y1={ly} y2={ly} className='dtr-last-line' />
-                <circle cx={xs[n - 1]} cy={ly} r={4} className='dtr-dot' />
-                <rect x={plotW + 2} y={ly - 10} width={AX - 6} height={20} rx={3} className='dtr-price-tag' />
-                <text x={plotW + 2 + (AX - 6) / 2} y={ly + 4} textAnchor='middle' className='dtr-price-text'>
-                    {last.quote.toFixed(dp)}
-                </text>
-            </>
-        );
-    }
-
-    return (
-        <div className='dtrader__chart' ref={ref}>
-            <svg width={w} height={h} role='img' aria-label={localize('Price chart')}>
-                {body}
-            </svg>
-            {n < 2 && <div className='dtrader__chart-wait'>{localize('Loading chart…')}</div>}
-        </div>
-    );
-};
-
 const Stepper = ({ value, onChange, ctl, label }: any) => (
     <div className='dtrader__stepper'>
         <button type='button' onClick={ctl.dec} aria-label={`${label} -`}>
@@ -302,12 +179,11 @@ const DTrader = observer(() => {
     const [barrier_txt, setBarrierTxt] = useState('+0.00');
     const [digit, setDigit] = useState(5);
 
-    const [ticks, setTicks] = useState<{ epoch: number; quote: number }[]>([]);
+    const [last_tick, setLastTick] = useState<{ epoch: number; quote: number } | null>(null);
     const [dp, setDp] = useState(2);
     const [pct, setPct] = useState<number[]>(Array(10).fill(0));
     const [last_digit, setLastDigit] = useState<number | null>(null);
     const [feed_status, setFeedStatus] = useState(localize('Connecting…'));
-    const [zoom, setZoom] = useState(120);
     const [quotes, setQuotes] = useState<any[]>([]);
     const [trades, setTrades] = useState<any[]>([]);
     const [busy, setBusy] = useState(false);
@@ -325,10 +201,7 @@ const DTrader = observer(() => {
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
     const stake_n = Number(stake);
     const stake_ok = stake_n > 0;
-    const last_tick = ticks[ticks.length - 1];
-    const prev_tick = ticks[ticks.length - 2];
-    const change = last_tick && prev_tick ? last_tick.quote - prev_tick.quote : 0;
-    const spot = last_tick?.quote ?? 0;
+    const needs_digits = type.dur === 'ticks';
 
     // sensible defaults when the trade type changes
     useEffect(() => {
@@ -358,7 +231,7 @@ const DTrader = observer(() => {
     // multiplier list depends on the market
     useEffect(() => setMultI(0), [symbol]);
 
-    // ---- live ticks (chart + digit circles) ----
+    // ---- live ticks (digit circles + footer clock). The chart has its own feed. ----
     useEffect(() => {
         if (!api_base.api) {
             setFeedStatus(localize('Not connected. Please refresh the page.'));
@@ -367,17 +240,26 @@ const DTrader = observer(() => {
         let cancelled = false;
         let sub_id = '';
         let pip = market.dp;
-        let buf: { epoch: number; quote: number }[] = [];
-        setTicks([]);
+        const digits: number[] = [];
+        const counts: number[] = Array(10).fill(0);
+        setLastTick(null);
         setPct(Array(10).fill(0));
         setLastDigit(null);
         setDp(pip);
         setFeedStatus(localize('Loading ticks…'));
 
-        const publish = () => {
-            setTicks(buf.slice());
-            const digits = buf.map(t => toDigit(t.quote, pip));
-            setPct(percents(digits));
+        // incremental digit stats: O(1) per tick instead of re-scanning 1000 ticks
+        const addDigit = (q: number) => {
+            if (!needs_digits) return;
+            const d = toDigit(q, pip);
+            digits.push(d);
+            counts[d] += 1;
+            if (digits.length > HIST) counts[digits.shift() as number] -= 1;
+        };
+        const publishDigits = () => {
+            if (!needs_digits) return;
+            const total = digits.length || 1;
+            setPct(counts.map(n => (n / total) * 100));
             setLastDigit(digits.length ? digits[digits.length - 1] : null);
         };
 
@@ -387,13 +269,15 @@ const DTrader = observer(() => {
                 pip = Number(data.tick.pip_size);
                 setDp(pip);
             }
-            buf.push({ epoch: data.tick.epoch, quote: Number(data.tick.quote) });
-            if (buf.length > HIST) buf.shift();
-            publish();
+            const quote = Number(data.tick.quote);
+            addDigit(quote);
+            setLastTick({ epoch: data.tick.epoch, quote });
+            publishDigits();
         });
 
         const start = async () => {
-            const base = { ticks_history: symbol, adjust_start_time: 1, count: HIST, end: 'latest', style: 'ticks' };
+            // only digit trades need history; everything else just needs the latest tick
+            const base = { ticks_history: symbol, adjust_start_time: 1, count: needs_digits ? HIST : 1, end: 'latest', style: 'ticks' };
             try {
                 let res;
                 try {
@@ -411,8 +295,9 @@ const DTrader = observer(() => {
                 }
                 const prices = res?.history?.prices || [];
                 const times = res?.history?.times || [];
-                buf = prices.map((q: number, i: number) => ({ epoch: Number(times[i]), quote: Number(q) })).slice(-HIST);
-                publish();
+                prices.forEach((q: number) => addDigit(Number(q)));
+                if (prices.length) setLastTick({ epoch: Number(times[prices.length - 1]), quote: Number(prices[prices.length - 1]) });
+                publishDigits();
                 setFeedStatus(localize('Live'));
             } catch (e) {
                 if (!cancelled) setFeedStatus(errMsg(e));
@@ -425,7 +310,7 @@ const DTrader = observer(() => {
             sub.unsubscribe();
             if (sub_id && api_base.api) api_base.api.send({ forget: sub_id }).catch(() => {});
         };
-    }, [symbol]);
+    }, [symbol, needs_digits]);
 
     // ---- request parameters for one side of the current trade type ----
     const dur_n = clamp(Math.round(Number(dur_val)) || 1, type.min_min || 1, UNITS.find(u => u.u === dur_unit)?.max || 1440);
@@ -490,7 +375,7 @@ const DTrader = observer(() => {
                 })
             );
             if (!cancelled) setQuotes(out);
-        }, 500);
+        }, 300);
         return () => {
             cancelled = true;
             clearTimeout(timer);
@@ -542,8 +427,14 @@ const DTrader = observer(() => {
                 setTrades(prev =>
                     [{ id, label: type.kind === 'accu' ? 'Accumulators' : `${type.label}: ${s.label}`, market: market.name, stake: price, profit: null, status: 'open' }, ...prev].slice(0, 30)
                 );
-                const r = await api_base.api.send({ proposal_open_contract: 1, contract_id: id, subscribe: 1 });
-                if (r?.subscription?.id) sub_ids.current[id] = r.subscription.id;
+                setBusy(false);
+                // follow the contract in the background; the trade is already on screen
+                api_base.api
+                    .send({ proposal_open_contract: 1, contract_id: id, subscribe: 1 })
+                    .then((r: any) => {
+                        if (r?.subscription?.id) sub_ids.current[id] = r.subscription.id;
+                    })
+                    .catch(() => {});
             } catch (e) {
                 setError(errMsg(e));
             }
@@ -552,27 +443,7 @@ const DTrader = observer(() => {
         [is_logged_in, stake_ok, stake_n, quotes, buildParams, type.key, market, basis, side]
     );
 
-    // ---- chart overlays ----
-    const overlays = useMemo(() => {
-        const lines: any[] = [];
-        let band: any = null;
-        if (!spot) return { lines, band };
-        if (type.bar && type.dur === 'time') {
-            const price = spot + (Number(barrier_txt) || 0);
-            if (type.bar !== 'strike' || Number(barrier_txt) !== 0)
-                lines.push({ price, label: barrier_txt, tone: type.bar === 'turbo' ? 'red' : 'blue' });
-        }
-        if (type.kind === 'accu' && quotes[0]?.ok) {
-            const cd = quotes[0].contract_details || {};
-            const hi = absPrice(cd.high_barrier, spot);
-            const lo = absPrice(cd.low_barrier, spot);
-            if (Number.isFinite(hi) && Number.isFinite(lo))
-                band = { hi, lo, hi_label: `+${(hi - spot).toFixed(3)}`, lo_label: `${(lo - spot).toFixed(3)}` };
-        }
-        return { lines, band };
-    }, [spot, type.key, barrier_txt, quotes]);
-
-    const hi = Math.max(...pct);
+        const hi = Math.max(...pct);
     const lo = Math.min(...pct);
     const has_data = pct.some(p => p > 0);
     const is_digit = type.dur === 'ticks';
