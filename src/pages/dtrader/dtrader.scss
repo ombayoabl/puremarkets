@@ -87,6 +87,10 @@
         position: relative;
         svg { display: block; }
     }
+    &__chart--smart {
+        height: 470px;
+        > .dashboard__chart-wrapper { position: absolute; inset: 0; width: 100%; height: 100%; }
+    }
     &__chart-wait {
         position: absolute;
         inset: 0;

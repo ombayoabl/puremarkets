@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
+import ChartWrapper from '@/pages/chart/chart-wrapper';
 import { localize } from '@deriv-com/translations';
 import './dtrader.scss';
 
@@ -265,11 +266,24 @@ const Icons = ({ t }: any) => (
 );
 
 const DTrader = observer(() => {
-    const { client } = useStore();
+    const { client, chart_store } = useStore();
     const currency = client?.currency || 'USD';
     const is_logged_in = !!client?.is_logged_in;
 
     const [symbol, setSymbol] = useState('1HZ100V');
+
+    // Keep the Charts-tab chart and the DTrader market in step (both directions)
+    useEffect(() => {
+        if (chart_store.symbol !== symbol) chart_store.onSymbolChange(symbol);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [symbol]);
+    const chart_symbol = chart_store.symbol;
+    useEffect(() => {
+        if (chart_symbol && chart_symbol !== symbol && MARKETS.some(m => m.symbol === chart_symbol)) {
+            setSymbol(chart_symbol);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chart_symbol]);
     const [type_key, setTypeKey] = useState('accumulators');
     const [side, setSide] = useState(0);
     const [stake, setStake] = useState<number | string>(10);
@@ -722,53 +736,9 @@ const DTrader = observer(() => {
             {/* ---------- chart ---------- */}
             <section className='dtrader__center'>
                 <div className='dtrader__plot'>
-                    <div className='dtrader__symbol' onClick={() => setShowMarkets(s => !s)} role='button' tabIndex={0}>
-                        <span className='dtrader__badge'>{market.v}</span>
-                        <span className='dtrader__symbol-text'>
-                            <strong>{market.name}</strong>
-                            <small>
-                                {last_tick ? last_tick.quote.toFixed(dp) : feed_status}
-                                {last_tick && (
-                                    <span className={change < 0 ? 'loss' : 'win'}>
-                                        {' '}
-                                        {change < 0 ? '- ' : '+ '}
-                                        {Math.abs(change).toFixed(2)} ({Math.abs((change / (last_tick.quote - change || 1)) * 100).toFixed(2)}%) {change < 0 ? '▼' : '▲'}
-                                    </span>
-                                )}
-                            </small>
-                        </span>
-                        <span className='dtrader__chev'>⌄</span>
+                    <div className='dtrader__chart dtrader__chart--smart'>
+                        <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} />
                     </div>
-                    {show_markets && (
-                        <div className='dtrader__markets'>
-                            {MARKETS.map(m => (
-                                <button
-                                    key={m.symbol}
-                                    type='button'
-                                    className={classNames({ active: m.symbol === symbol })}
-                                    onClick={() => {
-                                        setSymbol(m.symbol);
-                                        setShowMarkets(false);
-                                    }}
-                                >
-                                    {m.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    <div className='dtrader__toolbar'>
-                        <button type='button' title='Ticks'>1T</button>
-                        <button type='button' title='Line'>⌇</button>
-                        <button type='button' title='Indicators'>▤</button>
-                        <button type='button' title='Draw'>✎</button>
-                        <button type='button' title='Share'>⤓</button>
-                    </div>
-                    <div className='dtrader__zoom'>
-                        <button type='button' onClick={() => setZoom(z => clamp(Math.round(z * 0.7), 30, 600))} aria-label='Zoom in'>+</button>
-                        <button type='button' onClick={() => setZoom(120)} aria-label='Reset zoom'>◎</button>
-                        <button type='button' onClick={() => setZoom(z => clamp(Math.round(z * 1.4), 30, 600))} aria-label='Zoom out'>−</button>
-                    </div>
-                    <PriceChart ticks={ticks} dp={dp} lines={overlays.lines} band={overlays.band} zoom={zoom} />
 
                     {is_digit && (
                         <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
