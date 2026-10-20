@@ -1,5 +1,6 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
@@ -330,6 +331,16 @@ const DTrader = observer(() => {
         if (!type.basis) setBasis('stake');
     }, [type.key]);
 
+    // lock page scroll behind the full-screen trade types sheet on phones
+    useEffect(() => {
+        if (!show_types || !is_mobile) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = prev;
+        };
+    }, [show_types, is_mobile]);
+
     // multiplier list depends on the market
     useEffect(() => setMultI(0), [symbol]);
 
@@ -609,6 +620,54 @@ const DTrader = observer(() => {
     const filtered = TYPES.filter(t => (cat === 'all' || t.cat === cat) && (!search || t.label.toLowerCase().includes(search.toLowerCase()) || t.group.toLowerCase().includes(search.toLowerCase())));
     const quote_err = quotes.find(q => q && !q.ok)?.error;
 
+    const trade_types_modal = (
+        <div className={classNames('dtr-modal', { 'dtr-modal--pop': !is_mobile })} role='dialog' aria-label={localize('Trade types')}>
+            <div className='dtr-modal__head'>
+                <strong>{localize('Trade types')}</strong>
+                <button type='button' onClick={() => setShowTypes(false)} aria-label={localize('Close')}>
+                    ✕
+                </button>
+            </div>
+            <div className='dtr-modal__body'>
+                <ul className='dtr-modal__cats'>
+                    {CATEGORIES.map(c => (
+                        <li key={c.key}>
+                            <button type='button' className={classNames({ active: cat === c.key })} onClick={() => setCat(c.key)}>
+                                {localize(c.label)}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                <div className='dtr-modal__list'>
+                    <input className='dtr-modal__search' placeholder={localize('Search')} value={search} onChange={e => setSearch(e.target.value)} />
+                    {GROUP_ORDER.filter(g => filtered.some(t => t.group === g)).map(g => (
+                        <div key={g} className='dtr-modal__group'>
+                            <h4>{localize(g)}</h4>
+                            {filtered
+                                .filter(t => t.group === g)
+                                .map(t => (
+                                    <button
+                                        key={t.key}
+                                        type='button'
+                                        className={classNames('dtr-modal__item', { active: t.key === type_key })}
+                                        onClick={() => {
+                                            setTypeKey(t.key);
+                                            setShowTypes(false);
+                                        }}
+                                    >
+                                        <Icons t={t} />
+                                        {localize(t.label)}
+                                    </button>
+                                ))}
+                        </div>
+                    ))}
+                    {filtered.length === 0 && <p className='dtr-modal__none'>{localize('No trade types found.')}</p>}
+                </div>
+            </div>
+        </div>
+    );
+
+
     return (
         <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks' })}>
             {/* ---------- open positions ---------- */}
@@ -754,47 +813,7 @@ const DTrader = observer(() => {
                     <strong>{type.label}</strong>
                 </button>
 
-                {show_types && (
-                    <div className='dtrader__types'>
-                        <div className='dtrader__types-title'>{localize('Trade types')}</div>
-                        <div className='dtrader__types-body'>
-                            <ul className='dtrader__cats'>
-                                {CATEGORIES.map(c => (
-                                    <li key={c.key}>
-                                        <button type='button' className={classNames({ active: cat === c.key })} onClick={() => setCat(c.key)}>
-                                            {localize(c.label)}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className='dtrader__list'>
-                                <input className='dtrader__search' placeholder={localize('Search')} value={search} onChange={e => setSearch(e.target.value)} />
-                                <div className='dtrader__learnrow'>{localize('Learn more about trade types')} ›</div>
-                                {GROUP_ORDER.filter(g => filtered.some(t => t.group === g)).map(g => (
-                                    <div key={g} className='dtrader__group'>
-                                        <h4>{localize(g)}</h4>
-                                        {filtered
-                                            .filter(t => t.group === g)
-                                            .map(t => (
-                                                <button
-                                                    key={t.key}
-                                                    type='button'
-                                                    className={classNames('dtrader__item', { active: t.key === type_key })}
-                                                    onClick={() => {
-                                                        setTypeKey(t.key);
-                                                        setShowTypes(false);
-                                                    }}
-                                                >
-                                                    <Icons t={t} />
-                                                    {localize(t.label)}
-                                                </button>
-                                            ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {show_types && (is_mobile ? createPortal(trade_types_modal, document.body) : trade_types_modal)}
 
                 {/* sides (single Buy button types) */}
                 {type.kind === 'single' && (
