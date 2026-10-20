@@ -465,21 +465,23 @@
         &__markets { top: 52px; left: 6px; right: 6px; }
         &__toolbar { display: none; }
         &__zoom { left: auto; right: 72px; bottom: 6px; flex-direction: row; button { padding: 4px 10px; } }
-        &--digit &__chart { height: 440px; }
+        &--digit &__chart { height: 190px; }
+        &--digit &__zoom { display: none; }
         &__circles {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 14px;
+            position: static;
+            left: auto;
+            right: auto;
+            bottom: auto;
             transform: none;
             display: grid;
             grid-template-columns: repeat(5, 48px);
             justify-content: center;
-            gap: 14px 16px;
-            padding: 0;
-            background: none;
+            gap: 20px 16px;
+            padding: 12px 0 26px;
+            background: #fff;
             border: 0;
             border-radius: 0;
+            max-width: none;
         }
         &__circle { width: 48px; height: 48px; }
         &__digit { font-size: 15px; }
