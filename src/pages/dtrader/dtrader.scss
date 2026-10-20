@@ -437,16 +437,50 @@
     }
     @media (max-width: 760px) {
         grid-template-columns: minmax(0, 1fr);
-        padding: 8px;
-        .dtrader__positions { grid-row: auto; }
-        &__chart { height: 340px; }
-        &__circle { width: 30px; height: 30px; border-width: 2px; }
-        &__digit { font-size: 11px; }
-        &__pct { font-size: 6px; }
-        &__circles { gap: 2px; padding: 3px 4px 10px; }
+        padding: 6px;
+        gap: 8px;
+        overflow-x: hidden;
+        width: 100%;
+        > * { min-width: 0; }
+        .dtrader__center { order: 1; }
+        .dtrader__panel { order: 2; }
+        .dtrader__positions { order: 3; grid-row: auto; grid-column: auto; min-height: 0; max-height: 260px; }
+        &__chart { height: 280px; }
+        &__symbol { top: 6px; left: 6px; padding: 6px 8px; gap: 6px; max-width: calc(100% - 60px); strong { font-size: 12px; } small { font-size: 10px; } }
+        &__chev { margin-left: 4px; }
+        &__markets { top: 52px; left: 6px; right: 6px; }
         &__toolbar { display: none; }
-        &__types { position: fixed; top: 80px; left: 8px; right: 8px; width: auto; max-height: 70vh; grid-template-columns: 1fr; }
-        &__types-body { grid-template-columns: 110px 1fr; }
-        &__cats button { padding-left: 12px; }
+        &__zoom { left: auto; right: 72px; bottom: 6px; flex-direction: row; button { padding: 4px 10px; } }
+        &__circles {
+            position: static;
+            transform: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 4px;
+            max-width: 100%;
+            padding: 8px 4px 14px;
+            background: #fff;
+            border-top: 1px solid var(--dt-border);
+            border-radius: 0;
+        }
+        &__circle { width: 34px; height: 34px; border-width: 2px; }
+        &__digit { font-size: 12px; }
+        &__pct { font-size: 7px; }
+        &__foot { padding: 4px; }
+        &__types {
+            position: fixed;
+            top: 70px;
+            left: 6px;
+            right: 6px;
+            width: auto;
+            max-height: 75vh;
+            grid-template-columns: 1fr;
+        }
+        &__types-body { grid-template-columns: 100px 1fr; }
+        &__cats { padding-top: 48px; button { padding: 12px 8px; } }
+        &__list { max-height: 75vh; }
+        &__select, &__stepper input, &__barrier input, &__search { font-size: 16px; }
+        &__buy { padding: 16px 14px; font-size: 14px; }
+        &__typebtn { padding: 14px 12px; }
     }
 }
