@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
+import { batch_lanes } from '@/pages/bulk-trader/batch-sockets';
 import ChartWrapper from '@/pages/chart/chart-wrapper';
 import { localize } from '@deriv-com/translations';
 import './dtrader.scss';
@@ -195,6 +196,13 @@ const DTrader = observer(() => {
     const [show_markets, setShowMarkets] = useState(false);
     const [cat, setCat] = useState('all');
     const [search, setSearch] = useState('');
+
+    // Spare trade connections: a click goes out on its own socket instead of queuing behind ticks/prices
+    useEffect(() => {
+        if (!is_logged_in) return;
+        batch_lanes.warm(3);
+        return () => batch_lanes.close();
+    }, [is_logged_in, client?.loginid]);
 
     const sub_ids = useRef<Record<number, string>>({});
     const is_mobile = useIsMobile();
@@ -419,18 +427,20 @@ const DTrader = observer(() => {
             const s = defs[i];
             const qi = sides_to_quote.indexOf(i);
             const q = quotes[qi];
-            const price = q?.ok && q.ask_price ? Number(q.ask_price) : basis === 'stake' ? stake_n : NaN;
+            // Stake basis: the price is the stake itself, so the click never waits for a quote
+            const price = basis === 'stake' ? stake_n : q?.ok && q.ask_price ? Number(q.ask_price) : NaN;
             if (!Number.isFinite(price)) return setError(localize('Waiting for a price. Try again in a moment.'));
-            setBusy(true);
+
+            // show the trade on screen straight away; the real contract id replaces it when Deriv answers
+            const tmp = `tmp-${Date.now()}-${Math.random()}`;
+            const label = type.kind === 'accu' ? 'Accumulators' : `${type.label}: ${s.label}`;
+            setTrades(prev => [{ id: tmp, label, market: market.name, stake: price, profit: null, status: 'open' }, ...prev].slice(0, 30));
             try {
                 const parameters = buildParams(s);
-                const res = await api_base.api.send({ buy: '1', price, parameters });
+                const res = await batch_lanes.sendFast({ buy: '1', price, parameters }, r => api_base.api.send(r));
                 const id = res.buy.contract_id;
-                setTrades(prev =>
-                    [{ id, label: type.kind === 'accu' ? 'Accumulators' : `${type.label}: ${s.label}`, market: market.name, stake: price, profit: null, status: 'open' }, ...prev].slice(0, 30)
-                );
-                setBusy(false);
-                // follow the contract in the background; the trade is already on screen
+                setTrades(prev => prev.map(t => (t.id === tmp ? { ...t, id } : t)));
+                // follow the contract in the background
                 api_base.api
                     .send({ proposal_open_contract: 1, contract_id: id, subscribe: 1 })
                     .then((r: any) => {
@@ -438,14 +448,14 @@ const DTrader = observer(() => {
                     })
                     .catch(() => {});
             } catch (e) {
+                setTrades(prev => prev.filter(t => t.id !== tmp));
                 setError(errMsg(e));
             }
-            setBusy(false);
         },
         [is_logged_in, stake_ok, stake_n, quotes, buildParams, type.key, market, basis, side]
     );
 
-        const hi = Math.max(...pct);
+    const hi = Math.max(...pct);
     const lo = Math.min(...pct);
     const has_data = pct.some(p => p > 0);
     const is_digit = type.dur === 'ticks';
@@ -472,7 +482,7 @@ const DTrader = observer(() => {
                 <div className='dtrader__payout'>
                     {localize('Payout')} <strong>{q?.ok && q.payout ? `${money(q.payout)} ${currency}` : '…'}</strong>
                 </div>
-                <button type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                <button type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'}`} disabled={!stake_ok} onClick={() => buy(i)}>
                     <span>
                         {type.icon[i] === undefined ? '' : <em>{type.icon[i]}</em>}
                         {localize(s.label)}
@@ -488,7 +498,7 @@ const DTrader = observer(() => {
         const s = type.sides[i];
         const q = quotes[i];
         return (
-            <button key={i} type='button' className={`dtrader__mbtn dtrader__mbtn--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+            <button key={i} type='button' className={`dtrader__mbtn dtrader__mbtn--${i ? 'b' : 'a'}`} disabled={!stake_ok} onClick={() => buy(i)}>
                 <span className='dtrader__mbtn-top'>
                     <em>{type.icon[i]}</em>
                     {localize(s.label)}
@@ -574,7 +584,7 @@ const DTrader = observer(() => {
         const s = type.sides[i];
         const q = quotes[i];
         return (
-            <button key={i} type='button' className={`dtm__ubtn dtm__ubtn--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+            <button key={i} type='button' className={`dtm__ubtn dtm__ubtn--${i ? 'b' : 'a'}`} disabled={!stake_ok} onClick={() => buy(i)}>
                 <span className='dtm__ubtn-top'>
                     <em>{type.icon[i]}</em>
                     {localize(s.label)}
@@ -772,7 +782,7 @@ const DTrader = observer(() => {
             <div className='dtm__buys'>
                 {(type.kind === 'dual' || type.kind === 'mult') && <div className='dtm__pair'>{[0, 1].map(unitBtn)}</div>}
                 {(type.kind === 'accu' || type.kind === 'single') && (
-                    <button type='button' className='dtm__buy' disabled={busy || !stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
+                    <button type='button' className='dtm__buy' disabled={!stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
                         <em>{type.kind === 'accu' ? '📈' : side ? '↘' : '↗'}</em>
                         {type.kind === 'accu' ? localize('Buy') : localize(type.sides[side].label)}
                     </button>
@@ -1112,7 +1122,7 @@ const DTrader = observer(() => {
                     {type.kind === 'dual' && is_mobile && <div className='dtrader__mbuy'>{[0, 1].map(renderMobileDual)}</div>}
                     {type.kind === 'mult' &&
                         [0, 1].map(i => (
-                            <button key={i} type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'} dtrader__buy--wide`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                            <button key={i} type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'} dtrader__buy--wide`} disabled={!stake_ok} onClick={() => buy(i)}>
                                 <span>
                                     <em>{i ? '↘' : '↗'}</em>
                                     {localize(type.sides[i].label)}
@@ -1121,7 +1131,7 @@ const DTrader = observer(() => {
                             </button>
                         ))}
                     {(type.kind === 'accu' || type.kind === 'single') && (
-                        <button type='button' className='dtrader__buy dtrader__buy--a dtrader__buy--wide' disabled={busy || !stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
+                        <button type='button' className='dtrader__buy dtrader__buy--a dtrader__buy--wide' disabled={!stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
                             <span>
                                 <em>{type.kind === 'accu' ? '📈' : side ? '↘' : '↗'}</em>
                                 {localize('Buy')}

@@ -131,6 +131,7 @@ class BatchLanes {
     private lanes: Lane[] = [];
     private queue: Promise<void> = Promise.resolve();
     private epoch = 0;
+    private rr = 0;
 
     /** Open extra lanes in the background until `extra` are ready (capped). Never throws. */
     warm(extra: number): Promise<void> {
@@ -145,6 +146,21 @@ class BatchLanes {
         const slot = index % (ready.length + 1);
         if (slot === 0) return send_on_shared(request);
         return ready[slot - 1].send(request).catch(error => {
+            if (error?.not_sent) return send_on_shared(request);
+            throw error;
+        });
+    }
+
+    /**
+     * One-off fast send (e.g. a manual click): goes out on an extra lane so it never waits behind the
+     * tick / price traffic of the shared connection. Rotates between lanes so rapid clicks run side by side.
+     * Falls back to the shared connection when no lane is open (yet).
+     */
+    sendFast(request: TRequest, send_on_shared: (request: TRequest) => Promise<any>): Promise<any> {
+        const ready = this.lanes.filter(lane => lane.ready);
+        if (!ready.length) return send_on_shared(request);
+        const lane = ready[this.rr++ % ready.length];
+        return lane.send(request).catch(error => {
             if (error?.not_sent) return send_on_shared(request);
             throw error;
         });
