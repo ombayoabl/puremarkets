@@ -81,6 +81,7 @@ const UNITS = [
     { u: 'd', label: 'Days', max: 365 },
     { u: 's', label: 'Seconds', max: 86400 },
 ];
+const UNIT_SHORT: Record<string, string> = { m: 'min', h: 'hr', d: 'day', s: 'sec' };
 const DEFAULT_BARRIER: Record<string, string> = { vanillas: '+0.00', turbos: '-7.04', higherlower: '+0.66', touch: '+1.88' };
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -188,7 +189,8 @@ const DTrader = observer(() => {
     const [trades, setTrades] = useState<any[]>([]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const [pos_open, setPosOpen] = useState(true);
+    const [pos_open, setPosOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 760);
+    const [risk_open, setRiskOpen] = useState(false);
     const [show_types, setShowTypes] = useState(false);
     const [show_markets, setShowMarkets] = useState(false);
     const [cat, setCat] = useState('all');
@@ -553,10 +555,237 @@ const DTrader = observer(() => {
     );
 
 
+
+    const sheet_mode = is_mobile && !is_digit;
+    const pickSide = (i: number) => {
+        setSide(i);
+        if (type.key === 'turbos') {
+            const v = Math.abs(Number(barrier_txt) || 7.04).toFixed(2);
+            setBarrierTxt(i === 0 ? `-${v}` : `+${v}`);
+        }
+    };
+    const stakeInput = (
+        <span className='dtm__amt'>
+            <input type='number' inputMode='decimal' value={stake} onChange={e => setStake(e.target.value)} />
+            <small>{currency}</small>
+        </span>
+    );
+    const unitBtn = (i: number) => {
+        const s = type.sides[i];
+        const q = quotes[i];
+        return (
+            <button key={i} type='button' className={`dtm__ubtn dtm__ubtn--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                <span className='dtm__ubtn-top'>
+                    <em>{type.icon[i]}</em>
+                    {localize(s.label)}
+                </span>
+                <span className='dtm__ubtn-bot'>
+                    {type.kind === 'mult' ? `${money(stake_n || 0)} ${currency}` : q?.ok && q.payout ? `${money(q.payout)} ${currency}` : '…'}
+                </span>
+            </button>
+        );
+    };
+    const mobile_sheet = (
+        <aside className='dtrader__panel dtm'>
+            <a className='dtrader__learn'>{localize('Learn about this trade type')}</a>
+            {show_types && createPortal(trade_types_modal, document.body)}
+            <div className='dtm__top'>
+                <button type='button' className='dtm__type' onClick={() => setShowTypes(s => !s)}>
+                    <Icons t={type} />
+                    <strong>{localize(type.label)}</strong>
+                    <span className='dtm__chev'>›</span>
+                </button>
+                {type.kind === 'accu' && (
+                    <label className='dtm__chip'>
+                        <select value={growth} onChange={e => setGrowth(Number(e.target.value))}>
+                            {[1, 2, 3, 4, 5].map(g => (
+                                <option key={g} value={g}>
+                                    {g}%
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                )}
+                {type.kind === 'mult' && (
+                    <label className='dtm__chip'>
+                        <select value={mult_i} onChange={e => setMultI(Number(e.target.value))}>
+                            {market.mult.map((m, i) => (
+                                <option key={m} value={i}>
+                                    x{m}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                )}
+                {type.kind === 'single' && (
+                    <div className='dtm__seg'>
+                        {type.sides.map((sd, i) => (
+                            <button key={sd.ct} type='button' className={classNames({ active: side === i })} onClick={() => pickSide(i)}>
+                                {localize(sd.label)}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {type.bar === 'strike' && (
+                <div className='dtm__row dtm__row--3'>
+                    <span className='dtm__k'>{localize('Spot')}</span>
+                    <input className='dtm__v' value={barrier_txt} onChange={e => setBarrierTxt(e.target.value)} />
+                    <span className='dtm__lab'>{localize('Strike price')}</span>
+                </div>
+            )}
+
+            {type.dur === 'time' && (
+                <div className='dtm__row dtm__row--3'>
+                    <span className='dtm__dur'>
+                        <input type='number' inputMode='numeric' value={dur_val} onChange={e => setDurVal(e.target.value)} />
+                        <select value={dur_unit} onChange={e => setDurUnit(e.target.value)}>
+                            {UNITS.map(u => (
+                                <option key={u.u} value={u.u}>
+                                    {UNIT_SHORT[u.u]}
+                                </option>
+                            ))}
+                        </select>
+                    </span>
+                    {stakeInput}
+                    {type.basis ? (
+                        <button type='button' className='dtm__lab dtm__lab--btn' onClick={() => setBasis(b => (b === 'stake' ? 'payout' : 'stake'))}>
+                            {basis === 'stake' ? localize('Stake') : localize('Payout')}
+                        </button>
+                    ) : (
+                        <span className='dtm__lab'>{localize('Stake')}</span>
+                    )}
+                </div>
+            )}
+
+            {(type.bar === 'turbo' || type.bar === 'rel') && (
+                <div className='dtm__row dtm__row--3'>
+                    <input className='dtm__k dtm__bar' value={barrier_txt} onChange={e => setBarrierTxt(e.target.value)} />
+                    <span className='dtm__v'>{type.bar === 'turbo' && q0?.ok ? `${q0.contract_details?.payout_per_point ?? q0.payout} ${currency}` : ''}</span>
+                    <span className='dtm__lab'>{type.bar === 'turbo' ? localize('Payout per point') : localize('Barrier')}</span>
+                </div>
+            )}
+
+            {type.kind === 'accu' && (
+                <>
+                    <div className='dtm__row dtm__row--step'>
+                        <button type='button' onClick={stake_ctl.dec} aria-label='Stake -'>
+                            −
+                        </button>
+                        <input type='number' inputMode='decimal' value={stake} onChange={e => setStake(e.target.value)} />
+                        <button type='button' onClick={stake_ctl.inc} aria-label='Stake +'>
+                            +
+                        </button>
+                        <span className='dtm__lab'>{localize('Stake')}</span>
+                    </div>
+                    <label className='dtm__row dtm__check'>
+                        <input type='checkbox' checked={take_profit} onChange={e => setTakeProfit(e.target.checked)} />
+                        <span>{localize('Take profit')}</span>
+                    </label>
+                    {take_profit && (
+                        <div className='dtm__row dtm__row--step'>
+                            <button type='button' onClick={tp_ctl.dec} aria-label='Take profit -'>
+                                −
+                            </button>
+                            <input type='number' inputMode='decimal' value={tp_amount} onChange={e => setTpAmount(e.target.value)} />
+                            <button type='button' onClick={tp_ctl.inc} aria-label='Take profit +'>
+                                +
+                            </button>
+                            <span className='dtm__lab'>{currency}</span>
+                        </div>
+                    )}
+                    {q0?.ok && (
+                        <div className='dtm__maxes'>
+                            <div>
+                                <span>{localize('Max. payout')}</span>
+                                <u>{money(cd0.maximum_payout ?? q0.payout ?? 0)} {currency}</u>
+                            </div>
+                            <div>
+                                <span>{localize('Max. ticks')}</span>
+                                <u>{cd0.maximum_ticks ?? '—'} {localize('ticks')}</u>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {type.kind === 'mult' && (
+                <>
+                    <div className='dtm__card'>
+                        <div className='dtm__big'>{stakeInput}</div>
+                        {q0?.ok && (
+                            <div className='dtm__mini'>
+                                {localize('Commission')}: {money(q0.commission ?? 0)} {currency}
+                                <span>
+                                    {localize('Stop out')}: {q0.limit_order?.stop_out?.order_amount !== undefined ? `${money(Math.abs(q0.limit_order.stop_out.order_amount))} ${currency}` : '—'}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    <button type='button' className='dtm__row dtm__risk' onClick={() => setRiskOpen(o => !o)}>
+                        <span>{localize('Risk management')}</span>
+                        <b>{take_profit || stop_loss || deal_cancel ? localize('Set') : localize('Not set')}</b>
+                    </button>
+                    {risk_open && (
+                        <div className='dtm__card'>
+                            <label className='dtm__check'>
+                                <input type='checkbox' checked={take_profit} onChange={e => setTakeProfit(e.target.checked)} />
+                                <span>{localize('Take profit')}</span>
+                            </label>
+                            {take_profit && <Stepper value={tp_amount} onChange={setTpAmount} ctl={tp_ctl} label='Take profit' />}
+                            <label className='dtm__check'>
+                                <input
+                                    type='checkbox'
+                                    checked={stop_loss}
+                                    onChange={e => {
+                                        setStopLoss(e.target.checked);
+                                        if (e.target.checked) setDealCancel(false);
+                                    }}
+                                />
+                                <span>{localize('Stop loss')}</span>
+                            </label>
+                            {stop_loss && <Stepper value={sl_amount} onChange={setSlAmount} ctl={sl_ctl} label='Stop loss' />}
+                            <label className='dtm__check'>
+                                <input
+                                    type='checkbox'
+                                    checked={deal_cancel}
+                                    onChange={e => {
+                                        setDealCancel(e.target.checked);
+                                        if (e.target.checked) setStopLoss(false);
+                                    }}
+                                />
+                                <span>{localize('Deal cancellation')}</span>
+                            </label>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {type.equals && (
+                <label className='dtm__row dtm__check'>
+                    <input type='checkbox' checked={equals} onChange={e => setEquals(e.target.checked)} />
+                    <span>{localize('Allow equals')}</span>
+                </label>
+            )}
+
+            <div className='dtm__buys'>
+                {(type.kind === 'dual' || type.kind === 'mult') && <div className='dtm__pair'>{[0, 1].map(unitBtn)}</div>}
+                {(type.kind === 'accu' || type.kind === 'single') && (
+                    <button type='button' className='dtm__buy' disabled={busy || !stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
+                        <em>{type.kind === 'accu' ? '📈' : side ? '↘' : '↗'}</em>
+                        {type.kind === 'accu' ? localize('Buy') : localize(type.sides[side].label)}
+                    </button>
+                )}
+            </div>
+            {(error || quote_err) && <p className='dtrader__error'>{error || quote_err}</p>}
+        </aside>
+    );
+
     return (
-        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks' })}>
+        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode })}>
             {/* ---------- open positions ---------- */}
-            <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open })}>
+            <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open, 'dtrader__positions--empty': trades.length === 0 })}>
                 <div className='dtrader__positions-head'>
                     <strong>{localize('Open positions')}</strong>
                     <button type='button' onClick={() => setPosOpen(o => !o)} aria-label={localize('Toggle open positions')}>
@@ -646,6 +875,7 @@ const DTrader = observer(() => {
             </section>
 
             {/* ---------- trade panel ---------- */}
+            {sheet_mode ? mobile_sheet : (
             <aside className='dtrader__panel'>
                 <a className='dtrader__learn'>{localize('Learn about this trade type')}</a>
                 <button type='button' className='dtrader__typebtn' onClick={() => setShowTypes(s => !s)}>
@@ -902,6 +1132,7 @@ const DTrader = observer(() => {
                 </div>
                 {(error || quote_err) && <p className='dtrader__error'>{error || quote_err}</p>}
             </aside>
+            )}
         </div>
     );
 });
