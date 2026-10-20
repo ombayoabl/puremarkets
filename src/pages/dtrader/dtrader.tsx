@@ -240,6 +240,19 @@ const Stepper = ({ value, onChange, ctl, label }: any) => (
 );
 
 
+const useIsMobile = () => {
+    const q = '(max-width: 760px)';
+    const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(q);
+        const on = () => setM(mq.matches);
+        on();
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, []);
+    return m;
+};
+
 const Icons = ({ t }: any) => (
     <span className='dtrader__icons'>
         {t.icon.map((g: string, i: number) => (
@@ -291,6 +304,7 @@ const DTrader = observer(() => {
     const [search, setSearch] = useState('');
 
     const sub_ids = useRef<Record<number, string>>({});
+    const is_mobile = useIsMobile();
 
     const type = TYPES.find(t => t.key === type_key) || TYPES[0];
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
@@ -572,13 +586,31 @@ const DTrader = observer(() => {
         );
     };
 
+    const renderMobileDual = (i: number) => {
+        const s = type.sides[i];
+        const q = quotes[i];
+        return (
+            <button key={i} type='button' className={`dtrader__mbtn dtrader__mbtn--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                <span className='dtrader__mbtn-top'>
+                    <em>{type.icon[i]}</em>
+                    {localize(s.label)}
+                    {type.pick ? ` ${digit}` : ''}
+                </span>
+                <span className='dtrader__mbtn-bot'>
+                    <span>{localize('Payout')}</span>
+                    <b>{q?.ok && q.payout ? `${money(q.payout)} ${currency}` : '…'}</b>
+                </span>
+            </button>
+        );
+    };
+
     const q0 = quotes[0];
     const cd0 = q0?.contract_details || {};
     const filtered = TYPES.filter(t => (cat === 'all' || t.cat === cat) && (!search || t.label.toLowerCase().includes(search.toLowerCase()) || t.group.toLowerCase().includes(search.toLowerCase())));
     const quote_err = quotes.find(q => q && !q.ok)?.error;
 
     return (
-        <div className='dtrader'>
+        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks' })}>
             {/* ---------- open positions ---------- */}
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open })}>
                 <div className='dtrader__positions-head'>
@@ -690,6 +722,7 @@ const DTrader = observer(() => {
                                         type='button'
                                         disabled={!type.pick || d < type.pick[0] || d > type.pick[1]}
                                         onClick={() => type.pick && setDigit(d)}
+                                        style={{ ['--deg' as any]: `${Math.min(340, pct[d] * 18)}deg` }}
                                         className={classNames('dtrader__circle', {
                                             'dtrader__circle--high': is_hi,
                                             'dtrader__circle--low': is_lo && !is_hi,
@@ -850,7 +883,7 @@ const DTrader = observer(() => {
                     </>
                 )}
 
-                {is_digit && (
+                {is_digit && !is_mobile && (
                     <div className='dtrader__card'>
                         <div className='dtrader__label'>{localize('Ticks')}</div>
                         <input type='range' min={1} max={10} step={1} value={ticks_dur} onChange={e => setTicksDur(Number(e.target.value))} className='dtrader__slider' />
@@ -859,7 +892,7 @@ const DTrader = observer(() => {
                 )}
 
                 {type.pick && (
-                    <div className='dtrader__card'>
+                    <div className='dtrader__card dtrader__card--digits'>
                         <div className='dtrader__label'>{localize('Last Digit Prediction')}</div>
                         <div className='dtrader__digits'>
                             {DIGITS.map(d => (
@@ -877,7 +910,28 @@ const DTrader = observer(() => {
                     </div>
                 )}
 
+                {/* compact row on phones for digit trades */}
+                {is_digit && is_mobile && (
+                    <div className='dtrader__crow'>
+                        <select value={ticks_dur} onChange={e => setTicksDur(Number(e.target.value))}>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                <option key={n} value={n}>
+                                    {n} {n === 1 ? localize('tick') : localize('ticks')}
+                                </option>
+                            ))}
+                        </select>
+                        <span className='dtrader__amt'>
+                            <input type='number' inputMode='decimal' value={stake} onChange={e => setStake(e.target.value)} />
+                            <small>{currency}</small>
+                        </span>
+                        <button type='button' onClick={() => setBasis(b => (b === 'stake' ? 'payout' : 'stake'))}>
+                            {basis === 'stake' ? localize('Stake') : localize('Payout')}
+                        </button>
+                    </div>
+                )}
+
                 {/* stake */}
+                {!(is_digit && is_mobile) && (
                 <div className='dtrader__card'>
                     {type.basis ? (
                         <div className='dtrader__seg dtrader__seg--flat'>
@@ -911,6 +965,7 @@ const DTrader = observer(() => {
                         </label>
                     )}
                 </div>
+                )}
 
                 {(type.kind === 'accu' || type.kind === 'mult') && (
                     <div className='dtrader__card dtrader__card--tight'>
@@ -963,7 +1018,8 @@ const DTrader = observer(() => {
 
                 {/* buy buttons */}
                 <div className='dtrader__buys'>
-                    {type.kind === 'dual' && [0, 1].map(renderDualButton)}
+                    {type.kind === 'dual' && !is_mobile && [0, 1].map(renderDualButton)}
+                    {type.kind === 'dual' && is_mobile && <div className='dtrader__mbuy'>{[0, 1].map(renderMobileDual)}</div>}
                     {type.kind === 'mult' &&
                         [0, 1].map(i => (
                             <button key={i} type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'} dtrader__buy--wide`} disabled={busy || !stake_ok} onClick={() => buy(i)}>

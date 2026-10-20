@@ -208,12 +208,13 @@
         max-width: 96%;
     }
     &__circle {
+        --ring: #bfc4c6;
         position: relative;
-        width: 42px;
-        height: 42px;
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
-        border: 3px solid #d7dcde;
-        background: #fff;
+        border: 0;
+        background: conic-gradient(from calc(180deg - var(--deg, 0deg) / 2), var(--ring) var(--deg, 0deg), #e4e7e8 0);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -221,9 +222,22 @@
         padding: 0;
         line-height: 1.05;
         flex: 0 0 auto;
-        &--high { border-color: #00a79e; }
-        &--low { border-color: var(--dt-red); }
-        &--picked { background: #e8f3f3; box-shadow: 0 0 0 2px var(--dt-teal); }
+        color: #111;
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: #fff;
+        }
+        > * { position: relative; z-index: 1; }
+        &--high { --ring: #00a79e; }
+        &--low { --ring: var(--dt-red); }
+        &--picked {
+            color: #fff;
+            &::before { background: #1f2540; }
+            .dtrader__pct { color: #dfe3f0; }
+        }
         &--last { transform: scale(1.12); }
         &:disabled { cursor: default; }
     }
@@ -451,21 +465,26 @@
         &__markets { top: 52px; left: 6px; right: 6px; }
         &__toolbar { display: none; }
         &__zoom { left: auto; right: 72px; bottom: 6px; flex-direction: row; button { padding: 4px 10px; } }
+        &--digit &__chart { height: 440px; }
         &__circles {
-            position: static;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 14px;
             transform: none;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(5, 48px);
             justify-content: center;
-            gap: 6px 4px;
-            max-width: 100%;
-            padding: 8px 4px 14px;
-            background: #fff;
-            border-top: 1px solid var(--dt-border);
+            gap: 14px 16px;
+            padding: 0;
+            background: none;
+            border: 0;
             border-radius: 0;
         }
-        &__circle { width: 34px; height: 34px; border-width: 2px; }
-        &__digit { font-size: 12px; }
-        &__pct { font-size: 7px; }
+        &__circle { width: 48px; height: 48px; }
+        &__digit { font-size: 15px; }
+        &__pct { font-size: 9px; }
+        &__pointer { bottom: -9px; border-width: 6px; }
         &__foot { padding: 4px; }
         &__types {
             position: fixed;
@@ -482,5 +501,59 @@
         &__select, &__stepper input, &__barrier input, &__search { font-size: 16px; }
         &__buy { padding: 16px 14px; font-size: 14px; }
         &__typebtn { padding: 14px 12px; }
+        .dtrader__panel {
+            background: #f2f3f4;
+            border-radius: 18px 18px 0 0;
+            padding: 22px 10px 12px;
+            margin: 0 -6px;
+            &::before {
+                content: '';
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                width: 40px;
+                height: 4px;
+                margin-left: -20px;
+                border-radius: 2px;
+                background: #c9cfd1;
+            }
+        }
+        .dtrader__typebtn { .dtrader__chev2 { order: 3; margin-left: auto; } strong { font-size: 15px; } }
+        .dtrader__card { background: #fff; }
+        .dtrader__card--digits { padding: 10px; .dtrader__label { display: none; } }
+        .dtrader__digits { gap: 8px; button { background: #f2f3f4; padding: 14px 0; font-size: 16px; &.active { background: #d5d9db; } } }
+        .dtrader__crow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: #fff;
+            border-radius: 6px;
+            padding: 8px 12px;
+            select { border: 0; background: none; font-size: 16px; padding: 6px 0; max-width: 90px; }
+            button { border: 0; background: none; color: var(--dt-muted); font-size: 16px; }
+        }
+        .dtrader__amt {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            input { width: 80px; border: 0; background: none; text-align: right; font-size: 17px; font-weight: 700; outline: none; }
+            small { font-weight: 700; font-size: 14px; }
+        }
+        .dtrader__mbuy { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .dtrader__mbtn {
+            border: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            padding: 0;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            &--a { background: #4bb4b3; .dtrader__mbtn-bot { background: #3a9190; } }
+            &--b { background: #ec3f3f; .dtrader__mbtn-bot { background: #d12f2f; } }
+            &:disabled { opacity: 0.55; }
+        }
+        .dtrader__mbtn-top { padding: 16px 8px; font-size: 16px; font-weight: 700; em { font-style: normal; margin-right: 10px; } }
+        .dtrader__mbtn-bot { display: flex; justify-content: space-between; padding: 12px; font-size: 12px; b { font-size: 12px; } }
     }
 }
