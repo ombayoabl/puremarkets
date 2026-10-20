@@ -7,366 +7,247 @@ import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import './dtrader.scss';
 
-// DTrader (Deriv DTrader look): open positions on the left, live chart in the middle,
-// trade types + trade settings on the right. Uses the same Deriv connection as the other pages.
+// DTrader look-alike: Open positions (left), live chart with symbol card (middle),
+// trade panel (right) and a Trade types popup. Uses the same Deriv connection as the other pages.
 
 const MARKETS = [
-    { symbol: '1HZ10V', name: 'Volatility 10 (1s) Index', dp: 2, badge: '10' },
-    { symbol: 'R_10', name: 'Volatility 10 Index', dp: 3, badge: '10' },
-    { symbol: '1HZ25V', name: 'Volatility 25 (1s) Index', dp: 2, badge: '25' },
-    { symbol: 'R_25', name: 'Volatility 25 Index', dp: 3, badge: '25' },
-    { symbol: '1HZ50V', name: 'Volatility 50 (1s) Index', dp: 2, badge: '50' },
-    { symbol: 'R_50', name: 'Volatility 50 Index', dp: 4, badge: '50' },
-    { symbol: '1HZ75V', name: 'Volatility 75 (1s) Index', dp: 2, badge: '75' },
-    { symbol: 'R_75', name: 'Volatility 75 Index', dp: 4, badge: '75' },
-    { symbol: '1HZ100V', name: 'Volatility 100 (1s) Index', dp: 2, badge: '100' },
-    { symbol: 'R_100', name: 'Volatility 100 Index', dp: 2, badge: '100' },
+    { symbol: '1HZ10V', name: 'Volatility 10 (1s) Index', dp: 2, v: 10, mult: [400, 1000, 2000, 3000, 4000] },
+    { symbol: 'R_10', name: 'Volatility 10 Index', dp: 3, v: 10, mult: [400, 1000, 2000, 3000, 4000] },
+    { symbol: '1HZ25V', name: 'Volatility 25 (1s) Index', dp: 2, v: 25, mult: [160, 400, 800, 1200, 1600] },
+    { symbol: 'R_25', name: 'Volatility 25 Index', dp: 3, v: 25, mult: [160, 400, 800, 1200, 1600] },
+    { symbol: '1HZ50V', name: 'Volatility 50 (1s) Index', dp: 2, v: 50, mult: [80, 200, 400, 600, 800] },
+    { symbol: 'R_50', name: 'Volatility 50 Index', dp: 4, v: 50, mult: [80, 200, 400, 600, 800] },
+    { symbol: '1HZ75V', name: 'Volatility 75 (1s) Index', dp: 2, v: 75, mult: [50, 100, 200, 300, 500] },
+    { symbol: 'R_75', name: 'Volatility 75 Index', dp: 4, v: 75, mult: [50, 100, 200, 300, 500] },
+    { symbol: '1HZ100V', name: 'Volatility 100 (1s) Index', dp: 2, v: 100, mult: [40, 100, 200, 300, 500] },
+    { symbol: 'R_100', name: 'Volatility 100 Index', dp: 2, v: 100, mult: [40, 100, 200, 300, 500] },
 ];
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-const MULTIPLIERS = {
-    10: [400, 500, 1000, 1500, 2000],
-    25: [160, 200, 400, 600, 800],
-    50: [80, 100, 200, 300, 500],
-    75: [50, 75, 100, 150, 300],
-    100: [40, 60, 80, 100, 200],
-};
-const UNIT_NAMES = { t: 'Ticks', s: 'Seconds', m: 'Minutes', h: 'Hours', d: 'Days' };
+const HIST = 1000;
 
-// group = heading in the Trade types list; cat = filter on the left of the list
+// kind: accu | single (one Buy button, two sides) | mult | dual (two buttons)
+// dur: 'time' (minutes etc.) | 'ticks' | null ; bar: 'strike' | 'rel' | 'turbo' | null
 const TYPES = [
-    { key: 'accu', group: 'Accumulators', cat: 'accumulators', label: 'Accumulators', icons: ['accu'] },
-    { key: 'vanilla', group: 'Vanillas', cat: 'options', label: 'Call/Put', icons: ['up', 'down'], units: ['m', 'h', 'd'] },
-    { key: 'turbos', group: 'Turbos', cat: 'options', label: 'Turbos', icons: ['up', 'down'], units: ['t', 'm', 'h', 'd'] },
-    { key: 'multipliers', group: 'Multipliers', cat: 'multipliers', label: 'Multipliers', icons: ['up', 'down'] },
-    { key: 'risefall', group: 'Ups & Downs', cat: 'options', label: 'Rise/Fall', icons: ['up', 'down'], units: ['t', 's', 'm', 'h', 'd'] },
-    { key: 'higherlower', group: 'Ups & Downs', cat: 'options', label: 'Higher/Lower', icons: ['up', 'down'], units: ['s', 'm', 'h', 'd'] },
-    { key: 'touch', group: 'Touch & No Touch', cat: 'options', label: 'Touch/No Touch', icons: ['up', 'down'], units: ['m', 'h', 'd'] },
-    { key: 'matchdiffer', group: 'Digits', cat: 'options', label: 'Matches/Differs', icons: ['match', 'differ'] },
-    { key: 'evenodd', group: 'Digits', cat: 'options', label: 'Even/Odd', icons: ['even', 'odd'] },
-    { key: 'overunder', group: 'Digits', cat: 'options', label: 'Over/Under', icons: ['up', 'down'] },
+    { key: 'accumulators', group: 'Accumulators', cat: 'accumulators', label: 'Accumulators', icon: ['📈'], kind: 'accu' },
+    {
+        key: 'vanillas', group: 'Vanillas', cat: 'options', label: 'Call/Put', icon: ['↗', '↘'], kind: 'single', dur: 'time', bar: 'strike',
+        sides: [{ ct: 'VANILLALONGCALL', label: 'Call' }, { ct: 'VANILLALONGPUT', label: 'Put' }],
+    },
+    {
+        key: 'turbos', group: 'Turbos', cat: 'options', label: 'Turbos', icon: ['↗', '↘'], kind: 'single', dur: 'time', bar: 'turbo',
+        sides: [{ ct: 'TURBOSLONG', label: 'Up' }, { ct: 'TURBOSSHORT', label: 'Down' }],
+    },
+    {
+        key: 'multipliers', group: 'Multipliers', cat: 'multipliers', label: 'Multipliers', icon: ['↗', '↘'], kind: 'mult',
+        sides: [{ ct: 'MULTUP', label: 'Up' }, { ct: 'MULTDOWN', label: 'Down' }],
+    },
+    {
+        key: 'risefall', group: 'Ups & Downs', cat: 'options', label: 'Rise/Fall', icon: ['↗', '↘'], kind: 'dual', dur: 'time', basis: true, equals: true,
+        sides: [{ ct: 'CALL', label: 'Rise' }, { ct: 'PUT', label: 'Fall' }],
+    },
+    {
+        key: 'higherlower', group: 'Ups & Downs', cat: 'options', label: 'Higher/Lower', icon: ['⇗', '⇘'], kind: 'dual', dur: 'time', bar: 'rel', basis: true,
+        sides: [{ ct: 'CALL', label: 'Higher' }, { ct: 'PUT', label: 'Lower' }],
+    },
+    {
+        key: 'touch', group: 'Touch & No Touch', cat: 'options', label: 'Touch/No Touch', icon: ['⇗', '⤳'], kind: 'dual', dur: 'time', bar: 'rel', basis: true, min_min: 2,
+        sides: [{ ct: 'ONETOUCH', label: 'Touch' }, { ct: 'NOTOUCH', label: 'No Touch' }],
+    },
+    {
+        key: 'matchdiffer', group: 'Digits', cat: 'options', label: 'Matches/Differs', icon: ['✳', '✳'], kind: 'dual', dur: 'ticks', basis: true, pick: [0, 9],
+        sides: [{ ct: 'DIGITMATCH', label: 'Matches' }, { ct: 'DIGITDIFF', label: 'Differs' }],
+    },
+    {
+        key: 'evenodd', group: 'Digits', cat: 'options', label: 'Even/Odd', icon: ['▦', '▲'], kind: 'dual', dur: 'ticks', basis: true,
+        sides: [{ ct: 'DIGITEVEN', label: 'Even' }, { ct: 'DIGITODD', label: 'Odd' }],
+    },
+    {
+        key: 'overunder', group: 'Digits', cat: 'options', label: 'Over/Under', icon: ['⇗', '⇘'], kind: 'dual', dur: 'ticks', basis: true, pick: [1, 8],
+        sides: [{ ct: 'DIGITOVER', label: 'Over' }, { ct: 'DIGITUNDER', label: 'Under' }],
+    },
 ];
-const GROUPS = ['Accumulators', 'Vanillas', 'Turbos', 'Multipliers', 'Ups & Downs', 'Touch & No Touch', 'Digits'];
-const DIGIT_TYPES = ['matchdiffer', 'evenodd', 'overunder'];
-const BARRIER_TYPES = ['vanilla', 'turbos', 'higherlower', 'touch'];
-const BASIS_TYPES = ['risefall', 'higherlower', 'touch', 'matchdiffer', 'evenodd', 'overunder'];
+const CATEGORIES = [
+    { key: 'all', label: 'All' },
+    { key: 'multipliers', label: 'Multipliers' },
+    { key: 'options', label: 'Options' },
+    { key: 'accumulators', label: 'Accumulators' },
+];
+const GROUP_ORDER = ['Accumulators', 'Vanillas', 'Turbos', 'Multipliers', 'Ups & Downs', 'Touch & No Touch', 'Digits'];
+const UNITS = [
+    { u: 'm', label: 'Minutes', max: 1440 },
+    { u: 'h', label: 'Hours', max: 24 },
+    { u: 'd', label: 'Days', max: 365 },
+    { u: 's', label: 'Seconds', max: 86400 },
+];
+const DEFAULT_BARRIER: Record<string, string> = { vanillas: '+0.00', turbos: '-7.04', higherlower: '+0.66', touch: '+1.88' };
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const money = (n: number) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toFixed(dp).slice(-1));
 const errMsg = (e: any) => e?.error?.message || e?.message || localize('Something went wrong');
-const volOf = (symbol: string) => {
-    const m = symbol.match(/(\d+)V$/) || symbol.match(/_(\d+)$/);
-    return m ? Number(m[1]) : 100;
-};
 const percents = (list: number[]) => {
     const counts = Array(10).fill(0);
     list.forEach(d => (counts[d] += 1));
     const total = list.length || 1;
     return counts.map(n => (n / total) * 100);
 };
-const pad = (n: number) => String(n).padStart(2, '0');
-const hms = (epoch: number) => {
-    const d = new Date(epoch * 1000);
-    return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+const hms = (epoch: number) => new Date(epoch * 1000).toISOString().slice(11, 19);
+const niceStep = (raw: number) => {
+    const p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+    const f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
 };
-const dmyhms = (epoch: number) => {
-    const d = new Date(epoch * 1000);
-    return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)} ${hms(epoch)}`;
-};
-const signed = (n: number, dp: number) => `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(dp)}`;
-const niceStep = (range: number, count: number) => {
-    const raw = range / count || 1;
-    const mag = 10 ** Math.floor(Math.log10(raw));
-    const n = raw / mag;
-    return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
-};
-const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 43200, 86400];
-
-const durationRange = (type_key: string, unit: string) => {
-    if (unit === 't') return [5, 10];
-    if (unit === 's') return [15, 86400];
-    if (unit === 'm') return [type_key === 'touch' ? 2 : 1, 1440];
-    if (unit === 'h') return [1, 24];
-    return [1, 365];
+const absPrice = (v: any, spot: number) => {
+    if (v === undefined || v === null || v === '') return NaN;
+    const s = String(v);
+    return /^[+-]/.test(s) ? spot + Number(s) : Number(s);
 };
 
-// ---------- small icons ----------
-const Arrow = ({ down, boxed }: any) => (
-    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#e5484d' strokeWidth='1.8'>
-        {boxed && <rect x='1.5' y='1.5' width='21' height='21' rx='3' stroke='#f3b4b6' />}
-        {down ? <path d='M6 6l12 12M18 11v7h-7' /> : <path d='M6 18L18 6M11 6h7v7' />}
-    </svg>
-);
-const TypeIcon = ({ name }: any) => {
-    if (name === 'up') return <Arrow />;
-    if (name === 'down') return <Arrow down />;
-    if (name === 'accu')
-        return (
-            <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#e5484d' strokeWidth='1.8'>
-                <rect x='1.5' y='3' width='21' height='18' rx='3' stroke='#f3b4b6' />
-                <path d='M5 15l4-5 3 3 6-6' />
-            </svg>
-        );
-    return (
-        <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#e5484d' strokeWidth='1.8'>
-            <rect x='1.5' y='1.5' width='21' height='21' rx='3' stroke='#f3b4b6' />
-            {name === 'match' && <path d='M12 6v12M6 12h12M7.5 7.5l9 9M16.5 7.5l-9 9' />}
-            {name === 'differ' && <path d='M12 6v12M6 12h12M7.5 7.5l9 9M16.5 7.5l-9 9' opacity='0.6' />}
-            {name === 'even' && <path d='M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM14 14h5v5h-5z' />}
-            {name === 'odd' && <path d='M12 5l7 13H5z' />}
-        </svg>
-    );
-};
-const Chevron = ({ dir = 'left' }: any) => (
-    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
-        {dir === 'left' ? <path d='M15 5l-7 7 7 7' /> : dir === 'right' ? <path d='M9 5l7 7-7 7' /> : <path d='M5 9l7 7 7-7' />}
-    </svg>
-);
-
-// ---------- chart ----------
-const Chart = ({ ticks, dp, overlays, visible, area, grid, name, children }: any) => {
-    const box = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 600, h: 400 });
-    const [hover, setHover] = useState<number | null>(null);
-
+// ---------------- chart ----------------
+const PriceChart = ({ ticks, dp, lines, band, zoom }: any) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState({ w: 900, h: 420 });
     useEffect(() => {
-        if (!box.current) return;
-        const ro = new ResizeObserver(entries => {
-            const r = entries[0].contentRect;
-            setSize({ w: Math.max(200, r.width), h: Math.max(200, r.height) });
-        });
-        ro.observe(box.current);
+        const el = ref.current;
+        if (!el) return;
+        const measure = () => setSize({ w: el.clientWidth || 900, h: el.clientHeight || 420 });
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
         return () => ro.disconnect();
     }, []);
 
-    const AXIS = 66;
-    const BOTTOM = 34;
-    const TOP = 14;
-    const plotW = size.w - AXIS;
-    const plotH = size.h - BOTTOM - TOP;
-    const shown = ticks.slice(-visible);
-    const last = shown[shown.length - 1];
+    const { w, h } = size;
+    const AX = 66;
+    const PT = 12;
+    const PB = 30;
+    const plotW = Math.max(100, w - AX);
+    const plotH = Math.max(80, h - PT - PB);
+    const view = ticks.slice(-zoom);
+    const n = view.length;
 
-    const geo = useMemo(() => {
-        if (!last) return null;
-        const t0 = shown[0].t;
-        const span = Math.max(1, last.t - t0);
-        const drawW = plotW * 0.74;
-        const x = (t: number) => ((t - t0) / span) * drawW;
-        let lo = Infinity;
-        let hi = -Infinity;
-        shown.forEach((p: any) => {
-            lo = Math.min(lo, p.q);
-            hi = Math.max(hi, p.q);
-        });
-        overlays.forEach((o: any) => {
-            [o.price, o.price2].forEach(v => {
-                if (typeof v === 'number' && isFinite(v)) {
-                    lo = Math.min(lo, v);
-                    hi = Math.max(hi, v);
-                }
-            });
-        });
-        if (hi - lo < 1e-9) {
-            hi += 0.5;
-            lo -= 0.5;
+    let body = null;
+    if (n > 1) {
+        const lastX = plotW * 0.8;
+        const stepX = lastX / (zoom - 1);
+        const xs = view.map((_: any, i: number) => lastX - (n - 1 - i) * stepX);
+        const vals = view.map((t: any) => t.quote);
+        (lines || []).forEach((l: any) => Number.isFinite(l.price) && vals.push(l.price));
+        if (band && Number.isFinite(band.hi) && Number.isFinite(band.lo)) vals.push(band.hi, band.lo);
+        let mn = Math.min(...vals);
+        let mx = Math.max(...vals);
+        if (mx === mn) {
+            mx += 1;
+            mn -= 1;
         }
-        const margin = (hi - lo) * 0.12;
-        lo -= margin;
-        hi += margin;
-        const y = (q: number) => TOP + (1 - (q - lo) / (hi - lo)) * plotH;
-        const step = niceStep(hi - lo, Math.max(3, Math.floor(plotH / 80)));
-        const ys: number[] = [];
-        for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ys.push(v);
-        const total_s = span / 0.74;
-        const want = Math.max(2, Math.floor(plotW / 100));
-        const tstep = TIME_STEPS.find(s => total_s / s <= want) || 86400;
-        const xs: number[] = [];
-        for (let tt = Math.ceil(t0 / tstep) * tstep; tt <= t0 + total_s; tt += tstep) xs.push(tt);
-        return { t0, x, y, ys, xs, drawW, step };
-    }, [shown.length, last?.t, last?.q, plotW, plotH, overlays]);
+        const pad = (mx - mn) * 0.08;
+        mn -= pad;
+        mx += pad;
+        const y = (v: number) => PT + ((mx - v) / (mx - mn)) * plotH;
+        const step = niceStep((mx - mn) / 6);
+        const grid: number[] = [];
+        for (let g = Math.ceil(mn / step) * step; g <= mx; g += step) grid.push(g);
+        const d = view.map((t: any, i: number) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(t.quote).toFixed(1)}`).join(' ');
+        const area = `${d} L${xs[n - 1].toFixed(1)},${PT + plotH} L${xs[0].toFixed(1)},${PT + plotH} Z`;
+        const last = view[n - 1];
+        const ly = y(last.quote);
+        const every = Math.max(1, Math.round(n / 8));
+        const xlabels: any[] = [];
+        for (let i = n - 1; i >= 0; i -= every) xlabels.push(i);
 
-    if (!geo || !last) {
-        return (
-            <div className='dtrader__chart' ref={box}>
-                <div className='dtrader__chart-empty'>{localize('Loading chart…')}</div>
-                {children}
-            </div>
-        );
-    }
-    const { x, y, ys, xs } = geo;
-    const line = shown.map((p: any, i: number) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.q).toFixed(1)}`).join('');
-    const areaPath = `${line}L${x(last.t).toFixed(1)},${TOP + plotH}L0,${TOP + plotH}Z`;
-    const hp = hover !== null ? shown[hover] : null;
-    const tag = (px: number, py: number, text: string, cls: string) => (
-        <g key={`${cls}-${text}-${py}`}>
-            <rect x={px} y={py - 10} width={AXIS - 8} height='20' rx='3' className={cls} />
-            <text x={px + (AXIS - 8) / 2} y={py + 4} textAnchor='middle' className='dtrader__tag-text'>
-                {text}
-            </text>
-        </g>
-    );
-
-    return (
-        <div className='dtrader__chart' ref={box}>
-            <svg width={size.w} height={size.h} className='dtrader__svg'>
+        body = (
+            <>
                 <defs>
-                    <linearGradient id='dt-area' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='0%' stopColor='#c9c9c9' stopOpacity='0.55' />
-                        <stop offset='100%' stopColor='#c9c9c9' stopOpacity='0.02' />
+                    <linearGradient id='dtr-fill' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#000' stopOpacity='0.1' />
+                        <stop offset='100%' stopColor='#000' stopOpacity='0' />
                     </linearGradient>
                 </defs>
-                {grid &&
-                    ys.map(v => <line key={`gy${v}`} x1='0' x2={plotW} y1={y(v)} y2={y(v)} className='dtrader__grid' />)}
-                {grid && xs.map(t => <line key={`gx${t}`} y1={TOP} y2={TOP + plotH} x1={x(t)} x2={x(t)} className='dtrader__grid' />)}
-                {ys.map(v => (
-                    <text key={`ly${v}`} x={plotW + 8} y={y(v) + 3} className='dtrader__axis-text'>
-                        {v.toFixed(dp)}
-                    </text>
+                {grid.map(g => (
+                    <g key={g}>
+                        <line x1={0} x2={plotW} y1={y(g)} y2={y(g)} className='dtr-grid' />
+                        <text x={plotW + 8} y={y(g) + 3} className='dtr-axis'>
+                            {g.toFixed(dp > 2 ? 2 : Math.max(2, dp))}
+                        </text>
+                    </g>
                 ))}
-                {xs.map(t => (
-                    <text key={`lx${t}`} x={x(t)} y={size.h - 12} textAnchor='middle' className='dtrader__axis-text'>
-                        {hms(t)}
-                    </text>
+                {xlabels.map(i => (
+                    <g key={i}>
+                        <line x1={xs[i]} x2={xs[i]} y1={PT} y2={PT + plotH} className='dtr-grid' />
+                        <text x={xs[i]} y={h - 10} textAnchor='middle' className='dtr-axis'>
+                            {hms(view[i].epoch)}
+                        </text>
+                    </g>
                 ))}
-                {area && <path d={areaPath} fill='url(#dt-area)' />}
-                <path d={line} className='dtrader__line' />
-
-                {overlays.map((o: any, i: number) => {
-                    const lx = x(last.t);
-                    if (o.kind === 'box') {
-                        const top = y(o.price);
-                        const bottom = y(o.price2);
-                        return (
-                            <g key={i}>
-                                <rect x={lx} y={top} width={plotW - lx} height={bottom - top} className='dtrader__box' />
-                                <line x1={lx} x2={plotW} y1={top} y2={top} className='dtrader__box-line' />
-                                <line x1={lx} x2={plotW} y1={bottom} y2={bottom} className='dtrader__box-line' />
-                                <text x={plotW - 6} y={top - 6} textAnchor='end' className='dtrader__box-text'>
-                                    {o.label}
-                                </text>
-                                <text x={plotW - 6} y={bottom + 14} textAnchor='end' className='dtrader__box-text'>
-                                    {o.label2}
-                                </text>
-                            </g>
-                        );
-                    }
-                    const py = y(o.price);
-                    return (
-                        <g key={i}>
-                            <line
-                                x1='0'
-                                x2={plotW}
-                                y1={py}
-                                y2={py}
-                                className={classNames('dtrader__level', `dtrader__level--${o.tone || 'blue'}`)}
-                            />
-                            {o.title && (
-                                <text x={plotW - 6} y={py - 6} textAnchor='end' className={`dtrader__level-title dtrader__level-title--${o.tone || 'blue'}`}>
-                                    {o.title}
-                                </text>
-                            )}
-                            {tag(plotW + 4, py, o.label, `dtrader__tag dtrader__tag--${o.tone || 'blue'}`)}
-                        </g>
-                    );
-                })}
-
-                <line x1={x(last.t)} x2={plotW} y1={y(last.q)} y2={y(last.q)} className='dtrader__last-line' />
-                <circle cx={x(last.t)} cy={y(last.q)} r='4' className='dtrader__dot' />
-                {tag(plotW + 4, y(last.q), last.q.toFixed(dp), 'dtrader__tag dtrader__tag--last')}
-
-                {hp && (
+                {band && Number.isFinite(band.hi) && Number.isFinite(band.lo) && (
                     <g>
-                        <line x1={x(hp.t)} x2={x(hp.t)} y1={TOP} y2={TOP + plotH} className='dtrader__cross' />
-                        <circle cx={x(hp.t)} cy={y(hp.q)} r='3.5' className='dtrader__dot' />
+                        <rect x={lastX} y={y(band.hi)} width={plotW - lastX} height={Math.abs(y(band.lo) - y(band.hi))} className='dtr-band' />
+                        <line x1={lastX} x2={plotW} y1={y(band.hi)} y2={y(band.hi)} className='dtr-band-line' />
+                        <line x1={lastX} x2={plotW} y1={y(band.lo)} y2={y(band.lo)} className='dtr-band-line' />
+                        <text x={plotW - 4} y={y(band.hi) - 4} textAnchor='end' className='dtr-band-text'>
+                            {band.hi_label}
+                        </text>
+                        <text x={plotW - 4} y={y(band.lo) + 12} textAnchor='end' className='dtr-band-text'>
+                            {band.lo_label}
+                        </text>
                     </g>
                 )}
-                <rect
-                    x='0'
-                    y={TOP}
-                    width={plotW}
-                    height={plotH}
-                    fill='transparent'
-                    onPointerMove={e => {
-                        const r = e.currentTarget.getBoundingClientRect();
-                        const px = e.clientX - r.left;
-                        let best = 0;
-                        let bd = Infinity;
-                        shown.forEach((p: any, i: number) => {
-                            const d = Math.abs(x(p.t) - px);
-                            if (d < bd) {
-                                bd = d;
-                                best = i;
-                            }
-                        });
-                        setHover(bd < 40 ? best : null);
-                    }}
-                    onPointerLeave={() => setHover(null)}
-                />
+                <path d={area} fill='url(#dtr-fill)' />
+                <path d={d} className='dtr-line' />
+                {(lines || []).map(
+                    (l: any, i: number) =>
+                        Number.isFinite(l.price) && (
+                            <g key={i}>
+                                <line x1={0} x2={plotW} y1={y(l.price)} y2={y(l.price)} className={`dtr-ref dtr-ref--${l.tone || 'blue'}`} />
+                                <rect x={plotW + 2} y={y(l.price) - 9} width={AX - 6} height={18} rx={2} className={`dtr-tag dtr-tag--${l.tone || 'blue'}`} />
+                                <text x={plotW + 2 + (AX - 6) / 2} y={y(l.price) + 4} textAnchor='middle' className='dtr-tag-text'>
+                                    {l.label}
+                                </text>
+                            </g>
+                        )
+                )}
+                <line x1={xs[n - 1]} x2={plotW} y1={ly} y2={ly} className='dtr-last-line' />
+                <circle cx={xs[n - 1]} cy={ly} r={4} className='dtr-dot' />
+                <rect x={plotW + 2} y={ly - 10} width={AX - 6} height={20} rx={3} className='dtr-price-tag' />
+                <text x={plotW + 2 + (AX - 6) / 2} y={ly + 4} textAnchor='middle' className='dtr-price-text'>
+                    {last.quote.toFixed(dp)}
+                </text>
+            </>
+        );
+    }
+
+    return (
+        <div className='dtrader__chart' ref={ref}>
+            <svg width={w} height={h} role='img' aria-label={localize('Price chart')}>
+                {body}
             </svg>
-            {hp && (
-                <div
-                    className='dtrader__tip'
-                    style={{ left: clamp(x(hp.t) - 60, 4, Math.max(4, plotW - 250)), top: clamp(y(hp.q) - 60, 4, plotH - 40) }}
-                >
-                    <div>{dmyhms(hp.t)}</div>
-                    <div>
-                        <span>{name.toUpperCase()}</span> <strong>{hp.q.toFixed(dp)}</strong>
-                    </div>
-                </div>
-            )}
-            {children}
+            {n < 2 && <div className='dtrader__chart-wait'>{localize('Loading chart…')}</div>}
         </div>
     );
 };
 
-// ---------- tiny form helpers ----------
-const Seg = ({ value, options, onChange }: any) => (
-    <div className='dtrader__seg'>
-        {options.map((o: any) => (
-            <button
-                key={o.value}
-                type='button'
-                className={classNames({ 'dtrader__seg--on': o.value === value })}
-                onClick={() => onChange(o.value)}
-            >
-                {o.label}
-            </button>
-        ))}
+const Stepper = ({ value, onChange, ctl, label }: any) => (
+    <div className='dtrader__stepper'>
+        <button type='button' onClick={ctl.dec} aria-label={`${label} -`}>
+            −
+        </button>
+        <input type='number' inputMode='decimal' value={value} onChange={e => onChange(e.target.value)} />
+        <button type='button' onClick={ctl.inc} aria-label={`${label} +`}>
+            +
+        </button>
     </div>
 );
 
-const Stepper = ({ value, onChange, min = 0, max = 1e9, step = 1, dec = 0, onBlur }: any) => {
-    const num = Number(value);
-    const set = (n: number) => onChange(dec ? Number(clamp(n, min, max).toFixed(dec)) : clamp(Math.round(n), min, max));
-    return (
-        <div className='dtrader__stepper'>
-            <button type='button' onClick={() => set((isNaN(num) ? min : num) - step)} aria-label='minus'>
-                −
-            </button>
-            <input
-                type='number'
-                inputMode='decimal'
-                value={value}
-                min={min}
-                max={max}
-                step={step}
-                onChange={e => onChange(e.target.value)}
-                onBlur={() => (onBlur ? onBlur() : set(isNaN(num) ? min : num))}
-            />
-            <button type='button' onClick={() => set((isNaN(num) ? min : num) + step)} aria-label='plus'>
-                +
-            </button>
-        </div>
-    );
-};
 
-const Check = ({ label, checked, onChange, disabled }: any) => (
-    <label className={classNames('dtrader__check', { 'dtrader__check--off': disabled })}>
-        <input type='checkbox' checked={checked} disabled={disabled} onChange={e => onChange(e.target.checked)} />
-        <span>{label}</span>
-    </label>
+const Icons = ({ t }: any) => (
+    <span className='dtrader__icons'>
+        {t.icon.map((g: string, i: number) => (
+            <span key={i} className={classNames('dtrader__icon', { 'dtrader__icon--b': i === 1 })}>
+                {g}
+            </span>
+        ))}
+    </span>
 );
 
 const DTrader = observer(() => {
@@ -375,102 +256,105 @@ const DTrader = observer(() => {
     const is_logged_in = !!client?.is_logged_in;
 
     const [symbol, setSymbol] = useState('1HZ100V');
-    const [type_key, setTypeKey] = useState('accu');
-    const [menu_open, setMenuOpen] = useState(false);
-    const [cat, setCat] = useState('all');
-    const [search, setSearch] = useState('');
-    const [sym_open, setSymOpen] = useState(false);
-    const [pos_open, setPosOpen] = useState(true);
-
+    const [type_key, setTypeKey] = useState('accumulators');
+    const [side, setSide] = useState(0);
     const [stake, setStake] = useState<number | string>(10);
-    const [basis, setBasis] = useState('stake');
+    const [basis, setBasis] = useState<'stake' | 'payout'>('stake');
     const [growth, setGrowth] = useState(3);
-    const [tp_on, setTpOn] = useState(false);
-    const [tp, setTp] = useState<number | string>(10);
-    const [sl_on, setSlOn] = useState(false);
-    const [sl, setSl] = useState<number | string>(10);
-    const [dc_on, setDcOn] = useState(false);
-    const [mult, setMult] = useState(0);
-    const [vside, setVside] = useState('call');
-    const [tside, setTside] = useState('up');
-    const [mode, setMode] = useState('dur');
-    const [dur, setDur] = useState<number | string>(3);
-    const [unit, setUnit] = useState('m');
-    const [end_time, setEndTime] = useState('');
+    const [mult_i, setMultI] = useState(0);
+    const [take_profit, setTakeProfit] = useState(false);
+    const [tp_amount, setTpAmount] = useState<number | string>(10);
+    const [stop_loss, setStopLoss] = useState(false);
+    const [sl_amount, setSlAmount] = useState<number | string>(10);
+    const [deal_cancel, setDealCancel] = useState(false);
     const [equals, setEquals] = useState(false);
-    const [dticks, setDticks] = useState(1);
-    const [digit, setDigit] = useState(7);
-    const [offsets, setOffsets] = useState<Record<string, number>>({});
+    const [dur_unit, setDurUnit] = useState('m');
+    const [dur_val, setDurVal] = useState<number | string>(3);
+    const [ticks_dur, setTicksDur] = useState(1);
+    const [barrier_txt, setBarrierTxt] = useState('+0.00');
+    const [digit, setDigit] = useState(5);
 
-    const [ticks, setTicks] = useState<{ t: number; q: number }[]>([]);
+    const [ticks, setTicks] = useState<{ epoch: number; quote: number }[]>([]);
     const [dp, setDp] = useState(2);
-    const [visible, setVisible] = useState(60);
-    const [area, setArea] = useState(true);
-    const [grid, setGrid] = useState(true);
-    const [feed, setFeed] = useState(localize('Connecting…'));
-
+    const [pct, setPct] = useState<number[]>(Array(10).fill(0));
+    const [last_digit, setLastDigit] = useState<number | null>(null);
+    const [feed_status, setFeedStatus] = useState(localize('Connecting…'));
+    const [zoom, setZoom] = useState(120);
     const [quotes, setQuotes] = useState<any[]>([]);
-    const [refresh, setRefresh] = useState(0);
     const [trades, setTrades] = useState<any[]>([]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const [pos_open, setPosOpen] = useState(true);
+    const [show_types, setShowTypes] = useState(false);
+    const [show_markets, setShowMarkets] = useState(false);
+    const [cat, setCat] = useState('all');
+    const [search, setSearch] = useState('');
+
     const sub_ids = useRef<Record<number, string>>({});
 
     const type = TYPES.find(t => t.key === type_key) || TYPES[0];
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
-    const vol = volOf(symbol);
-    const mult_list = MULTIPLIERS[vol] || MULTIPLIERS[100];
-    const multiplier = mult_list[clamp(mult, 0, mult_list.length - 1)];
-    const is_digit = DIGIT_TYPES.includes(type_key);
-    const has_barrier = BARRIER_TYPES.includes(type_key);
-    const has_basis = BASIS_TYPES.includes(type_key);
-    const units = type.units || ['t'];
-    const spot = ticks.length ? ticks[ticks.length - 1].q : null;
     const stake_n = Number(stake);
-    const stake_ok = stake_n >= 0.35;
+    const stake_ok = stake_n > 0;
+    const last_tick = ticks[ticks.length - 1];
+    const prev_tick = ticks[ticks.length - 2];
+    const change = last_tick && prev_tick ? last_tick.quote - prev_tick.quote : 0;
+    const spot = last_tick?.quote ?? 0;
 
-    // ---- keep unit / digit / multiplier valid when the type or market changes ----
+    // sensible defaults when the trade type changes
     useEffect(() => {
-        if (type.units && !type.units.includes(unit)) setUnit(type.units.includes('m') ? 'm' : type.units[0]);
-    }, [type_key]);
-    useEffect(() => {
-        if (type_key === 'overunder') setDigit(d => clamp(d, 1, 8));
-    }, [type_key]);
-    useEffect(() => setMult(i => clamp(i, 0, mult_list.length - 1)), [symbol]);
+        setSide(0);
+        setQuotes([]);
+        setError('');
+        if (DEFAULT_BARRIER[type.key]) setBarrierTxt(DEFAULT_BARRIER[type.key]);
+        if (type.dur === 'time') {
+            setDurUnit('m');
+            setDurVal(type.min_min || 3);
+        }
+        if (type.pick) setDigit(d => clamp(d, type.pick[0], type.pick[1]));
+        if (type.key === 'matchdiffer') setDigit(d => d);
+        if (!type.basis) setBasis('stake');
+    }, [type.key]);
 
-    // ---- barrier offsets: freeze a sensible default the first time ----
-    const off_key = `${type_key}:${symbol}:${tside}`;
-    useEffect(() => {
-        if (!has_barrier || spot === null || offsets[off_key] !== undefined) return;
-        const pct = { vanilla: 0, turbos: 0.0062, higherlower: 0.00058, touch: 0.00165 }[type_key] ?? 0;
-        const sign = type_key === 'turbos' ? (tside === 'up' ? -1 : 1) : 1;
-        setOffsets(o => ({ ...o, [off_key]: Number((sign * spot * pct).toFixed(dp)) }));
-    }, [off_key, has_barrier, spot === null, dp]);
-    const offset = offsets[off_key] ?? 0;
-    const barrier_step = Math.pow(10, -dp);
+    // multiplier list depends on the market
+    useEffect(() => setMultI(0), [symbol]);
 
-    // ---- live ticks + history ----
+    // ---- live ticks (chart + digit circles) ----
     useEffect(() => {
         if (!api_base.api) {
-            setFeed(localize('Not connected. Please refresh the page.'));
+            setFeedStatus(localize('Not connected. Please refresh the page.'));
             return;
         }
         let cancelled = false;
         let sub_id = '';
         let pip = market.dp;
+        let buf: { epoch: number; quote: number }[] = [];
         setTicks([]);
-        setDp(market.dp);
-        setFeed(localize('Loading ticks…'));
+        setPct(Array(10).fill(0));
+        setLastDigit(null);
+        setDp(pip);
+        setFeedStatus(localize('Loading ticks…'));
+
+        const publish = () => {
+            setTicks(buf.slice());
+            const digits = buf.map(t => toDigit(t.quote, pip));
+            setPct(percents(digits));
+            setLastDigit(digits.length ? digits[digits.length - 1] : null);
+        };
+
         const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
             if (data?.msg_type !== 'tick' || data.tick?.symbol !== symbol) return;
-            if (data.tick.pip_size !== undefined) {
+            if (data.tick.pip_size !== undefined && Number(data.tick.pip_size) !== pip) {
                 pip = Number(data.tick.pip_size);
                 setDp(pip);
             }
-            setTicks(prev => [...prev, { t: Number(data.tick.epoch), q: Number(data.tick.quote) }].slice(-1000));
+            buf.push({ epoch: data.tick.epoch, quote: Number(data.tick.quote) });
+            if (buf.length > HIST) buf.shift();
+            publish();
         });
+
         const start = async () => {
-            const base = { ticks_history: symbol, adjust_start_time: 1, count: 1000, end: 'latest', style: 'ticks' };
+            const base = { ticks_history: symbol, adjust_start_time: 1, count: HIST, end: 'latest', style: 'ticks' };
             try {
                 let res;
                 try {
@@ -488,17 +372,15 @@ const DTrader = observer(() => {
                 }
                 const prices = res?.history?.prices || [];
                 const times = res?.history?.times || [];
-                setTicks(prev => {
-                    const hist = prices.map((q: number, i: number) => ({ t: Number(times[i]), q: Number(q) }));
-                    const newest = hist.length ? hist[hist.length - 1].t : 0;
-                    return [...hist, ...prev.filter(p => p.t > newest)].slice(-1000);
-                });
-                setFeed(localize('Live'));
+                buf = prices.map((q: number, i: number) => ({ epoch: Number(times[i]), quote: Number(q) })).slice(-HIST);
+                publish();
+                setFeedStatus(localize('Live'));
             } catch (e) {
-                if (!cancelled) setFeed(errMsg(e));
+                if (!cancelled) setFeedStatus(errMsg(e));
             }
         };
         start();
+
         return () => {
             cancelled = true;
             sub.unsubscribe();
@@ -506,123 +388,75 @@ const DTrader = observer(() => {
         };
     }, [symbol]);
 
-    // ---- what one side of the current trade looks like ----
-    const sides = useMemo(() => {
-        switch (type_key) {
-            case 'accu':
-                return [{ ct: 'ACCU', label: 'Buy', tone: 'a' }];
-            case 'vanilla':
-                return [vside === 'call' ? { ct: 'VANILLALONGCALL', label: 'Call', tone: 'a' } : { ct: 'VANILLALONGPUT', label: 'Put', tone: 'b' }];
-            case 'turbos':
-                return [tside === 'up' ? { ct: 'TURBOSLONG', label: 'Up', tone: 'a' } : { ct: 'TURBOSSHORT', label: 'Down', tone: 'b' }];
-            case 'multipliers':
-                return [{ ct: 'MULTUP', label: 'Up', tone: 'a', icon: 'up' }, { ct: 'MULTDOWN', label: 'Down', tone: 'b', icon: 'down' }];
-            case 'risefall':
-                return [
-                    { ct: equals ? 'CALLE' : 'CALL', label: 'Rise', tone: 'a', icon: 'up' },
-                    { ct: equals ? 'PUTE' : 'PUT', label: 'Fall', tone: 'b', icon: 'down' },
-                ];
-            case 'higherlower':
-                return [{ ct: 'CALL', label: 'Higher', tone: 'a', icon: 'up' }, { ct: 'PUT', label: 'Lower', tone: 'b', icon: 'down' }];
-            case 'touch':
-                return [{ ct: 'ONETOUCH', label: 'Touch', tone: 'a', icon: 'up' }, { ct: 'NOTOUCH', label: 'No Touch', tone: 'b', icon: 'down' }];
-            case 'matchdiffer':
-                return [{ ct: 'DIGITMATCH', label: 'Matches', tone: 'a', icon: 'match' }, { ct: 'DIGITDIFF', label: 'Differs', tone: 'b', icon: 'differ' }];
-            case 'evenodd':
-                return [{ ct: 'DIGITEVEN', label: 'Even', tone: 'a', icon: 'even' }, { ct: 'DIGITODD', label: 'Odd', tone: 'b', icon: 'odd' }];
-            default:
-                return [{ ct: 'DIGITOVER', label: 'Over', tone: 'a', icon: 'up' }, { ct: 'DIGITUNDER', label: 'Under', tone: 'b', icon: 'down' }];
-        }
-    }, [type_key, vside, tside, equals]);
-
-    const dur_n = Number(dur);
-    const [dmin, dmax] = durationRange(type_key, unit);
-    const dur_ok = clamp(Math.round(dur_n) || dmin, dmin, dmax);
-
-    const end_epoch = useMemo(() => {
-        if (!end_time) return 0;
-        const [hh, mm] = end_time.split(':').map(Number);
-        const d = new Date();
-        d.setHours(hh, mm, 0, 0);
-        if (d.getTime() <= Date.now() + 60000) d.setDate(d.getDate() + 1);
-        return Math.floor(d.getTime() / 1000);
-    }, [end_time]);
-
+    // ---- request parameters for one side of the current trade type ----
+    const dur_n = clamp(Math.round(Number(dur_val)) || 1, type.min_min || 1, UNITS.find(u => u.u === dur_unit)?.max || 1440);
     const buildParams = useCallback(
-        (side: any) => {
-            const p: any = { contract_type: side.ct, currency, underlying_symbol: symbol };
-            const use_payout = has_basis && basis === 'payout';
-            p.basis = use_payout ? 'payout' : 'stake';
-            p.amount = stake_n;
-            if (type_key === 'accu') {
+        (s: any) => {
+            const p: any = {
+                amount: stake_n,
+                basis: type.basis ? basis : 'stake',
+                contract_type: s.ct,
+                currency,
+                underlying_symbol: symbol,
+            };
+            if (type.key === 'accumulators') {
+                p.contract_type = 'ACCU';
                 p.growth_rate = growth / 100;
-                if (tp_on && Number(tp) > 0) p.limit_order = { take_profit: Number(tp) };
+                if (take_profit) p.limit_order = { take_profit: Number(tp_amount) };
                 return p;
             }
-            if (type_key === 'multipliers') {
-                p.multiplier = multiplier;
+            if (type.key === 'multipliers') {
+                p.multiplier = market.mult[mult_i];
                 const lo: any = {};
-                if (tp_on && Number(tp) > 0) lo.take_profit = Number(tp);
-                if (sl_on && !dc_on && Number(sl) > 0) lo.stop_loss = Number(sl);
+                if (take_profit) lo.take_profit = Number(tp_amount);
+                if (stop_loss) lo.stop_loss = Number(sl_amount);
                 if (Object.keys(lo).length) p.limit_order = lo;
-                if (dc_on) p.deal_cancellation = '5m';
+                if (deal_cancel) p.cancellation = '60m';
                 return p;
             }
-            if (is_digit) {
-                p.duration = dticks;
+            if (type.key === 'risefall' && equals) p.contract_type = s.ct === 'CALL' ? 'CALLE' : 'PUTE';
+            if (type.dur === 'ticks') {
+                p.duration = ticks_dur;
                 p.duration_unit = 't';
-                if (type_key !== 'evenodd') p.barrier = String(digit);
-                return p;
+                if (type.pick) p.barrier = String(digit);
+            } else if (type.dur === 'time') {
+                p.duration = dur_n;
+                p.duration_unit = dur_unit;
+                if (type.bar) p.barrier = barrier_txt;
             }
-            if (mode === 'end' && end_epoch && type.units?.some(u => u !== 't')) {
-                p.date_expiry = end_epoch;
-            } else {
-                p.duration = dur_ok;
-                p.duration_unit = unit;
-            }
-            if (has_barrier) p.barrier = signed(offset, dp);
             return p;
         },
-        [currency, symbol, basis, stake_n, growth, tp_on, tp, sl_on, sl, dc_on, multiplier, dticks, digit, mode, end_epoch, dur_ok, unit, offset, dp, type_key]
+        [stake_n, basis, currency, symbol, growth, take_profit, tp_amount, stop_loss, sl_amount, deal_cancel, equals, ticks_dur, digit, dur_n, dur_unit, barrier_txt, mult_i, market, type.key]
     );
 
-    // ---- payout / price quotes ----
-    const req = useMemo(() => sides.map(s => ({ side: s, params: buildParams(s) })), [sides, buildParams]);
-    const req_key = JSON.stringify(req.map(r => r.params));
-    useEffect(() => {
-        const id = setInterval(() => setRefresh(n => n + 1), 10000);
-        return () => clearInterval(id);
-    }, []);
+    const sides_to_quote = type.kind === 'dual' || type.kind === 'mult' ? [0, 1] : type.kind === 'accu' ? [0] : [side];
+
+    // ---- price quotes ----
     useEffect(() => {
         if (!api_base.api || !stake_ok) {
             setQuotes([]);
             return;
         }
         let cancelled = false;
-        const ask = async (params: any) => {
-            try {
-                const res = await api_base.api.send({ proposal: 1, ...params });
-                const pr = res?.proposal || {};
-                return {
-                    ask: Number(pr.ask_price),
-                    payout: Number(pr.payout),
-                    commission: pr.commission !== undefined ? Number(pr.commission) : undefined,
-                    details: pr.contract_details || {},
-                    limit_order: pr.limit_order || {},
-                };
-            } catch (e) {
-                return { error: errMsg(e) };
-            }
-        };
+        const defs = type.kind === 'accu' ? [{ ct: 'ACCU' }] : type.sides;
         const timer = setTimeout(async () => {
-            const out = await Promise.all(req.map(r => ask(r.params)));
+            const out = await Promise.all(
+                sides_to_quote.map(async i => {
+                    try {
+                        const res = await api_base.api.send({ proposal: 1, ...buildParams(defs[i]) });
+                        return { ok: true, ...res.proposal };
+                    } catch (e) {
+                        return { ok: false, error: errMsg(e) };
+                    }
+                })
+            );
             if (!cancelled) setQuotes(out);
-        }, 450);
+        }, 500);
         return () => {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [req_key, stake_ok, refresh]);
+    }, [buildParams, stake_ok, side, type.key]);
 
     // ---- follow open trades ----
     useEffect(() => {
@@ -635,13 +469,7 @@ const DTrader = observer(() => {
                 prev.map(t =>
                     t.id !== c.contract_id
                         ? t
-                        : {
-                              ...t,
-                              profit: Number(c.profit),
-                              bid: Number(c.bid_price),
-                              can_sell: !!c.is_valid_to_sell && !c.is_sold,
-                              status: c.is_sold ? (Number(c.profit) >= 0 ? 'won' : 'lost') : 'open',
-                          }
+                        : { ...t, profit: Number(c.profit), status: c.is_sold ? (Number(c.profit) >= 0 ? 'won' : 'lost') : 'open' }
                 )
             );
             if (c.is_sold && sub_ids.current[c.contract_id]) {
@@ -657,20 +485,23 @@ const DTrader = observer(() => {
     }, []);
 
     const buy = useCallback(
-        async (idx: number) => {
+        async (i: number) => {
             setError('');
             if (!is_logged_in) return setError(localize('Please log in to trade.'));
-            if (!stake_ok) return setError(localize('Minimum stake is 0.35.'));
-            const { side, params } = req[idx];
+            if (!stake_ok) return setError(localize('Enter a stake.'));
+            const defs = type.kind === 'accu' ? [{ ct: 'ACCU', label: 'Accumulators' }] : type.sides;
+            const s = defs[i];
+            const qi = sides_to_quote.indexOf(i);
+            const q = quotes[qi];
+            const price = q?.ok && q.ask_price ? Number(q.ask_price) : basis === 'stake' ? stake_n : NaN;
+            if (!Number.isFinite(price)) return setError(localize('Waiting for a price. Try again in a moment.'));
             setBusy(true);
             try {
-                const price = params.basis === 'payout' ? quotes[idx]?.ask || stake_n : stake_n;
-                const res = await api_base.api.send({ buy: '1', price, parameters: params });
+                const parameters = buildParams(s);
+                const res = await api_base.api.send({ buy: '1', price, parameters });
                 const id = res.buy.contract_id;
-                const label =
-                    type_key === 'matchdiffer' || type_key === 'overunder' ? `${side.label} ${digit}` : `${type.label} · ${side.label}`;
                 setTrades(prev =>
-                    [{ id, label, market: market.name, stake: Number(res.buy.buy_price) || stake_n, profit: null, status: 'open', can_sell: false }, ...prev].slice(0, 30)
+                    [{ id, label: type.kind === 'accu' ? 'Accumulators' : `${type.label}: ${s.label}`, market: market.name, stake: price, profit: null, status: 'open' }, ...prev].slice(0, 30)
                 );
                 const r = await api_base.api.send({ proposal_open_contract: 1, contract_id: id, subscribe: 1 });
                 if (r?.subscription?.id) sub_ids.current[id] = r.subscription.id;
@@ -679,356 +510,72 @@ const DTrader = observer(() => {
             }
             setBusy(false);
         },
-        [is_logged_in, stake_ok, req, quotes, stake_n, type_key, digit, market.name, type.label]
+        [is_logged_in, stake_ok, stake_n, quotes, buildParams, type.key, market, basis, side]
     );
 
-    const sell = async (id: number) => {
-        try {
-            await api_base.api.send({ sell: id, price: 0 });
-        } catch (e) {
-            setError(errMsg(e));
+    // ---- chart overlays ----
+    const overlays = useMemo(() => {
+        const lines: any[] = [];
+        let band: any = null;
+        if (!spot) return { lines, band };
+        if (type.bar && type.dur === 'time') {
+            const price = spot + (Number(barrier_txt) || 0);
+            if (type.bar !== 'strike' || Number(barrier_txt) !== 0)
+                lines.push({ price, label: barrier_txt, tone: type.bar === 'turbo' ? 'red' : 'blue' });
         }
-    };
+        if (type.kind === 'accu' && quotes[0]?.ok) {
+            const cd = quotes[0].contract_details || {};
+            const hi = absPrice(cd.high_barrier, spot);
+            const lo = absPrice(cd.low_barrier, spot);
+            if (Number.isFinite(hi) && Number.isFinite(lo))
+                band = { hi, lo, hi_label: `+${(hi - spot).toFixed(3)}`, lo_label: `${(lo - spot).toFixed(3)}` };
+        }
+        return { lines, band };
+    }, [spot, type.key, barrier_txt, quotes]);
 
-    // ---- chart extras ----
-    const pct = useMemo(() => percents(ticks.slice(-1000).map(p => toDigit(p.q, dp))), [ticks, dp]);
-    const has_pct = ticks.length > 0;
     const hi = Math.max(...pct);
     const lo = Math.min(...pct);
-    const last_digit = spot !== null ? toDigit(spot, dp) : null;
-    const prev = ticks.length > 1 ? ticks[ticks.length - 2].q : null;
-    const change = spot !== null && prev !== null ? spot - prev : 0;
+    const has_data = pct.some(p => p > 0);
+    const is_digit = type.dur === 'ticks';
+    const open_count = trades.filter(t => t.status === 'open').length;
+    const total = round2(trades.reduce((sum, t) => sum + (t.status !== 'open' && t.profit !== null ? t.profit : 0), 0));
 
-    const q0 = quotes[0] || {};
-    const overlays = useMemo(() => {
-        if (spot === null) return [];
-        const out: any[] = [];
-        if (type_key === 'accu') {
-            const d = Number(q0.details?.barrier_spot_distance) || (Number(q0.details?.tick_size_barrier) || 0) * spot;
-            if (d > 0) out.push({ kind: 'box', price: spot + d, price2: spot - d, label: signed(d, 3), label2: signed(-d, 3) });
-        } else if (type_key === 'vanilla') {
-            out.push({ price: spot + offset, label: signed(offset, 2), tone: 'blue' });
-        } else if (type_key === 'turbos') {
-            out.push({ price: spot + offset, label: signed(offset, 2), tone: 'red' });
-        } else if (type_key === 'higherlower' || type_key === 'touch') {
-            out.push({ price: spot + offset, label: signed(offset, 2), tone: 'blue' });
-        } else if (type_key === 'multipliers') {
-            const v = Number(q0.limit_order?.stop_out?.value);
-            if (v) out.push({ price: v, label: v.toFixed(dp), title: localize('Stop out'), tone: 'red' });
-        }
-        return out;
-    }, [type_key, spot, offset, q0.details, q0.limit_order, dp]);
+    const num = (setter: any, v: number | string, step = 1, min = 0, max = 1e9) => ({
+        dec: () => setter(round2(clamp(Number(v) - step, min, max))),
+        inc: () => setter(round2(clamp(Number(v) + step, min, max))),
+    });
+    const stake_ctl = num(setStake, stake, 1, 0.35);
+    const tp_ctl = num(setTpAmount, tp_amount, 1, 0.01);
+    const sl_ctl = num(setSlAmount, sl_amount, 1, 0.01);
+    const dur_ctl = num(setDurVal, dur_val, 1, type.min_min || 1);
 
-    const downloadTicks = () => {
-        const csv = 'time,price\n' + ticks.map(p => `${new Date(p.t * 1000).toISOString()},${p.q}`).join('\n');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-        a.download = `${symbol}-ticks.csv`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    };
+    const payout_pct = (q: any) => (q?.ok && q.payout && q.ask_price ? ((q.payout - q.ask_price) / q.ask_price) * 100 : null);
 
-    // ---- right panel pieces ----
-    const shownQuote = (i: number) => quotes[i] || {};
-    const pctOf = (q: any) => (q.payout && q.ask ? ((q.payout - q.ask) / q.ask) * 100 : null);
-    const buyBtn = (i: number) => {
-        const s = sides[i];
-        const q = shownQuote(i);
-        const p = pctOf(q);
+    const renderDualButton = (i: number) => {
+        const s = type.sides[i];
+        const q = quotes[i];
+        const p = payout_pct(q);
         return (
-            <button
-                key={s.ct}
-                type='button'
-                className={`dtrader__buy dtrader__buy--${s.tone}`}
-                disabled={busy || !stake_ok}
-                onClick={() => buy(i)}
-            >
-                <span className='dtrader__buy-name'>
-                    {s.icon && <TypeIcon name={s.icon} />}
-                    {localize(s.label)}
-                </span>
-                <span className='dtrader__buy-amount'>
-                    {type_key === 'multipliers' || type_key === 'accu' || type_key === 'vanilla' || type_key === 'turbos'
-                        ? `${money(stake_n || 0)} ${currency}`
-                        : p !== null
-                          ? `${p.toFixed(2)}%`
-                          : '…'}
-                </span>
-            </button>
-        );
-    };
-    const payoutLine = (i: number) => {
-        const q = shownQuote(i);
-        return (
-            <div className='dtrader__payout'>
-                <span>{localize('Payout')}</span>
-                <strong>{q.payout ? `${money(q.payout)} ${currency}` : '—'}</strong>
+            <div key={i} className='dtrader__buywrap'>
+                <div className='dtrader__payout'>
+                    {localize('Payout')} <strong>{q?.ok && q.payout ? `${money(q.payout)} ${currency}` : '…'}</strong>
+                </div>
+                <button type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'}`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                    <span>
+                        {type.icon[i] === undefined ? '' : <em>{type.icon[i]}</em>}
+                        {localize(s.label)}
+                        {type.pick ? ` ${digit}` : ''}
+                    </span>
+                    <b>{p === null ? '…' : `${p.toFixed(2)}%`}</b>
+                </button>
             </div>
         );
     };
 
-    const durationBlock = (
-        <div className='dtrader__card'>
-            <Seg
-                value={mode}
-                onChange={setMode}
-                options={[
-                    { value: 'dur', label: localize('Duration') },
-                    { value: 'end', label: localize('End time') },
-                ]}
-            />
-            {mode === 'dur' || !units.some(u => u !== 't') ? (
-                <>
-                    <label className='dtrader__select-wrap'>
-                        <Chevron />
-                        <select value={unit} onChange={e => setUnit(e.target.value)}>
-                            {units.map(u => (
-                                <option key={u} value={u}>
-                                    {localize(UNIT_NAMES[u])}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <Stepper value={dur} onChange={setDur} min={dmin} max={dmax} onBlur={() => setDur(dur_ok)} />
-                    <small className='dtrader__muted'>
-                        {localize('Range')}: {dmin.toLocaleString()} - {dmax.toLocaleString()} {localize(UNIT_NAMES[unit]).toLowerCase()}
-                    </small>
-                </>
-            ) : (
-                <input type='time' className='dtrader__time' value={end_time} onChange={e => setEndTime(e.target.value)} />
-            )}
-        </div>
-    );
-    const stakeBlock = (
-        <div className='dtrader__card'>
-            {has_basis ? (
-                <Seg
-                    value={basis}
-                    onChange={setBasis}
-                    options={[
-                        { value: 'stake', label: localize('Stake') },
-                        { value: 'payout', label: localize('Payout') },
-                    ]}
-                />
-            ) : (
-                <div className='dtrader__card-title'>{localize('Stake')}</div>
-            )}
-            <Stepper value={stake} onChange={setStake} min={0.35} max={50000} step={1} dec={2} />
-        </div>
-    );
-    const barrierBlock = (title: string) => (
-        <div className='dtrader__card'>
-            <div className='dtrader__card-title'>{title}</div>
-            <Stepper
-                value={offset}
-                onChange={(v: any) => setOffsets(o => ({ ...o, [off_key]: Number(v) }))}
-                min={-1e6}
-                max={1e6}
-                step={barrier_step * (type_key === 'turbos' ? 100 : 10)}
-                dec={dp}
-                onBlur={() => {}}
-            />
-        </div>
-    );
-    const limitsBlock = (with_sl: boolean, with_dc: boolean) => (
-        <div className='dtrader__card dtrader__card--flat'>
-            <Check label={localize('Take profit')} checked={tp_on} onChange={setTpOn} />
-            {tp_on && <Stepper value={tp} onChange={setTp} min={1} step={1} dec={2} />}
-            {with_sl && <Check label={localize('Stop loss')} checked={sl_on && !dc_on} disabled={dc_on} onChange={setSlOn} />}
-            {with_sl && sl_on && !dc_on && <Stepper value={sl} onChange={setSl} min={1} step={1} dec={2} />}
-            {with_dc && (
-                <Check
-                    label={localize('Deal cancellation')}
-                    checked={dc_on}
-                    onChange={(v: boolean) => {
-                        setDcOn(v);
-                        if (v) setSlOn(false);
-                    }}
-                />
-            )}
-        </div>
-    );
-    const digitPick = (lo_d: number, hi_d: number) => (
-        <div className='dtrader__card'>
-            <div className='dtrader__card-title'>{localize('Last Digit Prediction')}</div>
-            <div className='dtrader__digits-grid'>
-                {DIGITS.map(d => (
-                    <button
-                        key={d}
-                        type='button'
-                        disabled={d < lo_d || d > hi_d}
-                        className={classNames({ 'dtrader__digit-on': digit === d })}
-                        onClick={() => setDigit(d)}
-                    >
-                        {d}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-    const ticksBlock = (
-        <div className='dtrader__card'>
-            <div className='dtrader__card-title'>{localize('Ticks')}</div>
-            <input type='range' min='1' max='10' step='1' value={dticks} onChange={e => setDticks(Number(e.target.value))} className='dtrader__range' />
-            <div className='dtrader__range-label'>
-                {dticks} {dticks === 1 ? localize('Tick') : localize('Ticks')}
-            </div>
-        </div>
-    );
-
-    let panel: any;
-    if (type_key === 'accu') {
-        const mp = q0.details?.maximum_payout;
-        const mt = q0.details?.maximum_ticks;
-        panel = (
-            <>
-                <div className='dtrader__card'>
-                    <div className='dtrader__card-title'>{localize('Growth rate')}</div>
-                    <div className='dtrader__rates'>
-                        {[1, 2, 3, 4, 5].map(g => (
-                            <button key={g} type='button' className={classNames({ 'dtrader__rate-on': growth === g })} onClick={() => setGrowth(g)}>
-                                {g}%
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                {stakeBlock}
-                {limitsBlock(false, false)}
-                <div className='dtrader__facts'>
-                    <div>
-                        <span>{localize('Max. payout')}</span>
-                        <strong>{mp ? `${money(mp)} ${currency}` : '—'}</strong>
-                    </div>
-                    <div>
-                        <span>{localize('Max. ticks')}</span>
-                        <strong>{mt ? `${mt} ${localize('ticks')}` : '—'}</strong>
-                    </div>
-                </div>
-                <div className='dtrader__buys'>{buyBtn(0)}</div>
-            </>
-        );
-    } else if (type_key === 'multipliers') {
-        panel = (
-            <>
-                <div className='dtrader__card'>
-                    <div className='dtrader__card-title'>{localize('Multiplier')}</div>
-                    <label className='dtrader__select-wrap'>
-                        <Chevron />
-                        <select value={mult} onChange={e => setMult(Number(e.target.value))}>
-                            {mult_list.map((m, i) => (
-                                <option key={m} value={i}>
-                                    x{m}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                </div>
-                {stakeBlock}
-                <div className='dtrader__facts'>
-                    <div>
-                        <span>{localize('Commission')}</span>
-                        <strong>{q0.commission !== undefined ? `${money(q0.commission)} ${currency}` : '—'}</strong>
-                    </div>
-                    <div>
-                        <span>{localize('Stop out')}</span>
-                        <strong>
-                            {q0.limit_order?.stop_out?.order_amount !== undefined
-                                ? `${money(Math.abs(q0.limit_order.stop_out.order_amount))} ${currency}`
-                                : '—'}
-                        </strong>
-                    </div>
-                </div>
-                {limitsBlock(true, true)}
-                <div className='dtrader__buys'>
-                    {buyBtn(0)}
-                    {buyBtn(1)}
-                </div>
-            </>
-        );
-    } else if (type_key === 'vanilla') {
-        panel = (
-            <>
-                {durationBlock}
-                <Seg
-                    value={vside}
-                    onChange={setVside}
-                    options={[
-                        { value: 'call', label: localize('Call') },
-                        { value: 'put', label: localize('Put') },
-                    ]}
-                />
-                {barrierBlock(localize('Strike price'))}
-                {stakeBlock}
-                <div className='dtrader__payout'>
-                    <span>{localize('Payout per point')}</span>
-                    <strong>{q0.payout ? `${q0.payout.toFixed(6)} ${currency}` : '—'}</strong>
-                </div>
-                <div className='dtrader__buys'>{buyBtn(0)}</div>
-            </>
-        );
-    } else if (type_key === 'turbos') {
-        panel = (
-            <>
-                <Seg
-                    value={tside}
-                    onChange={setTside}
-                    options={[
-                        { value: 'up', label: localize('Up') },
-                        { value: 'down', label: localize('Down') },
-                    ]}
-                />
-                {stakeBlock}
-                <div className='dtrader__payout'>
-                    <span>{localize('Payout per Point')}</span>
-                    <strong>{q0.payout ? `${money(q0.payout)} ${currency}` : '—'}</strong>
-                </div>
-                {barrierBlock(localize('Barrier'))}
-                {durationBlock}
-                {limitsBlock(false, false)}
-                <div className='dtrader__buys'>{buyBtn(0)}</div>
-            </>
-        );
-    } else if (is_digit) {
-        panel = (
-            <>
-                {ticksBlock}
-                {type_key === 'matchdiffer' && digitPick(0, 9)}
-                {type_key === 'overunder' && digitPick(1, 8)}
-                {stakeBlock}
-                <div className='dtrader__buys'>
-                    {payoutLine(0)}
-                    {buyBtn(0)}
-                    {payoutLine(1)}
-                    {buyBtn(1)}
-                </div>
-            </>
-        );
-    } else {
-        panel = (
-            <>
-                {durationBlock}
-                {has_barrier && barrierBlock(localize('Barrier'))}
-                {stakeBlock}
-                {type_key === 'risefall' && (
-                    <Check label={localize('Allow equals')} checked={equals} onChange={setEquals} />
-                )}
-                <div className='dtrader__buys'>
-                    {payoutLine(0)}
-                    {buyBtn(0)}
-                    {payoutLine(1)}
-                    {buyBtn(1)}
-                </div>
-            </>
-        );
-    }
-
-    const err_text = error || (quotes.find(q => q?.error) || {}).error;
-    const filtered = TYPES.filter(
-        t => (cat === 'all' || t.cat === cat) && (!search || `${t.label} ${t.group}`.toLowerCase().includes(search.toLowerCase()))
-    );
-    const open_trades = trades.filter(t => t.status === 'open');
-    const closed_trades = trades.filter(t => t.status !== 'open');
-    const total = round2(closed_trades.reduce((s, t) => s + (t.profit || 0), 0));
+    const q0 = quotes[0];
+    const cd0 = q0?.contract_details || {};
+    const filtered = TYPES.filter(t => (cat === 'all' || t.cat === cat) && (!search || t.label.toLowerCase().includes(search.toLowerCase()) || t.group.toLowerCase().includes(search.toLowerCase())));
+    const quote_err = quotes.find(q => q && !q.ok)?.error;
 
     return (
         <div className='dtrader'>
@@ -1036,234 +583,409 @@ const DTrader = observer(() => {
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open })}>
                 <div className='dtrader__positions-head'>
                     <strong>{localize('Open positions')}</strong>
-                    <button type='button' onClick={() => setPosOpen(o => !o)} aria-label='toggle'>
+                    <button type='button' onClick={() => setPosOpen(o => !o)} aria-label={localize('Toggle open positions')}>
                         {pos_open ? '−' : '+'}
                     </button>
                 </div>
-                {pos_open && (
-                    <div className='dtrader__positions-body'>
-                        {trades.length === 0 ? (
-                            <div className='dtrader__empty'>
-                                <svg width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.4'>
-                                    <rect x='3' y='7' width='18' height='13' rx='2' />
-                                    <path d='M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M3 13h18' />
-                                </svg>
-                                <p>{localize('You have no open positions.')}</p>
+                {pos_open &&
+                    (trades.length === 0 ? (
+                        <div className='dtrader__empty'>
+                            <svg width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='#9aa4a6' strokeWidth='1.5'>
+                                <rect x='3' y='7' width='18' height='13' rx='2' />
+                                <path d='M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18' />
+                            </svg>
+                            <p>{localize('You have no open positions.')}</p>
+                        </div>
+                    ) : (
+                        <div className='dtrader__poslist'>
+                            {trades.map(t => (
+                                <div key={t.id} className={`dtrader__pos dtrader__pos--${t.status}`}>
+                                    <span>
+                                        <strong>{t.label}</strong>
+                                        <small>{t.market}</small>
+                                    </span>
+                                    <span className='dtrader__pos-pl'>
+                                        {t.status === 'open' && t.profit === null
+                                            ? localize('Open…')
+                                            : `${t.profit > 0 ? '+' : ''}${Number(t.profit).toFixed(2)} ${currency}`}
+                                        <small>{t.status === 'open' ? localize('Running') : t.status === 'won' ? localize('Won') : localize('Lost')}</small>
+                                    </span>
+                                </div>
+                            ))}
+                            <div className='dtrader__postotal'>
+                                <span>
+                                    {open_count} {localize('open')}
+                                </span>
+                                <span className={classNames({ win: total > 0, loss: total < 0 })}>
+                                    {total > 0 ? '+' : ''}
+                                    {total.toFixed(2)} {currency}
+                                </span>
+                                <button type='button' onClick={() => setTrades(p => p.filter(t => t.status === 'open'))}>
+                                    {localize('Clear')}
+                                </button>
                             </div>
-                        ) : (
-                            <>
-                                {closed_trades.length > 0 && (
-                                    <div className='dtrader__total'>
-                                        {localize('Closed')}: <b className={total >= 0 ? 'dtrader__win' : 'dtrader__loss'}>{signed(total, 2)} {currency}</b>
-                                        <button type='button' onClick={() => setTrades(open_trades)}>
-                                            {localize('Clear')}
-                                        </button>
-                                    </div>
-                                )}
-                                {[...open_trades, ...closed_trades].map(t => (
-                                    <div key={t.id} className={`dtrader__pos dtrader__pos--${t.status}`}>
-                                        <div className='dtrader__pos-main'>
-                                            <strong>{t.label}</strong>
-                                            <small>{t.market}</small>
-                                            <small>
-                                                {localize('Stake')}: {money(t.stake)} {currency}
-                                            </small>
-                                        </div>
-                                        <div className='dtrader__pos-side'>
-                                            <b className={t.profit === null ? '' : t.profit >= 0 ? 'dtrader__win' : 'dtrader__loss'}>
-                                                {t.profit === null ? '…' : `${signed(t.profit, 2)} ${currency}`}
-                                            </b>
-                                            {t.status === 'open' && t.can_sell && (
-                                                <button type='button' onClick={() => sell(t.id)}>
-                                                    {localize('Sell')}
-                                                </button>
-                                            )}
-                                            {t.status !== 'open' && <small>{t.status === 'won' ? localize('Won') : localize('Lost')}</small>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                    </div>
-                )}
+                        </div>
+                    ))}
             </aside>
 
             {/* ---------- chart ---------- */}
-            <section className='dtrader__stage'>
-                <div className='dtrader__symbol'>
-                    <button type='button' className='dtrader__symbol-btn' onClick={() => setSymOpen(o => !o)}>
-                        <span className='dtrader__badge'>{market.badge}</span>
+            <section className='dtrader__center'>
+                <div className='dtrader__plot'>
+                    <div className='dtrader__symbol' onClick={() => setShowMarkets(s => !s)} role='button' tabIndex={0}>
+                        <span className='dtrader__badge'>{market.v}</span>
                         <span className='dtrader__symbol-text'>
                             <strong>{market.name}</strong>
                             <small>
-                                {spot !== null ? spot.toFixed(dp) : feed}
-                                {spot !== null && prev !== null && (
-                                    <>
+                                {last_tick ? last_tick.quote.toFixed(dp) : feed_status}
+                                {last_tick && (
+                                    <span className={change < 0 ? 'loss' : 'win'}>
                                         {' '}
-                                        {change >= 0 ? '+' : '-'} {Math.abs(change).toFixed(2)} ({Math.abs((change / prev) * 100).toFixed(2)}%){' '}
-                                        <i className={change >= 0 ? 'dtrader__win' : 'dtrader__loss'}>{change >= 0 ? '▲' : '▼'}</i>
-                                    </>
+                                        {change < 0 ? '- ' : '+ '}
+                                        {Math.abs(change).toFixed(2)} ({Math.abs((change / (last_tick.quote - change || 1)) * 100).toFixed(2)}%) {change < 0 ? '▼' : '▲'}
+                                    </span>
                                 )}
                             </small>
                         </span>
-                        <Chevron dir='down' />
-                    </button>
-                    {sym_open && (
-                        <div className='dtrader__symbol-menu'>
+                        <span className='dtrader__chev'>⌄</span>
+                    </div>
+                    {show_markets && (
+                        <div className='dtrader__markets'>
                             {MARKETS.map(m => (
                                 <button
                                     key={m.symbol}
                                     type='button'
-                                    className={classNames({ 'dtrader__symbol-on': m.symbol === symbol })}
+                                    className={classNames({ active: m.symbol === symbol })}
                                     onClick={() => {
                                         setSymbol(m.symbol);
-                                        setSymOpen(false);
+                                        setShowMarkets(false);
                                     }}
                                 >
-                                    <span className='dtrader__badge'>{m.badge}</span>
                                     {m.name}
                                 </button>
                             ))}
                         </div>
                     )}
-                </div>
-
-                <div className='dtrader__toolbar'>
-                    <button type='button' title={localize('Chart type')} onClick={() => setArea(a => !a)} className={classNames({ on: area })}>
-                        <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6'>
-                            <path d='M3 17l5-6 4 3 6-8 3 4v8H3z' />
-                        </svg>
-                    </button>
-                    <button type='button' title={localize('Grid')} onClick={() => setGrid(g => !g)} className={classNames({ on: grid })}>
-                        <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6'>
-                            <path d='M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18' />
-                        </svg>
-                    </button>
-                    <button type='button' title={localize('Download ticks')} onClick={downloadTicks}>
-                        <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6'>
-                            <path d='M12 3v12M7 10l5 5 5-5M4 20h16' />
-                        </svg>
-                    </button>
-                </div>
-
-                <Chart ticks={ticks} dp={dp} overlays={overlays} visible={visible} area={area} grid={grid} name={market.name}>
-                    <div className='dtrader__zoom'>
-                        <button type='button' onClick={() => setVisible(v => Math.max(15, Math.round(v * 0.7)))} aria-label='zoom in'>
-                            +
-                        </button>
-                        <button type='button' onClick={() => setVisible(60)} aria-label='reset zoom'>
-                            ⌖
-                        </button>
-                        <button type='button' onClick={() => setVisible(v => Math.min(900, Math.round(v * 1.4)))} aria-label='zoom out'>
-                            −
-                        </button>
+                    <div className='dtrader__toolbar'>
+                        <button type='button' title='Ticks'>1T</button>
+                        <button type='button' title='Line'>⌇</button>
+                        <button type='button' title='Indicators'>▤</button>
+                        <button type='button' title='Draw'>✎</button>
+                        <button type='button' title='Share'>⤓</button>
                     </div>
+                    <div className='dtrader__zoom'>
+                        <button type='button' onClick={() => setZoom(z => clamp(Math.round(z * 0.7), 30, 600))} aria-label='Zoom in'>+</button>
+                        <button type='button' onClick={() => setZoom(120)} aria-label='Reset zoom'>◎</button>
+                        <button type='button' onClick={() => setZoom(z => clamp(Math.round(z * 1.4), 30, 600))} aria-label='Zoom out'>−</button>
+                    </div>
+                    <PriceChart ticks={ticks} dp={dp} lines={overlays.lines} band={overlays.band} zoom={zoom} />
+
                     {is_digit && (
-                        <div className='dtrader__circles'>
+                        <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
                             {DIGITS.map(d => {
-                                const picks = type_key !== 'evenodd';
-                                const ok = type_key === 'overunder' ? d >= 1 && d <= 8 : true;
+                                const is_hi = has_data && pct[d] === hi;
+                                const is_lo = has_data && pct[d] === lo;
                                 return (
-                                    <div key={d} className='dtrader__circle-wrap'>
-                                        <button
-                                            type='button'
-                                            disabled={!picks || !ok}
-                                            onClick={() => setDigit(d)}
-                                            className={classNames('dtrader__circle', {
-                                                'dtrader__circle--high': has_pct && pct[d] === hi,
-                                                'dtrader__circle--low': has_pct && pct[d] === lo && pct[d] !== hi,
-                                                'dtrader__circle--picked': picks && digit === d,
-                                                'dtrader__circle--last': last_digit === d,
-                                            })}
-                                        >
-                                            <b>{d}</b>
-                                            <small>{has_pct ? `${pct[d].toFixed(1)}%` : '—'}</small>
-                                        </button>
-                                        <span className='dtrader__pointer'>{last_digit === d ? '▲' : ''}</span>
-                                    </div>
+                                    <button
+                                        key={d}
+                                        type='button'
+                                        disabled={!type.pick || d < type.pick[0] || d > type.pick[1]}
+                                        onClick={() => type.pick && setDigit(d)}
+                                        className={classNames('dtrader__circle', {
+                                            'dtrader__circle--high': is_hi,
+                                            'dtrader__circle--low': is_lo && !is_hi,
+                                            'dtrader__circle--picked': !!type.pick && digit === d,
+                                            'dtrader__circle--last': last_digit === d,
+                                        })}
+                                    >
+                                        <span className='dtrader__digit'>{d}</span>
+                                        <span className='dtrader__pct'>{has_data ? `${pct[d].toFixed(1)}%` : '—'}</span>
+                                        {last_digit === d && <i className='dtrader__pointer' />}
+                                    </button>
                                 );
                             })}
                         </div>
                     )}
-                </Chart>
+                </div>
+                <div className='dtrader__foot'>
+                    <span className={classNames('dtrader__dot', { on: feed_status === localize('Live') })} />
+                    <span>{last_tick ? `${new Date(last_tick.epoch * 1000).toISOString().replace('T', ' ').slice(0, 19)} GMT` : feed_status}</span>
+                </div>
             </section>
 
             {/* ---------- trade panel ---------- */}
             <aside className='dtrader__panel'>
-                <a className='dtrader__learn' href='https://deriv.com/trade-types' target='_blank' rel='noreferrer'>
-                    {localize('Learn about this trade type')}
-                </a>
-                <button type='button' className='dtrader__typebtn' onClick={() => setMenuOpen(o => !o)}>
-                    <Chevron dir={menu_open ? 'right' : 'left'} />
-                    {type.icons.map(i => (
-                        <TypeIcon key={i} name={i} />
-                    ))}
+                <a className='dtrader__learn'>{localize('Learn about this trade type')}</a>
+                <button type='button' className='dtrader__typebtn' onClick={() => setShowTypes(s => !s)}>
+                    <span className='dtrader__chev2'>{show_types ? '›' : '‹'}</span>
+                    <Icons t={type} />
                     <strong>{type.label}</strong>
                 </button>
-                <div className='dtrader__panel-body'>
-                    {panel}
-                    {err_text && <p className='dtrader__error'>{err_text}</p>}
-                </div>
-            </aside>
 
-            {/* ---------- trade types popup ---------- */}
-            {menu_open && (
-                <>
-                    <div className='dtrader__backdrop' onClick={() => setMenuOpen(false)} />
-                    <div className='dtrader__menu'>
-                        <div className='dtrader__menu-side'>
-                            <h4>{localize('Trade types')}</h4>
-                            {[
-                                ['all', 'All'],
-                                ['multipliers', 'Multipliers'],
-                                ['options', 'Options'],
-                                ['accumulators', 'Accumulators'],
-                            ].map(([k, l]) => (
-                                <button key={k} type='button' className={classNames({ on: cat === k })} onClick={() => setCat(k)}>
-                                    {localize(l)}
+                {show_types && (
+                    <div className='dtrader__types'>
+                        <div className='dtrader__types-title'>{localize('Trade types')}</div>
+                        <div className='dtrader__types-body'>
+                            <ul className='dtrader__cats'>
+                                {CATEGORIES.map(c => (
+                                    <li key={c.key}>
+                                        <button type='button' className={classNames({ active: cat === c.key })} onClick={() => setCat(c.key)}>
+                                            {localize(c.label)}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className='dtrader__list'>
+                                <input className='dtrader__search' placeholder={localize('Search')} value={search} onChange={e => setSearch(e.target.value)} />
+                                <div className='dtrader__learnrow'>{localize('Learn more about trade types')} ›</div>
+                                {GROUP_ORDER.filter(g => filtered.some(t => t.group === g)).map(g => (
+                                    <div key={g} className='dtrader__group'>
+                                        <h4>{localize(g)}</h4>
+                                        {filtered
+                                            .filter(t => t.group === g)
+                                            .map(t => (
+                                                <button
+                                                    key={t.key}
+                                                    type='button'
+                                                    className={classNames('dtrader__item', { active: t.key === type_key })}
+                                                    onClick={() => {
+                                                        setTypeKey(t.key);
+                                                        setShowTypes(false);
+                                                    }}
+                                                >
+                                                    <Icons t={t} />
+                                                    {localize(t.label)}
+                                                </button>
+                                            ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* sides (single Buy button types) */}
+                {type.kind === 'single' && (
+                    <div className='dtrader__seg'>
+                        {type.sides.map((s, i) => (
+                            <button
+                                key={s.ct}
+                                type='button'
+                                className={classNames({ active: side === i })}
+                                onClick={() => {
+                                    setSide(i);
+                                    if (type.key === 'turbos') {
+                                        const v = Math.abs(Number(barrier_txt) || 7.04).toFixed(2);
+                                        setBarrierTxt(i === 0 ? `-${v}` : `+${v}`);
+                                    }
+                                }}
+                            >
+                                {localize(s.label)}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {type.kind === 'accu' && (
+                    <div className='dtrader__card'>
+                        <div className='dtrader__label'>{localize('Growth rate')}</div>
+                        <div className='dtrader__growth'>
+                            {[1, 2, 3, 4, 5].map(g => (
+                                <button key={g} type='button' className={classNames({ active: growth === g })} onClick={() => setGrowth(g)}>
+                                    {g}%
                                 </button>
                             ))}
                         </div>
-                        <div className='dtrader__menu-main'>
-                            <input
-                                className='dtrader__search'
-                                placeholder={localize('Search')}
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                            />
-                            <a className='dtrader__learn-more' href='https://deriv.com/trade-types' target='_blank' rel='noreferrer'>
-                                {localize('Learn more about trade types')} <Chevron dir='right' />
-                            </a>
-                            {GROUPS.map(g => {
-                                const items = filtered.filter(t => t.group === g);
-                                if (!items.length) return null;
-                                return (
-                                    <div key={g} className='dtrader__group'>
-                                        <h5>{localize(g)}</h5>
-                                        {items.map(t => (
-                                            <button
-                                                key={t.key}
-                                                type='button'
-                                                className={classNames('dtrader__item', { on: t.key === type_key })}
-                                                onClick={() => {
-                                                    setTypeKey(t.key);
-                                                    setMenuOpen(false);
-                                                    setError('');
-                                                }}
-                                            >
-                                                {t.icons.map(i => (
-                                                    <TypeIcon key={i} name={i} />
-                                                ))}
-                                                <span>{t.label}</span>
-                                            </button>
-                                        ))}
+                    </div>
+                )}
+
+                {type.kind === 'mult' && (
+                    <div className='dtrader__card'>
+                        <div className='dtrader__label'>{localize('Multiplier')}</div>
+                        <select className='dtrader__select' value={mult_i} onChange={e => setMultI(Number(e.target.value))}>
+                            {market.mult.map((m, i) => (
+                                <option key={m} value={i}>
+                                    x{m}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {type.dur === 'time' && (
+                    <>
+                        <div className='dtrader__card'>
+                            <div className='dtrader__seg dtrader__seg--flat'>
+                                <button type='button' className='active'>{localize('Duration')}</button>
+                                <button type='button' disabled>{localize('End time')}</button>
+                            </div>
+                            <select className='dtrader__select' value={dur_unit} onChange={e => setDurUnit(e.target.value)}>
+                                {UNITS.map(u => (
+                                    <option key={u.u} value={u.u}>
+                                        {localize(u.label)}
+                                    </option>
+                                ))}
+                            </select>
+                            <Stepper value={dur_val} onChange={setDurVal} ctl={dur_ctl} label='Duration' />
+                            <small className='dtrader__range'>
+                                {localize('Range')}: {type.min_min || 1} - {UNITS.find(u => u.u === dur_unit)?.max} {localize(UNITS.find(u => u.u === dur_unit)?.label.toLowerCase())}
+                            </small>
+                        </div>
+                        {type.bar && (
+                            <div className='dtrader__card'>
+                                <div className='dtrader__label'>
+                                    {type.bar === 'strike' ? localize('Strike price') : type.bar === 'turbo' ? localize('Barrier') : localize('Barrier')}
+                                </div>
+                                <div className='dtrader__barrier'>
+                                    {type.bar === 'strike' && <span>{localize('Spot')}</span>}
+                                    <input value={barrier_txt} onChange={e => setBarrierTxt(e.target.value)} />
+                                </div>
+                                {type.bar === 'turbo' && q0?.ok && (
+                                    <div className='dtrader__ppp'>
+                                        {localize('Payout per point')}
+                                        <strong>{q0.contract_details?.payout_per_point ?? q0.payout} {currency}</strong>
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {is_digit && (
+                    <div className='dtrader__card'>
+                        <div className='dtrader__label'>{localize('Ticks')}</div>
+                        <input type='range' min={1} max={10} step={1} value={ticks_dur} onChange={e => setTicksDur(Number(e.target.value))} className='dtrader__slider' />
+                        <div className='dtrader__ticks-val'>{ticks_dur} {ticks_dur === 1 ? localize('Tick') : localize('Ticks')}</div>
+                    </div>
+                )}
+
+                {type.pick && (
+                    <div className='dtrader__card'>
+                        <div className='dtrader__label'>{localize('Last Digit Prediction')}</div>
+                        <div className='dtrader__digits'>
+                            {DIGITS.map(d => (
+                                <button
+                                    key={d}
+                                    type='button'
+                                    disabled={d < type.pick[0] || d > type.pick[1]}
+                                    className={classNames({ active: digit === d })}
+                                    onClick={() => setDigit(d)}
+                                >
+                                    {d}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </>
-            )}
+                )}
+
+                {/* stake */}
+                <div className='dtrader__card'>
+                    {type.basis ? (
+                        <div className='dtrader__seg dtrader__seg--flat'>
+                            <button type='button' className={classNames({ active: basis === 'stake' })} onClick={() => setBasis('stake')}>
+                                {localize('Stake')}
+                            </button>
+                            <button type='button' className={classNames({ active: basis === 'payout' })} onClick={() => setBasis('payout')}>
+                                {localize('Payout')}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className='dtrader__label'>{localize('Stake')}</div>
+                    )}
+                    <Stepper value={stake} onChange={setStake} ctl={stake_ctl} label='Stake' />
+                    {type.kind === 'mult' && q0?.ok && (
+                        <div className='dtrader__mini'>
+                            <span>
+                                {localize('Commission')}
+                                <u>{money(q0.commission ?? 0)} {currency}</u>
+                            </span>
+                            <span>
+                                {localize('Stop out')}
+                                <u>{q0.limit_order?.stop_out?.order_amount !== undefined ? `${money(Math.abs(q0.limit_order.stop_out.order_amount))} ${currency}` : '—'}</u>
+                            </span>
+                        </div>
+                    )}
+                    {type.equals && (
+                        <label className='dtrader__check'>
+                            <input type='checkbox' checked={equals} onChange={e => setEquals(e.target.checked)} />
+                            {localize('Allow equals')}
+                        </label>
+                    )}
+                </div>
+
+                {(type.kind === 'accu' || type.kind === 'mult') && (
+                    <div className='dtrader__card dtrader__card--tight'>
+                        <label className='dtrader__check'>
+                            <input type='checkbox' checked={take_profit} onChange={e => setTakeProfit(e.target.checked)} />
+                            {localize('Take profit')}
+                        </label>
+                        {take_profit && <Stepper value={tp_amount} onChange={setTpAmount} ctl={tp_ctl} label='Take profit' />}
+                        {type.kind === 'mult' && (
+                            <>
+                                <label className='dtrader__check'>
+                                    <input
+                                        type='checkbox'
+                                        checked={stop_loss}
+                                        onChange={e => {
+                                            setStopLoss(e.target.checked);
+                                            if (e.target.checked) setDealCancel(false);
+                                        }}
+                                    />
+                                    {localize('Stop loss')}
+                                </label>
+                                {stop_loss && <Stepper value={sl_amount} onChange={setSlAmount} ctl={sl_ctl} label='Stop loss' />}
+                                <label className='dtrader__check'>
+                                    <input
+                                        type='checkbox'
+                                        checked={deal_cancel}
+                                        onChange={e => {
+                                            setDealCancel(e.target.checked);
+                                            if (e.target.checked) setStopLoss(false);
+                                        }}
+                                    />
+                                    {localize('Deal cancellation')}
+                                </label>
+                            </>
+                        )}
+                        {type.kind === 'accu' && q0?.ok && (
+                            <div className='dtrader__maxes'>
+                                <div>
+                                    <span>{localize('Max. payout')}</span>
+                                    <u>{money(cd0.maximum_payout ?? q0.payout ?? 0)} {currency}</u>
+                                </div>
+                                <div>
+                                    <span>{localize('Max. ticks')}</span>
+                                    <u>{cd0.maximum_ticks ?? '—'} {localize('ticks')}</u>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* buy buttons */}
+                <div className='dtrader__buys'>
+                    {type.kind === 'dual' && [0, 1].map(renderDualButton)}
+                    {type.kind === 'mult' &&
+                        [0, 1].map(i => (
+                            <button key={i} type='button' className={`dtrader__buy dtrader__buy--${i ? 'b' : 'a'} dtrader__buy--wide`} disabled={busy || !stake_ok} onClick={() => buy(i)}>
+                                <span>
+                                    <em>{i ? '↘' : '↗'}</em>
+                                    {localize(type.sides[i].label)}
+                                </span>
+                                <b>{money(stake_n || 0)} {currency}</b>
+                            </button>
+                        ))}
+                    {(type.kind === 'accu' || type.kind === 'single') && (
+                        <button type='button' className='dtrader__buy dtrader__buy--a dtrader__buy--wide' disabled={busy || !stake_ok} onClick={() => buy(type.kind === 'accu' ? 0 : side)}>
+                            <span>
+                                <em>{type.kind === 'accu' ? '📈' : side ? '↘' : '↗'}</em>
+                                {localize('Buy')}
+                            </span>
+                            <b>{quotes[0]?.ok && quotes[0].ask_price ? `${money(quotes[0].ask_price)} ${currency}` : ''}</b>
+                        </button>
+                    )}
+                </div>
+                {(error || quote_err) && <p className='dtrader__error'>{error || quote_err}</p>}
+            </aside>
         </div>
     );
 });

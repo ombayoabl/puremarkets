@@ -1,897 +1,452 @@
-// DTrader (Deriv DTrader look)
-$green: #0f9d6e;
-$red: #e5484d;
-$teal: #4bb4b3;
-$teal-dark: #3a9b9a;
-$blue: #3b82f6;
-$card: var(--general-section-1, #f2f3f4);
-$bg: var(--general-main-1, #ffffff);
-$line: var(--border-normal, #e6e9e9);
-$text: var(--text-general, #333);
-$strong: var(--text-prominent, #0e0e0e);
-$muted: var(--text-less-prominent, #6e7377);
-
 .dtrader {
-    position: relative;
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    margin: 0 auto;
-    padding: 1.2rem 1.2rem calc(6rem + env(safe-area-inset-bottom, 0px));
-    height: calc(100vh - 19rem);
-    height: calc(100dvh - 19rem);
-    min-height: 40rem;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    color: $text;
-    font-size: 1.3rem;
+    --dt-teal: #4bb4b3;
+    --dt-teal-dark: #3a9190;
+    --dt-red: #ec3f3f;
+    --dt-border: #e6e9ea;
+    --dt-text: #0e0e0e;
+    --dt-muted: #6b7678;
     display: grid;
-    gap: 1.2rem;
-    align-items: stretch;
-    grid-template-columns: 26rem minmax(0, 1fr) 27rem;
-    grid-template-rows: minmax(0, 1fr);
-    overflow: hidden;
-    padding-bottom: 1.2rem;
+    grid-template-columns: 270px minmax(0, 1fr) 260px;
+    gap: 12px;
+    padding: 12px;
+    background: #fff;
+    color: var(--dt-text);
+    font-size: 13px;
+    align-items: start;
+    box-sizing: border-box;
 
-    @media (max-width: 1100px) {
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-        overflow-x: hidden;
-        height: calc(100dvh - 15rem);
-        padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-    }
+    .win { color: #00a79e; }
+    .loss { color: var(--dt-red); }
+    button { font-family: inherit; cursor: pointer; }
 
-    button {
-        font-family: inherit;
-        cursor: pointer;
-    }
-
-    // ---------- open positions ----------
+    /* ---------- open positions ---------- */
     &__positions {
+        background: #f6f7f8;
+        border-radius: 8px;
+        min-height: 360px;
+        max-height: 600px;
         display: flex;
         flex-direction: column;
-        min-height: 0;
-        background: $card;
-        border-radius: 0.8rem;
-        padding: 1.2rem;
         overflow: hidden;
-
-        @media (max-width: 1100px) {
-            order: 3;
-            min-height: 12rem;
-        }
-        &--closed {
-            align-self: flex-start;
-            min-height: 0;
-        }
     }
+    &__positions--closed { min-height: 0; }
     &__positions-head {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        color: $strong;
-        font-size: 1.3rem;
-        button {
-            border: 0;
-            background: transparent;
-            font-size: 2rem;
-            line-height: 1;
-            color: $strong;
-        }
-    }
-    &__positions-body {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        margin-top: 0.8rem;
+        align-items: center;
+        padding: 10px 12px;
+        button { background: none; border: 0; font-size: 18px; line-height: 1; }
     }
     &__empty {
-        height: 100%;
-        min-height: 16rem;
+        flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: $muted;
-        text-align: center;
-        p {
-            margin: 0.8rem 0 0;
-        }
+        gap: 8px;
+        color: var(--dt-muted);
+        padding: 40px 12px;
+        p { margin: 0; text-align: center; }
     }
-    &__total {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.8rem;
-        padding: 0.4rem 0 0.8rem;
-        button {
-            border: 0;
-            background: transparent;
-            color: $blue;
-            font-size: 1.2rem;
-        }
-    }
+    &__poslist { overflow-y: auto; padding: 0 8px 8px; }
     &__pos {
         display: flex;
         justify-content: space-between;
-        gap: 0.8rem;
-        padding: 0.9rem 1rem;
-        margin-bottom: 0.6rem;
-        background: $bg;
-        border-radius: 0.6rem;
-        border-left: 0.3rem solid $teal;
-        &--won {
-            border-left-color: $green;
-            opacity: 0.85;
-        }
-        &--lost {
-            border-left-color: $red;
-            opacity: 0.85;
-        }
+        gap: 8px;
+        background: #fff;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        border-left: 3px solid #b7c0c2;
+        small { display: block; color: var(--dt-muted); font-size: 11px; }
+        &--won { border-left-color: #00a79e; .dtrader__pos-pl { color: #00a79e; } }
+        &--lost { border-left-color: var(--dt-red); .dtrader__pos-pl { color: var(--dt-red); } }
     }
-    &__pos-main,
-    &__pos-side {
+    &__pos-pl { text-align: right; font-weight: 700; }
+    &__postotal {
         display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-        min-width: 0;
-        small {
-            color: $muted;
-            font-size: 1.1rem;
-        }
-    }
-    &__pos-side {
-        align-items: flex-end;
-        button {
-            border: 0.1rem solid $red;
-            color: $red;
-            background: transparent;
-            border-radius: 0.4rem;
-            padding: 0.2rem 0.8rem;
-            font-size: 1.1rem;
-        }
-    }
-    &__win {
-        color: $green;
-        font-style: normal;
-    }
-    &__loss {
-        color: $red;
-        font-style: normal;
-    }
-
-    // ---------- chart stage ----------
-    &__stage {
-        position: relative;
-        min-width: 0;
-        min-height: 0;
-        background: $bg;
-        border-radius: 0.8rem;
-        overflow: hidden;
-
-        @media (max-width: 1100px) {
-            order: 1;
-            height: 52rem;
-            height: min(58dvh, 52rem);
-            flex: none;
-        }
-    }
-    &__symbol {
-        position: absolute;
-        top: 1rem;
-        left: 1rem;
-        z-index: 5;
-    }
-    &__symbol-btn {
-        display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 0.8rem;
-        padding: 0.6rem 1rem;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.6rem;
-        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.08);
-        color: $strong;
-        text-align: left;
+        padding: 6px 4px;
+        font-weight: 700;
+        button { border: 0; background: none; color: var(--dt-muted); text-decoration: underline; }
     }
-    &__symbol-text {
+
+    /* ---------- chart ---------- */
+    &__center { min-width: 0; }
+    &__plot {
+        position: relative;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--dt-border);
+        overflow: hidden;
+    }
+    &__chart {
+        width: 100%;
+        height: 470px;
+        position: relative;
+        svg { display: block; }
+    }
+    &__chart-wait {
+        position: absolute;
+        inset: 0;
         display: flex;
-        flex-direction: column;
-        strong {
-            font-size: 1.4rem;
-        }
-        small {
-            color: $muted;
-            font-size: 1.1rem;
-            font-variant-numeric: tabular-nums;
-        }
-    }
-    &__badge {
-        display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 3rem;
-        height: 2.2rem;
-        padding: 0 0.4rem;
-        border-radius: 0.4rem;
+        color: var(--dt-muted);
+    }
+    .dtr-grid { stroke: #eceff0; stroke-width: 1; }
+    .dtr-axis { fill: #5d6b6e; font-size: 10px; }
+    .dtr-line { fill: none; stroke: #1a1a1a; stroke-width: 1.4; stroke-linejoin: round; }
+    .dtr-last-line { stroke: #1a1a1a; stroke-width: 1; stroke-dasharray: 3 3; }
+    .dtr-dot { fill: #111; }
+    .dtr-price-tag { fill: #0e0e0e; }
+    .dtr-price-text { fill: #fff; font-size: 11px; font-weight: 700; }
+    .dtr-ref { stroke-width: 1; stroke-dasharray: 2 3; }
+    .dtr-ref--blue { stroke: #2a8be6; }
+    .dtr-ref--red { stroke: var(--dt-red); }
+    .dtr-tag { fill: #fff; stroke-width: 1; }
+    .dtr-tag--blue { stroke: #2a8be6; }
+    .dtr-tag--red { stroke: var(--dt-red); }
+    .dtr-tag-text { font-size: 10px; fill: #2a5f94; }
+    .dtr-band { fill: rgba(80, 160, 230, 0.15); }
+    .dtr-band-line { stroke: #2a8be6; stroke-width: 1; }
+    .dtr-band-text { fill: #2a8be6; font-size: 11px; }
+
+    &__symbol {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+        strong { display: block; font-size: 14px; }
+        small { color: var(--dt-muted); }
+    }
+    &__badge {
         background: #111;
         color: #fff;
-        font-size: 1rem;
-        font-weight: 800;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 5px;
+        border-radius: 3px;
     }
-    &__symbol-menu {
+    &__chev { font-size: 18px; margin-left: 20px; color: #444; }
+    &__markets {
         position: absolute;
-        top: calc(100% + 0.4rem);
-        left: 0;
-        min-width: 28rem;
-        max-height: 36rem;
+        top: 62px;
+        left: 10px;
+        z-index: 5;
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+        max-height: 320px;
         overflow-y: auto;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.6rem;
-        box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.15);
         button {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            width: 100%;
-            padding: 0.9rem 1.2rem;
-            border: 0;
-            background: transparent;
-            color: $strong;
-            font-size: 1.3rem;
             text-align: left;
-            &:hover,
-            &.dtrader__symbol-on {
-                background: $card;
-            }
+            border: 0;
+            background: none;
+            padding: 9px 16px;
+            &:hover, &.active { background: #eef6f6; }
         }
     }
     &__toolbar {
         position: absolute;
-        top: 8.2rem;
-        left: 1rem;
-        z-index: 4;
+        top: 70px;
+        left: 10px;
+        z-index: 2;
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
-        padding: 0.4rem;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.6rem;
-        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.06);
-        button {
-            display: flex;
-            padding: 0.7rem;
-            border: 0;
-            border-radius: 0.4rem;
-            background: transparent;
-            color: $muted;
-            &.on,
-            &:hover {
-                color: $strong;
-                background: $card;
-            }
-        }
-    }
-    &__chart {
-        position: absolute;
-        inset: 0;
-    }
-    &__chart-empty {
-        display: flex;
-        height: 100%;
-        align-items: center;
-        justify-content: center;
-        color: $muted;
-    }
-    &__svg {
-        display: block;
-        font-family: inherit;
-        touch-action: pan-y;
-    }
-    &__grid {
-        stroke: $line;
-        stroke-width: 1;
-    }
-    &__axis-text {
-        font-size: 10.5px;
-        fill: $muted;
-    }
-    &__line {
-        fill: none;
-        stroke: #2b2b2b;
-        stroke-width: 1.4;
-        stroke-linejoin: round;
-    }
-    &__last-line {
-        stroke: #222;
-        stroke-width: 1;
-        stroke-dasharray: 2 3;
-    }
-    &__dot {
-        fill: #111;
-        stroke: #fff;
-        stroke-width: 1.5;
-    }
-    &__cross {
-        stroke: #999;
-        stroke-width: 1;
-    }
-    &__tag {
-        fill: #111;
-        &--blue {
-            fill: #fff;
-            stroke: $blue;
-        }
-        &--red {
-            fill: #fff;
-            stroke: $red;
-        }
-    }
-    &__tag-text {
-        font-size: 11px;
-        font-weight: 700;
-        fill: #fff;
-    }
-    &__tag--blue + &__tag-text,
-    &__tag--red + &__tag-text {
-        fill: $blue;
-    }
-    &__level {
-        stroke-width: 1;
-        stroke-dasharray: 2 3;
-        &--blue {
-            stroke: $blue;
-        }
-        &--red {
-            stroke: $red;
-        }
-    }
-    &__level-title {
-        font-size: 11px;
-        font-weight: 700;
-        &--red {
-            fill: $red;
-        }
-        &--blue {
-            fill: $blue;
-        }
-    }
-    &__box {
-        fill: rgba(59, 130, 246, 0.12);
-    }
-    &__box-line {
-        stroke: $blue;
-        stroke-width: 1.2;
-    }
-    &__box-text {
-        font-size: 11px;
-        fill: $blue;
-    }
-    &__tip {
-        position: absolute;
-        z-index: 3;
-        pointer-events: none;
-        padding: 0.6rem 1rem;
-        background: rgba(30, 30, 30, 0.82);
-        color: #fff;
-        border-radius: 0.4rem;
-        font-size: 1.1rem;
-        line-height: 1.5;
-        span {
-            opacity: 0.8;
-        }
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+        button { border: 0; background: none; padding: 9px 12px; font-size: 15px; color: #444; }
     }
     &__zoom {
         position: absolute;
-        left: 1rem;
-        bottom: 9rem;
-        z-index: 4;
+        left: 10px;
+        bottom: 40px;
+        z-index: 2;
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
-        padding: 0.3rem;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.6rem;
-        button {
-            width: 3rem;
-            height: 3rem;
-            border: 0;
-            border-radius: 0.4rem;
-            background: transparent;
-            color: $strong;
-            font-size: 1.8rem;
-            line-height: 1;
-            &:hover {
-                background: $card;
-            }
-        }
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+        button { border: 0; background: none; padding: 8px 12px; font-size: 16px; }
     }
+    &__foot {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 4px;
+        color: var(--dt-muted);
+        font-size: 11px;
+    }
+    &__dot { width: 8px; height: 8px; border-radius: 50%; background: #b7c0c2; &.on { background: #00c3a6; } }
 
-    // ---------- last digit circles ----------
+    /* digit circles */
     &__circles {
         position: absolute;
         left: 50%;
-        bottom: 1rem;
+        bottom: 34px;
         transform: translateX(-50%);
-        z-index: 3;
         display: flex;
-        gap: 0.6rem;
-        max-width: calc(100% - 9rem);
-        padding: 0.4rem 0.2rem 0.2rem;
-    }
-    &__circle-wrap {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-width: 0;
+        gap: 6px;
+        z-index: 2;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 4px 8px 12px;
+        border-radius: 40px;
+        max-width: 96%;
     }
     &__circle {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 3px solid #d7dcde;
+        background: #fff;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 4.4rem;
-        height: 4.4rem;
         padding: 0;
-        border-radius: 50%;
-        border: 0.3rem solid #d6d9da;
-        background: $bg;
-        color: $strong;
         line-height: 1.05;
-        b {
-            font-size: 1.3rem;
-        }
-        small {
-            font-size: 0.8rem;
-            color: $muted;
-        }
-        &:disabled {
-            cursor: default;
-        }
-        &--high {
-            border-color: $teal;
-        }
-        &--low {
-            border-color: $red;
-        }
-        &--picked {
-            background: $card;
-            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.28);
-        }
-        &--last {
-            transform: scale(1.1);
-        }
-        @media (max-width: 700px) {
-            width: 3.2rem;
-            height: 3.2rem;
-            border-width: 0.25rem;
-            b {
-                font-size: 1.1rem;
-            }
-            small {
-                font-size: 0.65rem;
-            }
-        }
+        flex: 0 0 auto;
+        &--high { border-color: #00a79e; }
+        &--low { border-color: var(--dt-red); }
+        &--picked { background: #e8f3f3; box-shadow: 0 0 0 2px var(--dt-teal); }
+        &--last { transform: scale(1.12); }
+        &:disabled { cursor: default; }
     }
-    &__circles {
-        @media (max-width: 700px) {
-            gap: 0.3rem;
-            max-width: calc(100% - 5rem);
-            left: calc(50% + 2rem);
-        }
-    }
+    &__digit { font-weight: 700; font-size: 13px; }
+    &__pct { font-size: 8px; color: var(--dt-muted); }
     &__pointer {
-        height: 1rem;
-        font-size: 1rem;
-        line-height: 1;
-        color: #ff6b3d;
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-bottom-color: var(--dt-red);
     }
 
-    // ---------- right panel ----------
+    /* ---------- trade panel ---------- */
     &__panel {
         display: flex;
         flex-direction: column;
-        min-height: 0;
+        gap: 8px;
+        position: relative;
         min-width: 0;
-        background: $card;
-        border-radius: 0.8rem;
-        padding: 1rem 1.2rem;
-        overflow: hidden;
-        @media (max-width: 1100px) {
-            order: 2;
-            flex: none;
-        }
     }
-    &__learn {
-        font-size: 1.1rem;
-        color: $muted;
-        text-decoration: underline dotted;
-        margin-bottom: 0.4rem;
-    }
+    &__learn { font-size: 10px; color: #333; text-decoration: underline dotted; cursor: pointer; }
     &__typebtn {
         display: flex;
         align-items: center;
-        gap: 0.6rem;
-        width: 100%;
-        padding: 1rem 1.2rem;
-        margin-bottom: 0.8rem;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.6rem;
-        color: $strong;
-        font-size: 1.3rem;
-        strong {
-            margin-left: 0.2rem;
-        }
+        gap: 8px;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid var(--dt-border);
+        border-radius: 6px;
+        font-size: 13px;
     }
-    &__panel-body {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 0.8rem;
-        padding-bottom: 0.4rem;
+    &__chev2 { color: #555; font-size: 16px; }
+    &__icons { display: inline-flex; gap: 2px; }
+    &__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        font-size: 13px;
+        border-radius: 4px;
+        background: #fdecec;
+        color: var(--dt-red);
+        &--b { background: #fdecec; }
     }
     &__card {
+        background: #f6f7f8;
+        border-radius: 6px;
+        padding: 10px;
         display: flex;
         flex-direction: column;
-        gap: 0.8rem;
-        padding: 0.8rem;
-        background: $bg;
-        border-radius: 0.6rem;
-        &--flat {
-            gap: 0.6rem;
-        }
+        gap: 8px;
+        &--tight { gap: 6px; }
     }
-    &__card-title {
-        text-align: center;
-        color: $strong;
-        font-size: 1.3rem;
-    }
-    &__muted {
-        color: $muted;
-        font-size: 1.05rem;
+    &__label { text-align: center; color: #333; }
+    &__growth {
+        display: flex;
+        background: #fff;
+        border-radius: 4px;
+        button { flex: 1; border: 0; background: none; padding: 9px 0; &.active { background: #e6e9ea; font-weight: 700; } }
     }
     &__seg {
         display: flex;
-        background: $card;
-        border-radius: 0.5rem;
-        overflow: hidden;
+        background: #fff;
+        border-radius: 4px;
         button {
             flex: 1;
-            padding: 0.9rem 0.4rem;
             border: 0;
-            background: transparent;
-            color: $muted;
-            font-size: 1.3rem;
+            background: none;
+            padding: 9px 0;
+            color: #333;
+            &.active { background: #e6e9ea; font-weight: 700; }
+            &:disabled { color: #999; cursor: default; }
         }
-        .dtrader__seg--on {
-            background: #e0e3e4;
-            color: $strong;
-            font-weight: 800;
-        }
+        &--flat { background: #fff; }
+    }
+    &__select {
+        width: 100%;
+        border: 1px solid var(--dt-border);
+        border-radius: 4px;
+        padding: 9px;
+        background: #fff;
+        text-align: center;
+        font-size: 13px;
     }
     &__stepper {
         display: flex;
-        align-items: center;
-        border: 0.1rem solid $line;
-        border-radius: 0.5rem;
-        overflow: hidden;
-        button {
-            width: 3.6rem;
-            align-self: stretch;
-            border: 0;
-            background: transparent;
-            color: $strong;
-            font-size: 1.8rem;
-        }
-        input {
-            flex: 1;
-            min-width: 0;
-            border: 0;
-            outline: 0;
-            background: transparent;
-            text-align: center;
-            color: $strong;
-            font-size: 1.4rem;
-            padding: 0.9rem 0;
-            -moz-appearance: textfield;
-            &::-webkit-outer-spin-button,
-            &::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-        }
+        background: #fff;
+        border-radius: 4px;
+        border: 1px solid var(--dt-border);
+        button { border: 0; background: none; width: 36px; font-size: 18px; }
+        input { flex: 1; min-width: 0; border: 0; text-align: center; font-size: 14px; background: none; outline: none; }
     }
-    &__select-wrap {
-        position: relative;
+    &__range { color: var(--dt-muted); font-size: 10px; }
+    &__barrier {
         display: flex;
         align-items: center;
-        border: 0.1rem solid $line;
-        border-radius: 0.5rem;
-        padding: 0 0.8rem;
-        color: $muted;
-        select {
-            flex: 1;
-            border: 0;
-            outline: 0;
-            background: transparent;
-            text-align: center;
-            text-align-last: center;
-            color: $strong;
-            font-size: 1.4rem;
-            padding: 0.9rem 0;
-            margin-right: 1.4rem;
-        }
+        gap: 8px;
+        background: #fff;
+        border-radius: 4px;
+        padding: 0 8px;
+        span { color: #333; }
+        input { flex: 1; min-width: 0; border: 0; padding: 10px 4px; text-align: center; outline: none; font-size: 14px; background: none; }
     }
-    &__time {
-        padding: 0.9rem;
-        border: 0.1rem solid $line;
-        border-radius: 0.5rem;
-        background: transparent;
-        color: $strong;
-        font-size: 1.4rem;
-    }
-    &__rates {
-        display: flex;
-        background: $card;
-        border-radius: 0.5rem;
-        overflow: hidden;
-        button {
-            flex: 1;
-            padding: 0.9rem 0;
-            border: 0;
-            background: transparent;
-            color: $text;
-            font-size: 1.3rem;
-        }
-        .dtrader__rate-on {
-            background: #e0e3e4;
-            color: $strong;
-            font-weight: 800;
-        }
-    }
-    &__check {
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
-        color: $strong;
-        cursor: pointer;
-        &--off {
-            opacity: 0.5;
-            cursor: default;
-        }
-        input {
-            width: 1.6rem;
-            height: 1.6rem;
-        }
-    }
-    &__facts {
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-        padding: 0.8rem;
-        background: $bg;
-        border-radius: 0.6rem;
-        div {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-        span {
-            color: $strong;
-            font-weight: 700;
-        }
-        strong {
-            color: $muted;
-            font-weight: 500;
-            text-decoration: underline dotted;
-        }
-    }
-    &__payout {
-        display: flex;
-        justify-content: space-between;
-        gap: 1rem;
-        color: $muted;
-        font-size: 1.2rem;
-        strong {
-            color: $strong;
-            font-variant-numeric: tabular-nums;
-        }
-    }
-    &__digits-grid {
+    &__ppp { display: flex; justify-content: space-between; color: var(--dt-muted); strong { color: var(--dt-text); } }
+    &__slider { width: 100%; accent-color: var(--dt-teal); }
+    &__ticks-val { text-align: center; font-weight: 700; }
+    &__digits {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 0.4rem;
+        gap: 4px;
         button {
-            padding: 0.8rem 0;
             border: 0;
-            border-radius: 0.4rem;
-            background: $card;
-            color: $strong;
-            font-size: 1.3rem;
-            &:disabled {
-                opacity: 0.35;
-                cursor: default;
-            }
-        }
-        .dtrader__digit-on {
-            background: #cfd3d4;
-            font-weight: 800;
+            background: #fff;
+            padding: 8px 0;
+            border-radius: 3px;
+            &.active { background: #d5dcde; font-weight: 700; }
+            &:disabled { color: #bbb; cursor: default; }
         }
     }
-    &__range {
-        width: 100%;
-        accent-color: $strong;
-    }
-    &__range-label {
-        text-align: center;
-        font-weight: 700;
-        color: $strong;
-    }
-    &__buys {
+    &__mini { display: flex; justify-content: space-between; font-size: 10px; span { display: flex; flex-direction: column; } u { color: #333; } }
+    &__check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    &__maxes {
         display: flex;
         flex-direction: column;
-        gap: 0.6rem;
-        margin-top: 0.2rem;
+        gap: 4px;
+        font-size: 11px;
+        div { display: flex; justify-content: space-between; }
+        u { text-decoration: underline dotted; }
     }
+
+    &__buys { display: flex; flex-direction: column; gap: 8px; }
+    &__buywrap { display: flex; flex-direction: column; gap: 4px; }
+    &__payout { color: var(--dt-muted); font-size: 12px; strong { color: var(--dt-text); } }
     &__buy {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
-        padding: 1.4rem 1.4rem;
+        padding: 14px 14px;
         border: 0;
-        border-radius: 0.5rem;
+        border-radius: 6px;
         color: #fff;
-        font-size: 1.4rem;
-        font-weight: 800;
-        &--a {
-            background: linear-gradient(100deg, $teal 60%, $teal-dark 60%);
-        }
-        &--b {
-            background: linear-gradient(100deg, #ee4b50 60%, #d63a3f 60%);
-        }
-        &:disabled {
-            opacity: 0.6;
-            cursor: default;
+        font-size: 13px;
+        font-weight: 700;
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        em { font-style: normal; margin-right: 8px; }
+        &--a { background: linear-gradient(100deg, #4bb4b3 78%, #3a9190 78%); }
+        &--b { background: linear-gradient(100deg, #ec3f3f 78%, #d12f2f 78%); }
+        &--wide { padding: 16px 14px; }
+        &:disabled { opacity: 0.55; cursor: not-allowed; }
+        &:not(:disabled):hover { filter: brightness(1.05); }
+    }
+    &__error { color: var(--dt-red); margin: 0; font-size: 12px; }
+
+    /* trade types popup */
+    &__types {
+        position: absolute;
+        top: 44px;
+        right: 0;
+        z-index: 20;
+        width: 560px;
+        max-width: calc(100vw - 24px);
+        max-height: 420px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 6px 28px rgba(0, 0, 0, 0.22);
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        overflow: hidden;
+    }
+    &__types-title { grid-column: 1; grid-row: 1; position: relative; z-index: 2; pointer-events: none; padding: 20px 16px 8px; font-weight: 700; font-size: 15px; background: #f6f7f8; }
+    &__types-body { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: 240px 1fr; min-height: 0; }
+    &__cats {
+        list-style: none;
+        margin: 0;
+        padding: 56px 0 0;
+        background: #f6f7f8;
+        button {
+            width: 100%;
+            text-align: left;
+            border: 0;
+            background: none;
+            padding: 12px 16px 12px 40px;
+            border-left: 3px solid transparent;
+            &.active { background: #fff; border-left-color: var(--dt-red); font-weight: 700; }
         }
     }
-    &__buy-name {
+    &__list { padding: 12px; overflow-y: auto; max-height: 420px; }
+    &__search { width: 100%; box-sizing: border-box; border: 1px solid var(--dt-border); border-radius: 4px; padding: 10px; margin-bottom: 10px; }
+    &__learnrow { background: #f6f7f8; padding: 12px; border-radius: 4px; margin-bottom: 8px; }
+    &__group { margin-bottom: 10px; h4 { margin: 12px 4px 6px; font-size: 12px; } }
+    &__item {
+        width: 100%;
         display: flex;
         align-items: center;
-        gap: 0.6rem;
-        svg {
-            filter: brightness(0) invert(1);
-        }
-    }
-    &__buy-amount {
-        font-variant-numeric: tabular-nums;
-    }
-    &__error {
-        margin: 0;
-        color: $red;
-        font-size: 1.2rem;
+        gap: 10px;
+        border: 0;
+        background: none;
+        padding: 8px;
+        border-radius: 4px;
+        text-align: left;
+        &:hover, &.active { background: #e6e9ea; }
     }
 
-    // ---------- trade types popup ----------
-    &__backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 40;
-        background: transparent;
+    /* ---------- phones / small screens ---------- */
+    @media (max-width: 1100px) {
+        grid-template-columns: minmax(0, 1fr) 260px;
+        .dtrader__positions { grid-column: 1 / -1; grid-row: 2; min-height: 0; max-height: 280px; }
     }
-    &__menu {
-        position: absolute;
-        z-index: 41;
-        top: 4rem;
-        right: calc(27rem + 2.4rem);
-        width: 56rem;
-        max-width: calc(100% - 2.4rem);
-        height: min(48rem, calc(100% - 6rem));
-        display: flex;
-        background: $bg;
-        border: 0.1rem solid $line;
-        border-radius: 0.8rem;
-        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
-        overflow: hidden;
-        @media (max-width: 1100px) {
-            position: fixed;
-            top: 8rem;
-            right: 1.2rem;
-            left: 1.2rem;
-            width: auto;
-            max-width: none;
-            height: min(56rem, calc(100dvh - 12rem));
-        }
-    }
-    &__menu-side {
-        flex: none;
-        width: 16rem;
-        background: $card;
-        padding: 1.2rem 0;
-        h4 {
-            margin: 0 1.4rem 1rem;
-            color: $strong;
-            font-size: 1.5rem;
-        }
-        button {
-            display: block;
-            width: 100%;
-            padding: 1rem 1.4rem;
-            border: 0;
-            border-left: 0.3rem solid transparent;
-            background: transparent;
-            color: $text;
-            text-align: left;
-            font-size: 1.3rem;
-            &.on {
-                border-left-color: $red;
-                background: $bg;
-                color: $strong;
-                font-weight: 700;
-            }
-        }
-    }
-    &__menu-main {
-        flex: 1;
-        min-width: 0;
-        overflow-y: auto;
-        padding: 1.2rem;
-    }
-    &__search {
-        box-sizing: border-box;
-        width: 100%;
-        padding: 0.9rem 1.2rem;
-        border: 0.1rem solid $line;
-        border-radius: 0.5rem;
-        background: transparent;
-        color: $strong;
-        font-size: 1.3rem;
-    }
-    &__learn-more {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin: 1rem 0 0.4rem;
-        padding: 1rem 1.2rem;
-        background: $card;
-        border-radius: 0.5rem;
-        color: $text;
-        text-decoration: none;
-    }
-    &__group {
-        margin-top: 1.4rem;
-        h5 {
-            margin: 0 0 0.6rem;
-            color: $strong;
-            font-size: 1.3rem;
-        }
-    }
-    &__item {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        width: 100%;
-        padding: 0.9rem 1rem;
-        margin-bottom: 0.3rem;
-        border: 0;
-        border-radius: 0.5rem;
-        background: transparent;
-        color: $strong;
-        font-size: 1.3rem;
-        span {
-            margin-left: 0.6rem;
-        }
-        &:hover,
-        &.on {
-            background: $card;
-        }
+    @media (max-width: 760px) {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 8px;
+        .dtrader__positions { grid-row: auto; }
+        &__chart { height: 340px; }
+        &__circle { width: 30px; height: 30px; border-width: 2px; }
+        &__digit { font-size: 11px; }
+        &__pct { font-size: 6px; }
+        &__circles { gap: 2px; padding: 3px 4px 10px; }
+        &__toolbar { display: none; }
+        &__types { position: fixed; top: 80px; left: 8px; right: 8px; width: auto; max-height: 70vh; grid-template-columns: 1fr; }
+        &__types-body { grid-template-columns: 110px 1fr; }
+        &__cats button { padding-left: 12px; }
     }
 }
