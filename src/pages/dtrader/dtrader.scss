@@ -1004,3 +1004,5 @@
 /* the chart box must never collapse to zero height */
 .dtrader__chart--smart { min-height: 30rem; }
 @media (min-width: 761px) { .dtrader__chart--smart { min-height: 36rem; } }
+
+.dtrader { direction: ltr; .dtm__maxes > div { display: flex; justify-content: space-between; text-align: left; } .dtm__row { direction: ltr; } }

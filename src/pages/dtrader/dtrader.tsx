@@ -599,6 +599,19 @@ const DTrader = observer(() => {
             </button>
         );
     };
+    // Accumulators: blue band around the price (kept as offsets so it follows each tick)
+    const accu_off = (() => {
+        if (type.kind !== 'accu' || !q0?.ok) return 0;
+        const cd = q0.contract_details || {};
+        const ref = Number(q0.spot);
+        const hi_v = absPrice(cd.high_barrier, ref);
+        return Number.isFinite(hi_v) && Number.isFinite(ref) ? Math.abs(hi_v - ref) : 0;
+    })();
+    const chart_barriers = useMemo(
+        () => (accu_off > 0 ? [{ shade: 'BETWEEN', color: '#2a8be6', relative: true, high: accu_off, low: -accu_off, hidePriceLines: false }] : []),
+        [accu_off]
+    );
+
     const mobile_sheet = (
         <aside className='dtrader__panel dtm'>
             <a className='dtrader__learn'>{localize('Learn about this trade type')}</a>
@@ -797,7 +810,7 @@ const DTrader = observer(() => {
     );
 
     return (
-        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
+        <div dir='ltr' className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
             {/* ---------- open positions ---------- */}
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open, 'dtrader__positions--empty': trades.length === 0 })}>
                 <div className='dtrader__positions-head'>
@@ -852,7 +865,7 @@ const DTrader = observer(() => {
                 <div className='dtrader__plot'>
                     {show_chart && (
                         <div className='dtrader__chart dtrader__chart--smart'>
-                            <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} />
+                            <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} barriers={chart_barriers} />
                         </div>
                     )}
 
