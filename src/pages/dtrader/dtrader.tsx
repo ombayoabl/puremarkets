@@ -1,5 +1,5 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
@@ -206,6 +206,39 @@ const DTrader = observer(() => {
 
     const sub_ids = useRef<Record<number, string>>({});
     const is_mobile = useIsMobile();
+    const root_ref = useRef<HTMLDivElement>(null);
+
+    // Phones: the Run bar is a fixed strip at the bottom of the screen. Size DTrader to exactly the space
+    // between its own top and that bar, so nothing is hidden underneath it.
+    useLayoutEffect(() => {
+        const el = root_ref.current;
+        if (!el) return;
+        if (!is_mobile) {
+            el.style.removeProperty('height');
+            return;
+        }
+        const fit = () => {
+            const top = el.getBoundingClientRect().top;
+            const bar = document.querySelector('.controls__section, .run-panel__footer') as HTMLElement | null;
+            const r = bar?.getBoundingClientRect();
+            const bar_top = r && r.height > 0 && r.top > top ? r.top : window.innerHeight;
+            el.style.height = `${Math.max(300, Math.floor(Math.min(window.innerHeight, bar_top) - top))}px`;
+        };
+        fit();
+        const timers = [setTimeout(fit, 150), setTimeout(fit, 600), setTimeout(fit, 1500)];
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', fit);
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+        ro?.observe(document.body);
+        const bar_el = document.querySelector('.controls__section, .run-panel__footer');
+        if (bar_el) ro?.observe(bar_el);
+        return () => {
+            timers.forEach(clearTimeout);
+            window.removeEventListener('resize', fit);
+            window.removeEventListener('orientationchange', fit);
+            ro?.disconnect();
+        };
+    }, [is_mobile]);
 
     const type = TYPES.find(t => t.key === type_key) || TYPES[0];
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
@@ -810,7 +843,7 @@ const DTrader = observer(() => {
     );
 
     return (
-        <div dir='ltr' className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
+        <div ref={root_ref} dir='ltr' className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
             {/* ---------- open positions ---------- */}
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open, 'dtrader__positions--empty': trades.length === 0 })}>
                 <div className='dtrader__positions-head'>

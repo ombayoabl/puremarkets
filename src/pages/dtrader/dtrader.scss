@@ -696,9 +696,7 @@
         gap: 0;
         padding: 0;
         width: 100%;
-        height: calc(100vh - 11rem);
-        height: calc(100dvh - 11rem);
-        min-height: 42rem;
+        min-height: 0; // height is measured in JS: the space above the Run bar
         overflow: hidden;
         background: #fff;
 
@@ -913,16 +911,14 @@
         gap: 0;
         padding: 0;
         width: 100%;
-        height: calc(100vh - 11rem);
-        height: calc(100dvh - 11rem);
-        min-height: 42rem;
+        min-height: 0; // height is measured in JS: the space above the Run bar
         overflow: hidden;
         background: #fff;
 
         .dtrader__center { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; order: 1; height: auto; }
         .dtrader__plot { flex: 1 1 auto; min-height: 0; height: auto; border: 0; border-radius: 0; position: relative; display: flex; flex-direction: column; }
-        .dtrader__plot { min-height: 30rem; }
-        .dtrader__chart--smart { flex: 1 1 0; height: auto; min-height: 30rem; position: relative; }
+        .dtrader__plot { min-height: 16rem; }
+        .dtrader__chart--smart { flex: 1 1 0; height: auto; min-height: 16rem; position: relative; }
         .dtrader__foot { display: none; }
 
         .dtrader__circles {
@@ -1006,3 +1002,7 @@
 @media (min-width: 761px) { .dtrader__chart--smart { min-height: 36rem; } }
 
 .dtrader { direction: ltr; .dtm__maxes > div { display: flex; justify-content: space-between; text-align: left; } .dtm__row { direction: ltr; } }
+
+@media (max-width: 760px) {
+    .dtrader { box-sizing: border-box; left: 0; margin: 0; max-width: 100vw; overflow-x: hidden; }
+}
