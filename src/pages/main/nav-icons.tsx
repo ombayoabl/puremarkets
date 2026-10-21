@@ -108,6 +108,12 @@ const ICONS: Record<string, React.ReactNode> = {
             <circle cx='18' cy='15.5' r='2.7' stroke={RED} />
         </>
     ),
+    under_7: (
+        <>
+            <path d='M8 4v15M3.5 14.5 8 19l4.5-4.5' stroke={RED} strokeWidth={2.4} />
+            <path d='M15 8h6l-3.5 11' stroke={RED} strokeWidth={2.4} />
+        </>
+    ),
     copy_trading: (
         <>
             <rect x='9' y='9' width='12' height='12' rx='2.5' fill={`${GREEN}44`} stroke={GREEN} />
