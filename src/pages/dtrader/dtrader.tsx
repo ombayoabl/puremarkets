@@ -567,6 +567,10 @@ const DTrader = observer(() => {
 
 
     const sheet_mode = is_mobile && !is_digit;
+    const digit_phone = is_mobile && is_digit;
+    const [digit_view, setDigitView] = useState<'digits' | 'chart'>('digits');
+    const show_chart = !digit_phone || digit_view === 'chart';
+    const show_circles = is_digit && (!digit_phone || digit_view === 'digits');
     const pickSide = (i: number) => {
         setSide(i);
         if (type.key === 'turbos') {
@@ -793,7 +797,7 @@ const DTrader = observer(() => {
     );
 
     return (
-        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode })}>
+        <div className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
             {/* ---------- open positions ---------- */}
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open, 'dtrader__positions--empty': trades.length === 0 })}>
                 <div className='dtrader__positions-head'>
@@ -846,11 +850,29 @@ const DTrader = observer(() => {
             {/* ---------- chart ---------- */}
             <section className='dtrader__center'>
                 <div className='dtrader__plot'>
-                    <div className='dtrader__chart dtrader__chart--smart'>
-                        <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} />
-                    </div>
+                    {show_chart && (
+                        <div className='dtrader__chart dtrader__chart--smart'>
+                            <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} />
+                        </div>
+                    )}
 
-                    {is_digit && (
+                    {digit_phone && digit_view === 'digits' && (
+                        <>
+                            <button type='button' className='dtrader__swap dtrader__swap--l' onClick={() => setDigitView('chart')} aria-label={localize('Show chart')}>
+                                «
+                            </button>
+                            <button type='button' className='dtrader__swap dtrader__swap--r' onClick={() => setDigitView('chart')} aria-label={localize('Show chart')}>
+                                »
+                            </button>
+                        </>
+                    )}
+                    {digit_phone && digit_view === 'chart' && (
+                        <button type='button' className='dtrader__swap dtrader__swap--back' onClick={() => setDigitView('digits')}>
+                            « {localize('Digits')}
+                        </button>
+                    )}
+
+                    {show_circles && (
                         <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
                             {DIGITS.map(d => {
                                 const is_hi = has_data && pct[d] === hi;
