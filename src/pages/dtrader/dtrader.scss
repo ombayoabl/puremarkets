@@ -934,8 +934,8 @@
             background: #fff;
         }
         .dtrader__circle { width: 100%; max-width: 50px; height: auto; aspect-ratio: 1; margin: 0 auto; }
-        .dtrader__digit { font-size: 19px; }
-        .dtrader__pct { font-size: 11px; }
+        .dtrader__digit { font-size: 15px; }
+        .dtrader__pct { font-size: 9px; white-space: nowrap; }
         .dtrader__pointer { bottom: -11px; border-width: 7px; }
 
         .dtrader__swap {

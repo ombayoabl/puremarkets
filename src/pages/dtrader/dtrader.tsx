@@ -247,6 +247,7 @@ const DTrader = observer(() => {
     const stake_n = Number(stake);
     const stake_ok = stake_n > 0;
     const needs_digits = type.dur === 'ticks';
+    const [feed_try, setFeedTry] = useState(0);
 
     // sensible defaults when the trade type changes
     useEffect(() => {
@@ -279,10 +280,12 @@ const DTrader = observer(() => {
     // ---- live ticks (digit circles + footer clock). The chart has its own feed. ----
     useEffect(() => {
         if (!api_base.api) {
-            setFeedStatus(localize('Not connected. Please refresh the page.'));
-            return;
+            setFeedStatus(localize('Connecting…'));
+            const retry = setTimeout(() => setFeedTry(n => n + 1), 700);
+            return () => clearTimeout(retry);
         }
         let cancelled = false;
+        let retry_timer: any = null;
         let sub_id = '';
         let pip = market.dp;
         const digits: number[] = [];
@@ -353,17 +356,21 @@ const DTrader = observer(() => {
                 publishDigits();
                 setFeedStatus(localize('Live'));
             } catch (e) {
-                if (!cancelled) setFeedStatus(errMsg(e));
+                if (!cancelled) {
+                    setFeedStatus(errMsg(e));
+                    retry_timer = setTimeout(() => setFeedTry(n => n + 1), 2000);
+                }
             }
         };
         start();
 
         return () => {
             cancelled = true;
+            if (retry_timer) clearTimeout(retry_timer);
             sub.unsubscribe();
             if (sub_id && api_base.api) api_base.api.send({ forget: sub_id }).catch(() => {});
         };
-    }, [symbol, needs_digits]);
+    }, [symbol, needs_digits, feed_try]);
 
     // ---- request parameters for one side of the current trade type ----
     const dur_n = clamp(Math.round(Number(dur_val)) || 1, type.min_min || 1, UNITS.find(u => u.u === dur_unit)?.max || 1440);
