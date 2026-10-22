@@ -647,6 +647,7 @@ const DTrader = observer(() => {
 
     const mobile_sheet = (
         <aside className='dtrader__panel dtm'>
+            <span className='dtm__grab' aria-hidden='true' />
             <a className='dtrader__learn'>{localize('Learn about this trade type')}</a>
             {show_types && createPortal(trade_types_modal, document.body)}
             <div className='dtm__top'>
@@ -664,6 +665,7 @@ const DTrader = observer(() => {
                                 </option>
                             ))}
                         </select>
+                        <span className='dtm__info' aria-hidden='true'>ⓘ</span>
                     </label>
                 )}
                 {type.kind === 'mult' && (
@@ -742,6 +744,7 @@ const DTrader = observer(() => {
                     <label className='dtm__row dtm__check'>
                         <input type='checkbox' checked={take_profit} onChange={e => setTakeProfit(e.target.checked)} />
                         <span>{localize('Take profit')}</span>
+                        <span className='dtm__info dtm__info--end' aria-hidden='true'>ⓘ</span>
                     </label>
                     {take_profit && (
                         <div className='dtm__row dtm__row--step'>

@@ -759,6 +759,8 @@
             text-align: left;
             strong { font-size: 15px; font-weight: 700; }
         }
+        .dtm__grab { position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: #cfd4d6; }
+        .dtm__info { color: #8a9496; font-size: 18px; margin-left: 8px; &--end { margin-left: auto; } }
         .dtm__chev { margin-left: auto; font-size: 20px; color: #555; }
         .dtm__chip {
             flex: 0 0 34%;
