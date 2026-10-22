@@ -1059,3 +1059,20 @@
         button { width: 100%; padding: 12px; border: 0; background: none; text-align: left; font-size: 14px; &.active { font-weight: 700; background: #f2f3f4; } }
     }
 }
+
+/* phones: the chart/digits and the bottom sheet always use the full screen width (they were shrinking to the left) */
+@media (max-width: 760px) {
+    .dtrader.dtrader--dm,
+    .dtrader.dtrader--sheet {
+        align-items: stretch;
+        width: 100%;
+        max-width: 100%;
+        > .dtrader__center,
+        > .dtrader__panel {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            align-self: stretch;
+        }
+    }
+}
