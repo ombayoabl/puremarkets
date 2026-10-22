@@ -183,6 +183,8 @@ const DTrader = observer(() => {
 
     const [last_tick, setLastTick] = useState<{ epoch: number; quote: number } | null>(null);
     const [dp, setDp] = useState(2);
+    const [prev_q, setPrevQ] = useState<number | null>(null);
+    const last_q_ref = useRef<number | null>(null);
     const [pct, setPct] = useState<number[]>(Array(10).fill(0));
     const [last_digit, setLastDigit] = useState<number | null>(null);
     const [feed_status, setFeedStatus] = useState(localize('Connecting…'));
@@ -286,6 +288,8 @@ const DTrader = observer(() => {
         const digits: number[] = [];
         const counts: number[] = Array(10).fill(0);
         setLastTick(null);
+        last_q_ref.current = null;
+        setPrevQ(null);
         setPct(Array(10).fill(0));
         setLastDigit(null);
         setDp(pip);
@@ -314,6 +318,8 @@ const DTrader = observer(() => {
             }
             const quote = Number(data.tick.quote);
             addDigit(quote);
+            setPrevQ(last_q_ref.current);
+            last_q_ref.current = quote;
             setLastTick({ epoch: data.tick.epoch, quote });
             publishDigits();
         });
@@ -339,6 +345,10 @@ const DTrader = observer(() => {
                 const prices = res?.history?.prices || [];
                 const times = res?.history?.times || [];
                 prices.forEach((q: number) => addDigit(Number(q)));
+                if (prices.length) {
+                    last_q_ref.current = Number(prices[prices.length - 1]);
+                    setPrevQ(prices.length > 1 ? Number(prices[prices.length - 2]) : null);
+                }
                 if (prices.length) setLastTick({ epoch: Number(times[prices.length - 1]), quote: Number(prices[prices.length - 1]) });
                 publishDigits();
                 setFeedStatus(localize('Live'));
@@ -902,6 +912,49 @@ const DTrader = observer(() => {
                     {show_chart && (
                         <div className='dtrader__chart dtrader__chart--smart'>
                             <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} barriers={chart_barriers} />
+                        </div>
+                    )}
+
+                    {digit_phone && digit_view === 'digits' && (
+                        <div className='dtrader__symcard'>
+                            <button type='button' className='dtrader__symcard-main' onClick={() => setShowMarkets(s => !s)}>
+                                <span className='dtrader__symcard-ic'>
+                                    {market.v}
+                                    {symbol.startsWith('1HZ') && <i>1s</i>}
+                                </span>
+                                <span className='dtrader__symcard-txt'>
+                                    <strong>{market.name}</strong>
+                                    <small>
+                                        {last_tick ? last_tick.quote.toFixed(dp) : '—'}
+                                        {last_tick && prev_q !== null && (
+                                            <>
+                                                {' '}
+                                                {last_tick.quote >= prev_q ? '+' : '-'} {Math.abs(last_tick.quote - prev_q).toFixed(dp)} ({Math.abs(((last_tick.quote - prev_q) / prev_q) * 100).toFixed(2)}%){' '}
+                                                <b className={last_tick.quote >= prev_q ? 'up' : 'down'}>{last_tick.quote >= prev_q ? '▲' : '▼'}</b>
+                                            </>
+                                        )}
+                                    </small>
+                                </span>
+                                <span className='dtrader__symcard-chev'>⌄</span>
+                            </button>
+                            {show_markets && (
+                                <ul className='dtrader__symcard-list'>
+                                    {MARKETS.map(m => (
+                                        <li key={m.symbol}>
+                                            <button
+                                                type='button'
+                                                className={classNames({ active: m.symbol === symbol })}
+                                                onClick={() => {
+                                                    setSymbol(m.symbol);
+                                                    setShowMarkets(false);
+                                                }}
+                                            >
+                                                {m.name}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                     )}
 
