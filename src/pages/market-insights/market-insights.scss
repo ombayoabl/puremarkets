@@ -141,6 +141,96 @@
         }
     }
 
+    &__check {
+        position: relative;
+        display: flex !important;
+        align-items: center;
+        gap: 12px;
+        margin: 20px 0 6px !important;
+        padding-left: 12px;
+        color: #2a5a70 !important;
+        cursor: pointer;
+        input { position: absolute; opacity: 0; width: 0; height: 0; }
+    }
+    &__box {
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 2px solid #e03a3a;
+        background: transparent;
+        position: relative;
+    }
+    &__check input:checked + &__box {
+        background: #e03a3a;
+        &::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 2px;
+            width: 7px;
+            height: 14px;
+            border: solid #fff;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+    }
+
+    &__mode {
+        margin-top: 26px;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border: 1px dashed rgba(25, 230, 255, 0.55);
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        font-size: 17px;
+        > span { color: #6b8795; }
+        > span.on { color: var(--mi-cyan); }
+    }
+    &__switch {
+        flex: 0 0 auto;
+        width: 86px;
+        height: 44px;
+        padding: 4px;
+        border: 0;
+        border-radius: 22px;
+        background: #f1f4f6;
+        cursor: pointer;
+        position: relative;
+        i {
+            display: block;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+            transition: transform 0.18s ease;
+        }
+        &--on { background: var(--mi-cyan); i { transform: translateX(42px); } }
+    }
+
+    &__analyse {
+        display: block;
+        width: 100%;
+        margin-top: 30px;
+        padding: 16px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #14e1fb, #00bfe0);
+        color: #022a36;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        box-shadow: 0 0 22px rgba(25, 230, 255, 0.6);
+        cursor: pointer;
+        &:active { filter: brightness(0.95); }
+    }
+
     @media (max-width: 760px) {
         padding: 8px;
         &__title { font-size: 21px; letter-spacing: 0.12em; }

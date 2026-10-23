@@ -28,6 +28,12 @@ const MarketInsights = () => {
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
     const [duration, setDuration] = useState<string>('10');
+    const [stoploss, setStoploss] = useState<string>('1000');
+    const [take_profit, setTakeProfit] = useState<string>('50');
+    const [martingale, setMartingale] = useState(true);
+    const [multiplier, setMultiplier] = useState<string>('2');
+    const [max_trades, setMaxTrades] = useState<string>('200');
+    const [fast_mode, setFastMode] = useState(false);
 
     const [tick, setTick] = useState<number | null>(null);
     const [dp, setDp] = useState(2);
@@ -141,8 +147,35 @@ const MarketInsights = () => {
                     <input id='mi-stake' type='number' inputMode='decimal' min='0.35' step='0.01' value={stake} onChange={e => setStake(e.target.value)} />
                     <label htmlFor='mi-duration'>{localize('Duration (ticks)')}</label>
                     <input id='mi-duration' type='number' inputMode='numeric' min='1' max='10' step='1' value={duration} onChange={e => setDuration(e.target.value)} />
+                    <label htmlFor='mi-stoploss'>{localize('Stoploss')}</label>
+                    <input id='mi-stoploss' type='number' inputMode='decimal' min='0' step='1' value={stoploss} onChange={e => setStoploss(e.target.value)} />
+                    <label htmlFor='mi-tp'>{localize('Take profit')}</label>
+                    <input id='mi-tp' type='number' inputMode='decimal' min='0' step='1' value={take_profit} onChange={e => setTakeProfit(e.target.value)} />
+
+                    <label className='mi__check' htmlFor='mi-martingale'>
+                        <input id='mi-martingale' type='checkbox' checked={martingale} onChange={e => setMartingale(e.target.checked)} />
+                        <span className='mi__box' aria-hidden='true' />
+                        <span>{localize('Enable martingale on loss')}</span>
+                    </label>
+
+                    <label htmlFor='mi-mult'>{localize('Martingale multiplier')}</label>
+                    <input id='mi-mult' type='number' inputMode='decimal' min='1' step='0.1' value={multiplier} onChange={e => setMultiplier(e.target.value)} />
+                    <label htmlFor='mi-max'>{localize('Max trades per signal')}</label>
+                    <input id='mi-max' type='number' inputMode='numeric' min='1' step='1' value={max_trades} onChange={e => setMaxTrades(e.target.value)} />
+
+                    <div className='mi__mode'>
+                        <span className={fast_mode ? '' : 'on'}>{localize('NORMAL MODE')}</span>
+                        <button type='button' role='switch' aria-checked={fast_mode} aria-label={localize('Fast mode')} className={fast_mode ? 'mi__switch mi__switch--on' : 'mi__switch'} onClick={() => setFastMode(f => !f)}>
+                            <i />
+                        </button>
+                        <span className={fast_mode ? 'on' : ''}>{localize('FAST MODE')}</span>
+                    </div>
                     {/* more trade configuration fields continue here */}
                 </div>
+
+                <button type='button' className='mi__analyse'>
+                    {localize('Analyse')}
+                </button>
             </div>
         </div>
     );
