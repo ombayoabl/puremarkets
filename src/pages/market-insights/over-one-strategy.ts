@@ -48,10 +48,12 @@ type Cfg = {
     take_profit: number;
     max_trades: number;
     auto_trade: boolean;
+    fast_mode: boolean;
     currency: string;
     is_logged_in: boolean;
     transactions?: any;
     run_panel?: any;
+    summary_card?: any;
 };
 
 export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: number }[], cfg_in: Cfg) => {
@@ -99,6 +101,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     if (done || !poc || poc.contract_id !== cid) return;
                     try {
                         cfg.current.transactions?.onBotContractEvent?.(poc);
+                        cfg.current.summary_card?.onBotContractEvent?.(poc);
                     } catch (e) {
                         // the side panel is optional
                     }
@@ -161,7 +164,9 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             const dps: Record<string, number> = {};
             const own_subs: string[] = [];
             let loaded = false;
-            let trading = false;
+            let locked = ''; // the market being traded: stays on it while its signal holds
+            let open = 0; // trades bought and not settled yet
+            let buying = false;
             let total = 0;
             let n = 0;
             let losses = 0;
@@ -176,98 +181,119 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 return next;
             };
 
-            const tradeLoop = async (first_symbol: string) => {
-                trading = true;
-                let symbol = first_symbol;
-                try {
-                    while (alive()) {
-                        const c = cfg.current;
-                        const amount = c.martingale && losses > 0
-                            ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses))
-                            : c.stake;
-                        const name = markets.find(m => m.symbol === symbol)?.name || symbol;
-                        setStatus(`${localize('Signal! Over 1 on')} ${name}, ${localize('stake')} ${amount} ${c.currency}…`);
-                        let cid: number;
-                        try {
-                            const res = await api_base.api.send({
-                                buy: '1',
-                                price: Number(amount),
-                                parameters: {
-                                    amount,
-                                    basis: 'stake',
-                                    contract_type: 'DIGITOVER',
-                                    barrier: '1',
-                                    currency: c.currency,
-                                    duration: clamp(Math.round(c.duration) || 1, 1, 10),
-                                    duration_unit: 't',
-                                    underlying_symbol: symbol,
-                                },
-                            });
-                            cid = res.buy.contract_id;
-                        } catch (e) {
-                            if (alive()) setError(errMsg(e));
-                            stop();
-                            return;
-                        }
-                        const profit = await waitForResult(cid, my_run);
-                        if (!alive()) return;
-                        if (profit === null) {
-                            setError(localize('Could not confirm the result of the last trade, so trading stopped.'));
-                            stop();
-                            return;
-                        }
-                        total = round2(total + profit);
-                        n += 1;
-                        in_a_row += 1;
-                        losses = profit < 0 ? losses + 1 : 0;
-                        setPl({ n, total });
-                        setTrades(prev => [{ id: cid, symbol, stake: amount, profit }, ...prev].slice(0, 50));
+            const nameOf = (sym: string) => markets.find(m => m.symbol === sym)?.name || sym;
 
-                        if (c.take_profit > 0 && total >= c.take_profit) {
-                            setError('');
-                            stop();
-                            setStatus(localize('Take profit reached. Trading stopped.'));
-                            return;
-                        }
-                        if (c.stop_loss > 0 && total <= -c.stop_loss) {
-                            stop();
-                            setStatus(localize('Stop loss reached. Trading stopped.'));
-                            return;
-                        }
-                        if (c.max_trades > 0 && in_a_row >= c.max_trades) {
-                            in_a_row = 0;
-                            setStatus(localize('Max trades for this signal reached. Watching for the next signal…'));
-                            break;
-                        }
-                        // keep trading while a signal holds (the best market now), otherwise go back to watching
-                        const best = Object.values(publish()).filter(r => r.signal).sort((a, b) => b.score - a.score)[0];
-                        if (!best) {
-                            in_a_row = 0;
-                            setStatus(localize('Signal gone. Watching live ticks for the next one…'));
-                            break;
-                        }
-                        symbol = best.symbol;
-                    }
-                } finally {
-                    trading = false;
+            const showTransactions = () => {
+                try {
+                    const rp = cfg.current.run_panel;
+                    rp?.toggleDrawer?.(true);
+                    rp?.setActiveTabIndex?.(RUN_PANEL.TRANSACTIONS);
+                } catch (e) {
+                    // the panel is optional
                 }
             };
 
+            // settle one bought trade in the background (profit / loss, martingale, take profit, stop loss)
+            const settle = async (cid: number, symbol: string, amount: number) => {
+                const profit = await waitForResult(cid, my_run);
+                open = Math.max(0, open - 1);
+                if (!alive()) return;
+                if (profit === null) {
+                    setError(localize('Could not confirm the result of the last trade, so trading stopped.'));
+                    stop();
+                    return;
+                }
+                total = round2(total + profit);
+                n += 1;
+                losses = profit < 0 ? losses + 1 : 0;
+                setPl({ n, total });
+                setTrades(prev => [{ id: cid, symbol, stake: amount, profit }, ...prev].slice(0, 50));
+                const c = cfg.current;
+                if (c.take_profit > 0 && total >= c.take_profit) {
+                    stop();
+                    setStatus(localize('Take profit reached. Trading stopped.'));
+                    return;
+                }
+                if (c.stop_loss > 0 && total <= -c.stop_loss) {
+                    stop();
+                    setStatus(localize('Stop loss reached. Trading stopped.'));
+                    return;
+                }
+                check(); // normal mode: the next trade goes straight out when this one settles
+            };
+
+            // buy Over 1 right now on `symbol`
+            const placeTrade = async (symbol: string) => {
+                const c = cfg.current;
+                const amount = c.martingale && losses > 0 ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
+                buying = true;
+                in_a_row += 1;
+                setStatus(`${localize('Over 1 on')} ${nameOf(symbol)}, ${localize('stake')} ${amount} ${c.currency}…`);
+                try {
+                    const res = await api_base.api.send({
+                        buy: '1',
+                        price: Number(amount),
+                        parameters: {
+                            amount,
+                            basis: 'stake',
+                            contract_type: 'DIGITOVER',
+                            barrier: '1',
+                            currency: c.currency,
+                            duration: clamp(Math.round(c.duration) || 1, 1, 10),
+                            duration_unit: 't',
+                            underlying_symbol: symbol,
+                        },
+                    });
+                    open += 1;
+                    showTransactions();
+                    settle(res.buy.contract_id, symbol, amount);
+                } catch (e) {
+                    if (alive()) setError(errMsg(e));
+                    stop();
+                } finally {
+                    buying = false;
+                }
+            };
+
+            // runs on every tick of a watched market
             const check = () => {
                 const all = publish();
-                if (!loaded || trading || !alive()) return;
-                const best = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score)[0];
-                if (!best) return;
-                if (!cfg.current.auto_trade) {
-                    const name = markets.find(m => m.symbol === best.symbol)?.name || best.symbol;
-                    setStatus(`${localize('Signal: Over 1 on')} ${name}`);
+                if (!loaded || !alive()) return;
+                const c = cfg.current;
+
+                // keep the market we are on; only look for another one when its signal is gone
+                if (locked && !all[locked]?.signal) {
+                    if (open > 0) return;
+                    locked = '';
+                    in_a_row = 0;
+                    setStatus(localize('Signal gone. Watching live ticks for the next one…'));
+                }
+                if (!locked) {
+                    const best = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score)[0];
+                    if (!best) return;
+                    if (!c.auto_trade) {
+                        setStatus(`${localize('Signal: Over 1 on')} ${nameOf(best.symbol)}`);
+                        return;
+                    }
+                    if (!c.is_logged_in) {
+                        setError(localize('Log in to place trades.'));
+                        return;
+                    }
+                    locked = best.symbol;
+                }
+                if (!c.auto_trade || buying) return;
+                // normal mode: one trade at a time. Fast mode: a new trade on every tick while the signal holds
+                if (!c.fast_mode && open > 0) return;
+                if (open >= 30) return;
+                if (c.max_trades > 0 && in_a_row >= c.max_trades) {
+                    if (open === 0) {
+                        locked = '';
+                        in_a_row = 0;
+                        setStatus(localize('Max trades for this signal reached. Watching for the next signal…'));
+                    }
                     return;
                 }
-                if (!cfg.current.is_logged_in) {
-                    setError(localize('Log in to place trades.'));
-                    return;
-                }
-                tradeLoop(best.symbol);
+                placeTrade(locked);
             };
 
             const sub = api_base.api.onMessage().subscribe(({ data }: any) => {
@@ -280,35 +306,38 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 check();
             });
 
-            // every market's last 1,000 ticks, one after another
+            // every market's last 1,000 ticks, all at the same time
             const failed: string[] = [];
-            for (let i = 0; i < symbols.length; i++) {
-                if (!alive()) break;
-                const m = markets.find(x => x.symbol === symbols[i]);
-                const base = { ticks_history: m.symbol, adjust_start_time: 1, count: MAX_TICKS, end: 'latest', style: 'ticks' };
-                try {
-                    let res;
+            let loaded_count = 0;
+            await Promise.all(
+                symbols.map(async symbol => {
+                    const m = markets.find(x => x.symbol === symbol);
+                    const base = { ticks_history: m.symbol, adjust_start_time: 1, count: MAX_TICKS, end: 'latest', style: 'ticks' };
                     try {
-                        res = await api_base.api.send({ ...base, subscribe: 1 });
-                        const id = res?.subscription?.id;
-                        if (id) {
-                            if (!alive()) api_base.api.send({ forget: id }).catch(() => {});
-                            else own_subs.push(id);
+                        let res;
+                        try {
+                            res = await api_base.api.send({ ...base, subscribe: 1 });
+                            const id = res?.subscription?.id;
+                            if (id) {
+                                if (!alive()) api_base.api.send({ forget: id }).catch(() => {});
+                                else own_subs.push(id);
+                            }
+                        } catch (e) {
+                            // already streamed by the chart or another page: read the history, ticks still reach us
+                            if (e?.error?.code !== 'AlreadySubscribed') throw e;
+                            res = await api_base.api.send(base);
                         }
+                        if (!alive()) return;
+                        dps[m.symbol] = res?.pip_size !== undefined ? Number(res.pip_size) : m.dp;
+                        bufs[m.symbol] = (res?.history?.prices || []).map((q: number) => toDigit(q, dps[m.symbol])).slice(-MAX_TICKS);
+                        publish();
                     } catch (e) {
-                        // already streamed by the chart or another page: read the history, ticks still reach us
-                        if (e?.error?.code !== 'AlreadySubscribed') throw e;
-                        res = await api_base.api.send(base);
+                        failed.push(m.name);
                     }
-                    if (!alive()) break;
-                    dps[m.symbol] = res?.pip_size !== undefined ? Number(res.pip_size) : m.dp;
-                    bufs[m.symbol] = (res?.history?.prices || []).map((q: number) => toDigit(q, dps[m.symbol])).slice(-MAX_TICKS);
-                    publish();
-                } catch (e) {
-                    failed.push(m.name);
-                }
-                setStatus(`${localize('Analysing the volatilities…')} ${i + 1}/${symbols.length}`);
-            }
+                    loaded_count += 1;
+                    setStatus(`${localize('Analysing the volatilities…')} ${loaded_count}/${symbols.length}`);
+                })
+            );
 
             if (!alive()) {
                 sub.unsubscribe();

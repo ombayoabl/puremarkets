@@ -59,7 +59,7 @@ const buildLogLines = (count: number) => {
 const lastDigitOf = (quote: number, dp: number) => Number(quote.toFixed(dp).slice(-1));
 
 const MarketInsights = observer(() => {
-    const { client, transactions, run_panel } = useStore();
+    const { client, transactions, run_panel, summary_card } = useStore();
     const [strategy, setStrategy] = useState(STRATEGIES[0].key);
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
@@ -88,10 +88,12 @@ const MarketInsights = observer(() => {
         take_profit: Number(take_profit) || 0,
         max_trades: Number(max_trades) || 0,
         auto_trade,
+        fast_mode,
         currency: client?.currency || 'USD',
         is_logged_in: !!client?.is_logged_in,
         transactions,
         run_panel,
+        summary_card,
     });
     const is_over_under = strategy === 'over_under';
     const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
