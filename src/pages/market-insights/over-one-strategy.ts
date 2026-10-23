@@ -13,7 +13,7 @@ export const OVER1_WINDOWS = [
 ];
 const MAX_TICKS = 1000;
 // After a loss: take a 5-10 second break, then look at the last 50 ticks of the market being traded.
-// Digits 5-9 above 80% -> recover with Under 5; digits 0-6 above 85% -> recover with Over 4 (the opposite side).
+// Digits 5-9 above 80% -> recover with Over 4 immediately; digits 0-6 above 85% -> recover with Under 5.
 const REC_TICKS = 50;
 const REC_HIGH_MIN = 80; // digits 5-9
 const REC_LOW_MIN = 85; // digits 0-6
@@ -309,8 +309,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     if (!c.auto_trade || buying || rec_open || Date.now() < pause_until || Date.now() < resume_at) return;
                     const last = (bufs[locked] || []).slice(-REC_TICKS);
                     if (last.length < REC_TICKS) return;
-                    if (share(last, d => d >= 5) > REC_HIGH_MIN) placeTrade(locked, 'under5');
-                    else if (share(last, d => d <= 6) > REC_LOW_MIN) placeTrade(locked, 'over4');
+                    if (share(last, d => d >= 5) > REC_HIGH_MIN) placeTrade(locked, 'over4');
+                    else if (share(last, d => d <= 6) > REC_LOW_MIN) placeTrade(locked, 'under5');
                     else setStatus(localize('Recovery: waiting for digits 5-9 above 80% or 0-6 above 85%…'));
                     return;
                 }
