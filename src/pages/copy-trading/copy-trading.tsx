@@ -53,6 +53,7 @@ const CopyTrading = () => {
     const [token, setToken] = useState('');
     const [accounts, setAccounts] = useState<any[]>([]);
     const [pick, setPick] = useState('');
+    const [app_id, setAppId] = useState('');
     const [mult, setMult] = useState('1');
     const [cap, setCap] = useState('0');
     const [agree, setAgree] = useState(false);
@@ -68,7 +69,7 @@ const CopyTrading = () => {
         if (!token.trim()) return setError(localize('Paste the API token first.'));
         setBusy(true);
         try {
-            const list = await fetchAccounts(token.trim());
+            const list = await fetchAccounts(token.trim(), app_id);
             setAccounts(list);
             const mine = myAccountType();
             const match = list.find((a: any) => a.account_type === mine && copyEngine.allow[a.account_type]);
@@ -90,7 +91,7 @@ const CopyTrading = () => {
         const account = accounts.find(a => a.account_id === pick);
         if (!account) return;
         try {
-            await copyEngine.add(token.trim(), account, Math.max(0.01, Number(mult) || 1), Math.max(0, Number(cap) || 0));
+            await copyEngine.add(token.trim(), account, Math.max(0.01, Number(mult) || 1), Math.max(0, Number(cap) || 0), app_id);
             setToken('');
             setAccounts([]);
             setPick('');
@@ -148,10 +149,17 @@ const CopyTrading = () => {
                     onChange={e => setToken(e.target.value)}
                 />
             </div>
+            <div className='bulk__field' style={{ marginTop: 8 }}>
+                <label className='bulk__label'>{localize('App ID (leave empty unless Deriv rejects the token)')}</label>
+                <input className='bulk__input' type='text' autoComplete='off' disabled={!copyEngine.on} value={app_id} onChange={e => setAppId(e.target.value)} />
+            </div>
             <button type='button' className='bulk__run' disabled={busy || !copyEngine.on} onClick={find} style={{ marginTop: 8 }}>
                 {busy ? localize('Checking…') : localize('Find their accounts')}
             </button>
             {error && <p className='bulk__bad'>{error}</p>}
+            {token.trim() && !token.trim().startsWith('pat_') && (
+                <p className='bulk__muted'>{localize('Deriv tokens start with pat_. Check that you copied the whole token.')}</p>
+            )}
 
             {accounts.length > 0 && (
                 <div style={{ marginTop: 12 }}>

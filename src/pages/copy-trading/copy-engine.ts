@@ -18,6 +18,7 @@ export type Copier = {
     account_type: 'demo' | 'real';
     currency: string;
     balance: string;
+    app_id: string; // the Deriv App ID sent with the token
     enabled: boolean;
     multiplier: number; // stake x multiplier
     max_stake: number; // 0 = no cap
@@ -44,19 +45,43 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const base = () => brandConfig.platform.derivws.url[isProduction() ? 'production' : 'staging'];
 const dir = () => brandConfig.platform.derivws.directories.options;
 
+/** Deriv wants the App ID next to the token on every REST call (a PAT token starting with pat_ included). */
+const headers = (token: string, app_id = '') => {
+    const h: Record<string, string> = { Authorization: `Bearer ${token.trim()}` };
+    const id = (app_id || process.env.NEXT_PUBLIC_DERIV_APP_ID || '').trim();
+    if (id) h['Deriv-App-ID'] = id;
+    return h;
+};
+const reason = async (res: Response) => {
+    try {
+        const body = await res.json();
+        return body?.errors?.[0]?.message || body?.error?.message || body?.message || '';
+    } catch (e) {
+        return '';
+    }
+};
+
 /** Accounts that belong to an API token (used to let the user pick which account to copy onto). */
-export const fetchAccounts = async (token: string): Promise<CopierAccount[]> => {
-    const res = await fetch(`${base()}${dir()}accounts`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'That token was not accepted.' : `Could not read the accounts (${res.status}).`);
+export const fetchAccounts = async (token: string, app_id = ''): Promise<CopierAccount[]> => {
+    const res = await fetch(`${base()}${dir()}accounts`, { method: 'GET', headers: headers(token, app_id) });
+    if (!res.ok) {
+        const why = await reason(res);
+        throw new Error(
+            `${res.status === 401 || res.status === 403 ? 'Deriv did not accept that token' : `Could not read the accounts (${res.status})`}${why ? `: ${why}` : '.'}`
+        );
+    }
     const body = await res.json();
     const list = body?.data || [];
     if (!list.length) throw new Error('No accounts found for that token.');
     return list;
 };
 
-const fetchSocketUrl = async (token: string, account_id: string): Promise<string> => {
-    const res = await fetch(`${base()}${dir()}accounts/${account_id}/otp`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error(`Could not open a trading connection (${res.status}).`);
+const fetchSocketUrl = async (token: string, account_id: string, app_id = ''): Promise<string> => {
+    const res = await fetch(`${base()}${dir()}accounts/${account_id}/otp`, { method: 'POST', headers: headers(token, app_id) });
+    if (!res.ok) {
+        const why = await reason(res);
+        throw new Error(`Could not open a trading connection (${res.status})${why ? `: ${why}` : '.'}`);
+    }
     const body = await res.json();
     const url = body?.data?.url;
     if (!url) throw new Error('No connection address came back for that account.');
@@ -106,7 +131,7 @@ class CopyEngine {
         this.listeners.forEach(fn => fn());
     }
 
-    async add(token: string, account: CopierAccount, multiplier = 1, max_stake = 0) {
+    async add(token: string, account: CopierAccount, multiplier = 1, max_stake = 0, app_id = '') {
         if (!this.allow[account.account_type]) {
             throw new Error(
                 account.account_type === 'real'
@@ -121,7 +146,8 @@ class CopyEngine {
         }
         const c: Copier = {
             id: account.account_id,
-            token,
+            token: token.trim(),
+            app_id: app_id.trim(),
             account_type: account.account_type,
             currency: account.currency,
             balance: account.balance,
@@ -187,7 +213,7 @@ class CopyEngine {
         c.status = 'connecting';
         this.emit();
         try {
-            const url = await fetchSocketUrl(c.token, c.id);
+            const url = await fetchSocketUrl(c.token, c.id, c.app_id);
             if (!this.copiers.includes(c)) return;
             const ws = new WebSocket(url);
             this.sockets.set(c.id, ws);
