@@ -179,7 +179,21 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let open = 0; // trades bought and not settled yet
             let buying = false;
             let active: string[] = []; // every market with a signal right now, best first; trades alternate between them
-            let rot = 0; // which of the active markets takes the next trade
+            let cur_sym = ''; // the market taking trades right now
+            let cur_n = 0; // trades placed on it in this turn
+            // 3 trades on a market, then the next market with a signal takes its 3
+            const pickMarket = (list: string[]) => {
+                if (!list.includes(cur_sym)) {
+                    // its signal is gone (or none yet): start on the best market
+                    cur_sym = list[0];
+                    cur_n = 0;
+                } else if (cur_n >= 3) {
+                    cur_sym = list[(list.indexOf(cur_sym) + 1) % list.length];
+                    cur_n = 0;
+                }
+                cur_n += 1;
+                return cur_sym;
+            };
             let tick_n = 0; // fast mode: ticks seen on the market being traded
             let pause_until = 0; // after Deriv's rate limit, wait before buying again
             let total = 0;
@@ -319,8 +333,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     } else if (rec_open) return;
                     // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
                     rec_flip = !rec_flip;
-                    const rec_list = active.length ? active : [locked];
-                    const rec_sym = rec_list[rot++ % rec_list.length];
+                    const rec_sym = pickMarket(active.length ? active : [locked]);
                     locked = rec_sym;
                     setTraded(rec_sym);
                     placeTrade(rec_sym, rec_flip ? 'over4' : 'under5');
@@ -365,7 +378,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     }
                     return;
                 }
-                locked = active[rot++ % active.length];
+                locked = pickMarket(active);
                 setTraded(locked);
                 placeTrade(locked);
             };
