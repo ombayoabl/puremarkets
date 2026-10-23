@@ -97,6 +97,7 @@ const MarketInsights = observer(() => {
     });
     const is_over_under = strategy === 'over_under';
     const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
+    const found_rows = over_rows.filter(r => r.signal); // markets with a signal right now
     const best_symbol = over_rows[0] && over_rows[0].score > -Infinity ? over_rows[0].symbol : '';
     // analysing all volatilities: the Select market box follows the market the analysis picked
     // (the one being traded, otherwise the best one so far)
@@ -257,6 +258,12 @@ const MarketInsights = observer(() => {
                 </div>
                 {is_over_under && scope === 'all' && over_one.running && picked_symbol && (
                     <p className='mi__picked'>
+                        {found_rows.length > 0 && (
+                            <>
+                                {localize('Found markets:')} {found_rows.length}
+                                <br />
+                            </>
+                        )}
                         {over_one.traded ? localize('Trading:') : localize('Best so far:')} {market.name}
                     </p>
                 )}
@@ -335,7 +342,11 @@ const MarketInsights = observer(() => {
                                     <div key={r.symbol} className={`mi__over1-row${r.signal ? ' mi__over1-row--signal' : ''}`}>
                                         <span>
                                             {MARKETS.find(m => m.symbol === r.symbol)?.name.replace(' Index', '')}
-                                            {r.symbol === best_symbol && scope === 'all' && <b className='mi__over1-best'>{localize('BEST')}</b>}
+                                            {scope === 'all' && r.symbol === over_one.traded && <b className='mi__over1-best'>{localize('TRADING')}</b>}
+                                            {scope === 'all' && r.signal && r.symbol !== over_one.traded && (
+                                                <b className='mi__over1-best mi__over1-found'>{`${localize('FOUND')} ${found_rows.findIndex(f => f.symbol === r.symbol) + 1}`}</b>
+                                            )}
+                                            {scope === 'all' && !over_one.traded && !found_rows.length && r.symbol === best_symbol && <b className='mi__over1-best'>{localize('BEST')}</b>}
                                         </span>
                                         {r.pct.map((p, i) => (
                                             <span key={i} className={r.hit[i] ? 'mi__over1-hit' : ''}>

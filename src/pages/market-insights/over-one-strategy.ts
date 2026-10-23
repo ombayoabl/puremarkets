@@ -199,6 +199,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let total = 0;
             let n = 0;
             let losses = 0;
+            let mg_stake = 0; // martingale: the stake of the next trade after a loss (0 = base stake)
             let in_a_row = 0;
             let recovering = false; // a loss happened: Over 1 is paused until a recovery trade wins
             let rec_open = false; // a recovery trade is bought and not settled yet
@@ -239,6 +240,11 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 total = round2(total + profit);
                 n += 1;
                 losses = profit < 0 ? losses + 1 : 0;
+                // martingale: every loss raises the next stake from the stake that lost (never below what is set),
+                // so trades fired right after a loss never go back to the base stake; only a win resets it
+                // (while recovering, only a recovery win counts)
+                if (profit < 0) mg_stake = Math.max(mg_stake, round2(amount * Math.max(1, cfg.current.multiplier)));
+                else if (is_recovery || !recovering) mg_stake = 0;
                 if (is_recovery) rec_open = false;
                 if (profit < 0) {
                     // a loss (Over 1 or recovery, slow or fast mode): break for 5-10 seconds, then analyse and recover
@@ -280,7 +286,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     over4: { type: 'DIGITOVER', barrier: '4', label: 'Over 4' },
                     under5: { type: 'DIGITUNDER', barrier: '5', label: 'Under 5' },
                 }[kind];
-                const amount = c.martingale && losses > 0 ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
+                const amount = c.martingale && mg_stake > 0 ? mg_stake : c.stake;
                 buying = true;
                 if (kind === 'over1') in_a_row += 1;
                 else rec_open = true;
