@@ -19,7 +19,12 @@ const MARKETS = [
 ];
 
 // Strategies offered in the "Select strategy" box (more are added here as they are built)
-const STRATEGIES = [{ key: 'over_under', label: 'Over & Under' }];
+const STRATEGIES = [
+    { key: 'over_under', label: 'Over & Under' },
+    { key: 'even_odd', label: 'Even & Odd' },
+    { key: 'matches_differs', label: 'Matches & Differs' },
+    { key: 'rise_fall', label: 'Rise & Fall' },
+];
 
 // Scrolling "terminal" text that fills the page behind the box
 const LOG_PHRASES = [
