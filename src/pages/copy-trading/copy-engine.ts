@@ -11,6 +11,7 @@ import { isProduction } from '@/components/shared';
 import { isDemoAccount } from '@/utils/account-helpers';
 import { api_base } from '@/external/bot-skeleton';
 import brandConfig from '../../../brand.config.json';
+import { getSiteConfig } from '@/services/site-config';
 
 export type CopierAccount = { account_id: string; balance: string; currency: string; account_type: 'demo' | 'real'; status?: string };
 export type Copier = {
@@ -287,6 +288,7 @@ class CopyEngine {
 
     /** Copy one `buy` request (called for every trade the app places). */
     mirror(req: any) {
+        if (getSiteConfig().settings.copy_trading_paused) return; // paused from the admin panel
         if (!this.on || !req || req.buy !== '1' || !req.parameters || typeof req.parameters !== 'object') return;
         if (this.handled.has(req)) return; // already copied (shared connection fallback)
         this.handled.add(req);

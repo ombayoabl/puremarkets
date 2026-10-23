@@ -43,6 +43,7 @@ import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
+import { useSiteConfig } from '@/services/site-config';
 import './main.scss';
 import '../copy-trading/copy-engine'; // starts copying trades as soon as the app loads
 
@@ -397,8 +398,16 @@ const AppWrapper = observer(() => {
         }
     };
     // [/AI]
+    const { settings: site } = useSiteConfig();
     return (
         <React.Fragment>
+            {site.maintenance.on && (
+                <div className='site-maintenance' role='alert'>
+                    <h2>puremarkets</h2>
+                    <p>{site.maintenance.message || 'We are making improvements. Please check back soon.'}</p>
+                </div>
+            )}
+            {site.announcement.on && site.announcement.text && <div className='site-announcement'>{site.announcement.text}</div>}
             <div className='main'>
                 <div
                     className={classNames('main__container', {

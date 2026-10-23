@@ -16,6 +16,7 @@ import './app-root.scss';
 
 const Layout = lazy(() => import('../components/layout'));
 const AppRoot = lazy(() => import('./app-root'));
+const AdminPage = lazy(() => import('../pages/admin/admin'));
 
 /**
  * Component wrapper to handle language URL parameter
@@ -33,6 +34,15 @@ const routerBasename = isPreviewMode() ? PREVIEW_BASE_PATH : undefined;
 
 const router = createBrowserRouter(
     createRoutesFromElements(
+        <>
+        <Route
+            path='/admin'
+            element={
+                <Suspense fallback={<ChunkLoader message='Loading…' />}>
+                    <AdminPage />
+                </Suspense>
+            }
+        />
         <Route
             path='/'
             element={
@@ -59,6 +69,7 @@ const router = createBrowserRouter(
             {/* App Builder embeds the template at /preview — render the same app shell */}
             <Route path='preview' element={<AppRoot />} />
         </Route>
+        </>
     ),
     { basename: routerBasename }
 );

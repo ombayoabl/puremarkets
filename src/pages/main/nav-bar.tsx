@@ -1,6 +1,7 @@
 import React from 'react';
 import classNames from 'classnames';
 import { NAV_ITEMS, TNavItem } from '@/constants/bot-contents';
+import { useSiteConfig } from '@/services/site-config';
 import { localize } from '@deriv-com/translations';
 import NavIcon from './nav-icons';
 import './nav-bar.scss';
@@ -10,10 +11,15 @@ type TNavBarProps = {
     onSelect: (item: TNavItem) => void;
 };
 
-const NavBar = ({ active_key, onSelect }: TNavBarProps) => (
+const NavBar = ({ active_key, onSelect }: TNavBarProps) => {
+    const { settings } = useSiteConfig();
+    const items = NAV_ITEMS.filter(item => settings.tabs[item.key] !== 'hidden').map(item =>
+        settings.tabs[item.key] === 'soon' ? ({ ...item, type: 'soon' } as TNavItem) : item
+    );
+    return (
     <nav className='main-nav' aria-label='Main navigation'>
         <ul className='main-nav__list'>
-            {NAV_ITEMS.map(item => (
+            {items.map(item => (
                 <li key={item.key} className='main-nav__li'>
                     <button
                         type='button'
@@ -30,7 +36,8 @@ const NavBar = ({ active_key, onSelect }: TNavBarProps) => (
             ))}
         </ul>
     </nav>
-);
+    );
+};
 
 export const ComingSoon = ({ name, icon }: { name: string; icon?: string }) => (
     <div className='coming-soon'>
