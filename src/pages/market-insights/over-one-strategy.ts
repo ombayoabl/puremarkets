@@ -167,6 +167,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let locked = ''; // the market being traded: stays on it while its signal holds
             let open = 0; // trades bought and not settled yet
             let buying = false;
+            let tick_n = 0; // fast mode: ticks seen on the market being traded
+            let pause_until = 0; // after Deriv's rate limit, wait before buying again
             let total = 0;
             let n = 0;
             let losses = 0;
@@ -219,7 +221,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     setStatus(localize('Stop loss reached. Trading stopped.'));
                     return;
                 }
-                check(); // normal mode: the next trade goes straight out when this one settles
+                check(false); // normal mode: the next trade goes straight out when this one settles
             };
 
             // buy Over 1 right now on `symbol`
@@ -248,15 +250,22 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     showTransactions();
                     settle(res.buy.contract_id, symbol, amount);
                 } catch (e) {
-                    if (alive()) setError(errMsg(e));
-                    stop();
+                    if (e?.error?.code === 'RateLimit') {
+                        // Deriv's request limit: back off for a moment instead of stopping
+                        in_a_row = Math.max(0, in_a_row - 1);
+                        pause_until = Date.now() + 4000;
+                        if (alive()) setStatus(localize('Deriv rate limit reached. Pausing a few seconds…'));
+                    } else {
+                        if (alive()) setError(errMsg(e));
+                        stop();
+                    }
                 } finally {
                     buying = false;
                 }
             };
 
             // runs on every tick of a watched market
-            const check = () => {
+            const check = (from_tick = false) => {
                 const all = publish();
                 if (!loaded || !alive()) return;
                 const c = cfg.current;
@@ -281,9 +290,14 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     }
                     locked = best.symbol;
                 }
-                if (!c.auto_trade || buying) return;
-                // normal mode: one trade at a time. Fast mode: a new trade on every tick while the signal holds
-                if (!c.fast_mode && open > 0) return;
+                if (!c.auto_trade || buying || Date.now() < pause_until) return;
+                // normal mode: one trade at a time. Fast mode: a new trade on the ticks of the market (3 of every
+                // 4 ticks, 25% slower than every tick, to stay under Deriv's limit), never in between
+                if (c.fast_mode) {
+                    if (!from_tick) return;
+                    tick_n += 1;
+                    if (tick_n % 4 === 0) return;
+                } else if (open > 0) return;
                 if (open >= 30) return;
                 if (c.max_trades > 0 && in_a_row >= c.max_trades) {
                     if (open === 0) {
@@ -303,7 +317,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (data.tick.pip_size !== undefined) dps[s] = Number(data.tick.pip_size);
                 bufs[s].push(toDigit(data.tick.quote, dps[s]));
                 if (bufs[s].length > MAX_TICKS) bufs[s].shift();
-                check();
+                check(s === locked || !locked);
             });
 
             // every market's last 1,000 ticks, all at the same time
