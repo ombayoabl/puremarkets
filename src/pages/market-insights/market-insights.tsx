@@ -323,6 +323,20 @@ const MarketInsights = observer(() => {
                         </p>
                         {over_one.status && <p className='mi__over1-status'>{over_one.status}</p>}
                         {over_one.error && <p className='mi__over1-error'>{over_one.error}</p>}
+                        {over_one.rec && (
+                            <div className='mi__over1-rec'>
+                                <h4>
+                                    {localize('RECOVERY')} · {MARKETS.find(m => m.symbol === over_one.rec.symbol)?.name.replace(' Index', '')}
+                                    {over_one.rec.on_break && <i> · {localize('on a short break')}</i>}
+                                </h4>
+                                {over_one.rec.rows.map((r, i) => (
+                                    <div key={i} className={`mi__over1-rec-row${r.hit ? ' mi__over1-rec-row--hit' : ''}`}>
+                                        <span>{r.label}</span>
+                                        <b>{r.pct === null ? '—' : `${r.pct.toFixed(1)}%`}</b>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         {over_rows.length > 0 && (
                             <div className='mi__over1-table'>
                                 <div className='mi__over1-row mi__over1-row--head'>

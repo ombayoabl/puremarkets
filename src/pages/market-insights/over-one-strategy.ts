@@ -12,11 +12,16 @@ export const OVER1_WINDOWS = [
     { ticks: 1000, min: 83 },
 ];
 const MAX_TICKS = 1000;
-// After a loss: take a 5-10 second break, then look at the last 50 ticks of the market being traded.
-// Digits 5-9 above 80% -> recover with Under 5; digits 0-6 above 85% -> recover with Over 4 (the opposite side).
-const REC_TICKS = 50;
-const REC_HIGH_MIN = 80; // digits 5-9
-const REC_LOW_MIN = 85; // digits 0-6
+// After a loss: take a 5-10 second break, then watch the market being traded. Whichever rule below shows the
+// biggest edge decides the recovery trade (a rule counts when its digits are above its level).
+export const RECOVERY_RULES = [
+    { ticks: 50, from: 5, to: 9, min: 80, kind: 'under5' as const },
+    { ticks: 50, from: 0, to: 6, min: 85, kind: 'over4' as const },
+    { ticks: 100, from: 4, to: 9, min: 80, kind: 'over4' as const },
+    { ticks: 100, from: 0, to: 4, min: 80, kind: 'under5' as const },
+];
+export const REC_LABEL = { over4: 'Over 4', under5: 'Under 5' };
+export type RecRow = { label: string; pct: number | null; min: number; hit: boolean };
 const BREAK_MIN_MS = 5000;
 const BREAK_MAX_MS = 10000;
 const share = (digits: number[], test: (d: number) => boolean) =>
@@ -70,6 +75,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
     const [rows, setRows] = useState<Record<string, Over1Row>>({});
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+    const [rec, setRec] = useState<{ symbol: string; on_break: boolean; rows: RecRow[] } | null>(null);
     const [traded, setTraded] = useState(''); // the market the strategy is trading right now
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [trades, setTrades] = useState<{ id: number; symbol: string; stake: number; profit: number }[]>([]);
@@ -154,6 +160,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
 
             setError('');
             setTraded('');
+            setRec(null);
             setRows({});
             setPl(null);
             setTrades([]);
@@ -233,6 +240,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 } else if (is_recovery) {
                     recovering = false;
                     in_a_row = 0;
+                    setRec(null);
                     setStatus(localize('Recovered. Back to Over 1…'));
                 }
                 setPl({ n, total });
@@ -306,12 +314,26 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
 
                 // after a loss: stay on this market, wait out the break, then look at the last 50 ticks
                 if (recovering && locked) {
+                    const buf = bufs[locked] || [];
+                    const evals = RECOVERY_RULES.map(r => {
+                        const pct = buf.length < r.ticks ? null : share(buf.slice(-r.ticks), d => d >= r.from && d <= r.to);
+                        const hit = pct !== null && Number(pct.toFixed(1)) > r.min;
+                        return { r, pct, hit, margin: pct === null ? -Infinity : pct - r.min };
+                    });
+                    setRec({
+                        symbol: locked,
+                        on_break: Date.now() < resume_at,
+                        rows: evals.map(e => ({
+                            label: `${e.r.ticks} ${localize('ticks')} · ${localize('digits')} ${e.r.from}-${e.r.to} > ${e.r.min}% → ${REC_LABEL[e.r.kind]}`,
+                            pct: e.pct,
+                            min: e.r.min,
+                            hit: e.hit,
+                        })),
+                    });
                     if (!c.auto_trade || buying || rec_open || Date.now() < pause_until || Date.now() < resume_at) return;
-                    const last = (bufs[locked] || []).slice(-REC_TICKS);
-                    if (last.length < REC_TICKS) return;
-                    if (share(last, d => d >= 5) > REC_HIGH_MIN) placeTrade(locked, 'under5');
-                    else if (share(last, d => d <= 6) > REC_LOW_MIN) placeTrade(locked, 'over4');
-                    else setStatus(localize('Recovery: waiting for digits 5-9 above 80% or 0-6 above 85%…'));
+                    const best = evals.filter(e => e.hit).sort((a, b) => b.margin - a.margin)[0];
+                    if (best) placeTrade(locked, best.r.kind);
+                    else setStatus(localize('Recovery: waiting for one of the recovery levels to be reached…'));
                     return;
                 }
 
@@ -425,5 +447,5 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
         [markets, stop, waitForResult]
     );
 
-    return { running, rows, status, error, pl, trades, traded, start, stop };
+    return { running, rows, status, error, pl, trades, traded, rec, start, stop };
 };

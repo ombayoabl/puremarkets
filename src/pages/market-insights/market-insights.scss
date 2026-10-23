@@ -368,3 +368,13 @@
 
 .mi__badge-all { font-size: 11px; letter-spacing: 0.05em; }
 .mi__picked { margin: 8px 2px 0; font-size: 12px; color: #19e6ff; font-family: 'Courier New', Courier, monospace; }
+
+.mi__over1-rec {
+    margin-top: 10px; padding: 8px; border: 1px dashed rgba(255, 190, 70, 0.6); border-radius: 6px;
+    h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; color: #ffbe46; i { font-style: normal; opacity: 0.8; } }
+    &-row {
+        display: flex; justify-content: space-between; gap: 8px; padding: 4px 2px; font-size: 12px;
+        border-bottom: 1px solid rgba(255, 190, 70, 0.15);
+        &--hit { color: #2ee59d; font-weight: 700; }
+    }
+}
