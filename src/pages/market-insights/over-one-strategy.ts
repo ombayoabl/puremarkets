@@ -244,11 +244,15 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     // a loss (Over 1 or recovery, slow or fast mode): break for 5-10 seconds, then analyse and recover
                     if (is_recovery || !recovering) {
                         recovering = true;
+                        locked = symbol; // recover on the market that lost
+                        setTraded(symbol);
                         resume_at = 0;
                         setStatus(localize('Loss. Recovering now with Over 4 / Under 5…'));
                     }
                 } else if (is_recovery) {
                     recovering = false;
+                    cur_sym = '';
+                    cur_n = 0;
                     in_a_row = 0;
                     setStatus(localize('Recovered. Back to Over 1…'));
                 }
@@ -333,10 +337,9 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     } else if (rec_open) return;
                     // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
                     rec_flip = !rec_flip;
-                    const rec_sym = pickMarket(active.length ? active : [locked]);
-                    locked = rec_sym;
-                    setTraded(rec_sym);
-                    placeTrade(rec_sym, rec_flip ? 'over4' : 'under5');
+                    // stay on the market that lost until a recovery trade wins: no switching
+                    setTraded(locked);
+                    placeTrade(locked, rec_flip ? 'over4' : 'under5');
                     return;
                 }
 
