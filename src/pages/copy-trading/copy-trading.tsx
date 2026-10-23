@@ -4,6 +4,50 @@ import { localize } from '@deriv-com/translations';
 import '../bulk-trader/bulk-trader.scss';
 import { copyEngine, fetchAccounts, myAccountType } from './copy-engine';
 
+// A big tick box that always shows its state (green for real, black for demo), whatever the theme
+const Tick = ({ checked, onChange, label, color }: { checked: boolean; onChange: (v: boolean) => void; label: string; color: string }) => (
+    <button
+        type='button'
+        role='checkbox'
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: 0,
+            border: 0,
+            background: 'none',
+            color: 'inherit',
+            font: 'inherit',
+            cursor: 'pointer',
+            textAlign: 'left',
+        }}
+    >
+        <span
+            style={{
+                flex: '0 0 auto',
+                width: 26,
+                height: 26,
+                borderRadius: 5,
+                border: '2px solid #fff',
+                boxShadow: '0 0 0 2px #888',
+                background: checked ? color : 'transparent',
+                color: '#fff',
+                fontSize: 18,
+                fontWeight: 700,
+                lineHeight: '22px',
+                textAlign: 'center',
+            }}
+        >
+            {checked ? '✓' : ''}
+        </span>
+        <span>
+            {label} <b>{checked ? localize('(ON)') : localize('(OFF)')}</b>
+        </span>
+    </button>
+);
+
 const CopyTrading = () => {
     const [, refresh] = useReducer((n: number) => n + 1, 0);
     const [token, setToken] = useState('');
@@ -70,25 +114,19 @@ const CopyTrading = () => {
                 )}
             </p>
 
-            <div className='bulk__modes'>
-                <label className='bulk__check'>
-                    <input
-                        type='checkbox'
-                        style={{ accentColor: '#14b86e', width: '2.2rem', height: '2.2rem', cursor: 'pointer' }}
-                        checked={copyEngine.allow.real}
-                        onChange={e => copyEngine.setAllow('real', e.target.checked)}
-                    />
-                    <span>{localize('Enable real account to real account')}</span>
-                </label>
-                <label className='bulk__check'>
-                    <input
-                        type='checkbox'
-                        style={{ accentColor: '#000', width: '2.2rem', height: '2.2rem', cursor: 'pointer', outline: '1px solid rgba(128,128,128,0.6)', outlineOffset: '1px' }}
-                        checked={copyEngine.allow.demo}
-                        onChange={e => copyEngine.setAllow('demo', e.target.checked)}
-                    />
-                    <span>{localize('Enable demo account to demo account')}</span>
-                </label>
+            <div className='bulk__modes' style={{ flexWrap: 'wrap', rowGap: 12 }}>
+                <Tick
+                    color='#14b86e'
+                    checked={copyEngine.allow.real}
+                    onChange={v => copyEngine.setAllow('real', v)}
+                    label={localize('Enable real account to real account')}
+                />
+                <Tick
+                    color='#000'
+                    checked={copyEngine.allow.demo}
+                    onChange={v => copyEngine.setAllow('demo', v)}
+                    label={localize('Enable demo account to demo account')}
+                />
             </div>
             <p className='bulk__muted'>
                 {mine
