@@ -212,6 +212,31 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let resume_at = 0; // no break after a loss
             let rec_flip = false; // alternates the recovery trade: Over 4, Under 5, Over 4...
 
+            // Trades read from the ticks themselves: a trade ends on its `dur`-th tick after the start time Deriv
+            // confirmed, so a loss is known on that tick, before the contract stream reports it. That lets the
+            // very next trade (even in fast mode, on every tick) carry the martingale stake.
+            const live = new Map<number, any>();
+            const recent: Record<string, { epoch: number; digit: number }[]> = {};
+            const provisionalLoss = (t: any) => {
+                mg_stake = Math.max(mg_stake, round2(t.amount * Math.max(1, cfg.current.multiplier)));
+                if (t.is_recovery || !recovering) {
+                    recovering = true;
+                    locked = t.symbol; // recover on the market that lost
+                    setTraded(t.symbol);
+                    resume_at = 0;
+                    setStatus(localize('Loss. Recovering now with Over 4 / Under 5…'));
+                }
+            };
+            const applyTick = (t: any, epoch: number, digit: number) => {
+                if (t.done || !t.start || epoch <= t.start) return;
+                t.seen += 1;
+                if (t.seen === t.dur) {
+                    t.done = true;
+                    const win = t.type === 'DIGITUNDER' ? digit < t.barrier : digit > t.barrier;
+                    if (!win) provisionalLoss(t);
+                }
+            };
+
             const publish = () => {
                 const next: Record<string, Over1Row> = {};
                 symbols.forEach(s => {
@@ -236,6 +261,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             // settle one bought trade in the background (profit / loss, martingale, take profit, stop loss)
             const settle = async (cid: number, symbol: string, amount: number, is_recovery = false) => {
                 const profit = await waitForResult(cid, my_run);
+                live.delete(cid);
                 open = Math.max(0, open - 1);
                 if (!alive()) return;
                 if (profit === null) {
@@ -319,6 +345,20 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     });
                     open += 1;
                     showTransactions();
+                    const tr = {
+                        symbol,
+                        amount,
+                        is_recovery: kind !== 'over1',
+                        type: spec.type,
+                        barrier: Number(spec.barrier),
+                        dur: clamp(Math.round(c.duration) || 1, 1, 10),
+                        start: Number(res.buy.start_time || res.buy.purchase_time || 0),
+                        seen: 0,
+                        done: false,
+                    };
+                    live.set(res.buy.contract_id, tr);
+                    // ticks that arrived before the buy confirmation did
+                    (recent[symbol] || []).forEach(r => applyTick(tr, r.epoch, r.digit));
                     settle(res.buy.contract_id, symbol, amount, kind !== 'over1');
                 } catch (e) {
                     if (kind !== 'over1') rec_open = false;
@@ -414,6 +454,13 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (data.tick.pip_size !== undefined) dps[s] = Number(data.tick.pip_size);
                 bufs[s].push(toDigit(data.tick.quote, dps[s]));
                 if (bufs[s].length > MAX_TICKS) bufs[s].shift();
+                const epoch = Number(data.tick.epoch || 0);
+                const digit = bufs[s][bufs[s].length - 1];
+                (recent[s] = recent[s] || []).push({ epoch, digit });
+                if (recent[s].length > 20) recent[s].shift();
+                live.forEach(t => {
+                    if (t.symbol === s) applyTick(t, epoch, digit);
+                });
                 check(active.includes(s) || s === locked || !locked);
             });
 
