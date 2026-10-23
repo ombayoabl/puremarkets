@@ -8,6 +8,7 @@
  */
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import { isProduction } from '@/components/shared';
+import { isDemoAccount } from '@/utils/account-helpers';
 import brandConfig from '../../../brand.config.json';
 
 export type CopierAccount = { account_id: string; balance: string; currency: string; account_type: 'demo' | 'real'; status?: string };
@@ -28,6 +29,17 @@ export type Copier = {
 export type CopyLog = { id: number; time: number; account: string; text: string; ok: boolean };
 
 const STORE_KEY = 'copy_trading_copiers';
+const ON_KEY = 'copy_trading_on';
+/** Whether the account you are trading on in this app is a demo or a real one (null when not known). */
+export const myAccountType = (): 'demo' | 'real' | null => {
+    try {
+        const id = localStorage.getItem('active_loginid');
+        if (!id || id === 'null') return null;
+        return isDemoAccount(id) ? 'demo' : 'real';
+    } catch (e) {
+        return null;
+    }
+};
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const base = () => brandConfig.platform.derivws.url[isProduction() ? 'production' : 'staging'];
 const dir = () => brandConfig.platform.derivws.directories.options;
@@ -54,7 +66,7 @@ const fetchSocketUrl = async (token: string, account_id: string): Promise<string
 class CopyEngine {
     copiers: Copier[] = [];
     log: CopyLog[] = [];
-    on = true; // master switch
+    on = false; // master switch: must be turned ON before a token can be added
     private sockets = new Map<string, WebSocket>();
     private pending = new Map<string, Map<number, { resolve: (v: any) => void; timer: any }>>();
     private seq = 0;
@@ -66,6 +78,7 @@ class CopyEngine {
 
     constructor() {
         try {
+            this.on = sessionStorage.getItem(ON_KEY) === '1';
             const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || '[]');
             saved.forEach((c: Copier) => {
                 this.copiers.push({ ...c, status: 'connecting', copied: c.copied || 0, failed: c.failed || 0, last_error: '' });
@@ -90,7 +103,12 @@ class CopyEngine {
     }
 
     async add(token: string, account: CopierAccount, multiplier = 1, max_stake = 0) {
+        if (!this.on) throw new Error('Turn copying ON first.');
         if (this.copiers.some(c => c.id === account.account_id)) throw new Error('That account is already added.');
+        const mine = myAccountType();
+        if (mine && account.account_type !== mine) {
+            throw new Error(`You are trading on a ${mine.toUpperCase()} account, so trades can only be copied onto a ${mine.toUpperCase()} account.`);
+        }
         const c: Copier = {
             id: account.account_id,
             token,
@@ -125,6 +143,11 @@ class CopyEngine {
 
     setOn(on: boolean) {
         this.on = on;
+        try {
+            sessionStorage.setItem(ON_KEY, on ? '1' : '0');
+        } catch (e) {
+            // storage is optional
+        }
         this.emit();
     }
 
@@ -221,8 +244,19 @@ class CopyEngine {
         if (this.handled.has(req)) return; // already copied (shared connection fallback)
         this.handled.add(req);
         const p = req.parameters;
+        const mine = myAccountType();
         this.copiers.forEach(c => {
             if (!c.enabled || c.status !== 'connected') return;
+            // real copies onto real only, demo onto demo only
+            if (!mine || c.account_type !== mine) {
+                const text = mine
+                    ? `Skipped: you are on a ${mine.toUpperCase()} account, this one is ${c.account_type.toUpperCase()}.`
+                    : 'Skipped: could not tell whether your account is demo or real.';
+                if (c.last_error !== text) this.addLog(c.id, text, false);
+                c.last_error = text;
+                this.emit();
+                return;
+            }
             let amount = round2(Number(p.amount) * (c.multiplier || 1));
             if (c.max_stake > 0) amount = Math.min(amount, c.max_stake);
             if (!(amount > 0)) return;

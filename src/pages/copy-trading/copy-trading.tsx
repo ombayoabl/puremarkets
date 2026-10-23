@@ -2,7 +2,7 @@
 import React, { useEffect, useReducer, useState } from 'react';
 import { localize } from '@deriv-com/translations';
 import '../bulk-trader/bulk-trader.scss';
-import { copyEngine, fetchAccounts } from './copy-engine';
+import { copyEngine, fetchAccounts, myAccountType } from './copy-engine';
 
 const CopyTrading = () => {
     const [, refresh] = useReducer((n: number) => n + 1, 0);
@@ -26,8 +26,14 @@ const CopyTrading = () => {
         try {
             const list = await fetchAccounts(token.trim());
             setAccounts(list);
-            const real = list.find((a: any) => a.account_type === 'real') || list[0];
-            setPick(real.account_id);
+            const mine = myAccountType();
+            const match = list.find((a: any) => a.account_type === mine);
+            if (mine && !match) {
+                setError(
+                    `${localize('You are trading on a')} ${mine.toUpperCase()} ${localize('account, and that token has no')} ${mine.toUpperCase()} ${localize('account to copy onto.')}`
+                );
+            }
+            setPick(match ? match.account_id : '');
         } catch (e) {
             setError(e?.message || localize('Could not read that token.'));
         } finally {
@@ -50,6 +56,7 @@ const CopyTrading = () => {
         }
     };
 
+    const mine = myAccountType();
     const dot = (s: string) => (s === 'connected' ? '#14b86e' : s === 'connecting' ? '#e0a800' : '#c0283c');
 
     return (
@@ -65,10 +72,20 @@ const CopyTrading = () => {
 
             <div className='bulk__modes'>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={copyEngine.on} onChange={e => copyEngine.setOn(e.target.checked)} />
-                    <span>{copyEngine.on ? localize('Copying is ON') : localize('Copying is OFF (no trades are copied)')}</span>
+                    <input type='checkbox' checked={copyEngine.on} onChange={() => copyEngine.setOn(true)} />
+                    <span>{localize('Copy is ON')}</span>
+                </label>
+                <label className='bulk__check'>
+                    <input type='checkbox' checked={!copyEngine.on} onChange={() => copyEngine.setOn(false)} />
+                    <span>{localize('Copy is OFF (no trades are copied)')}</span>
                 </label>
             </div>
+            <p className='bulk__muted'>
+                {mine
+                    ? `${localize('You are trading on a')} ${mine.toUpperCase()} ${localize('account: trades are copied onto')} ${mine.toUpperCase()} ${localize('accounts only (real to real, demo to demo).')}`
+                    : localize('Real is copied onto real and demo onto demo. Log in so the app knows which one you are on.')}
+            </p>
+            {!copyEngine.on && <p className='bulk__bad'>{localize('Turn Copy is ON first, then paste the token.')}</p>}
 
             <div className='bulk__field' style={{ marginTop: 12 }}>
                 <label className='bulk__label'>{localize('Their API token')}</label>
@@ -77,11 +94,12 @@ const CopyTrading = () => {
                     type='password'
                     autoComplete='off'
                     placeholder={localize('Paste the token they gave you')}
+                    disabled={!copyEngine.on}
                     value={token}
                     onChange={e => setToken(e.target.value)}
                 />
             </div>
-            <button type='button' className='bulk__run' disabled={busy} onClick={find} style={{ marginTop: 8 }}>
+            <button type='button' className='bulk__run' disabled={busy || !copyEngine.on} onClick={find} style={{ marginTop: 8 }}>
                 {busy ? localize('Checking…') : localize('Find their accounts')}
             </button>
             {error && <p className='bulk__bad'>{error}</p>}
@@ -89,15 +107,18 @@ const CopyTrading = () => {
             {accounts.length > 0 && (
                 <div style={{ marginTop: 12 }}>
                     <label className='bulk__label'>{localize('Copy onto which account?')}</label>
-                    {accounts.map(a => (
-                        <label key={a.account_id} className='bulk__check' style={{ display: 'flex', gap: 8, margin: '6px 0' }}>
-                            <input type='radio' name='copy_account' checked={pick === a.account_id} onChange={() => setPick(a.account_id)} />
-                            <span>
-                                {a.account_id} · <b>{a.account_type === 'real' ? localize('REAL') : localize('DEMO')}</b> · {a.balance}{' '}
-                                {a.currency}
-                            </span>
-                        </label>
-                    ))}
+                    {accounts.map(a => {
+                        const ok = !mine || a.account_type === mine;
+                        return (
+                            <label key={a.account_id} className='bulk__check' style={{ display: 'flex', gap: 8, margin: '6px 0', opacity: ok ? 1 : 0.5 }}>
+                                <input type='radio' name='copy_account' disabled={!ok} checked={pick === a.account_id} onChange={() => setPick(a.account_id)} />
+                                <span>
+                                    {a.account_id} · <b>{a.account_type === 'real' ? localize('REAL') : localize('DEMO')}</b> · {a.balance} {a.currency}
+                                    {!ok && ` · ${localize('not allowed: you are on a')} ${mine.toUpperCase()} ${localize('account')}`}
+                                </span>
+                            </label>
+                        );
+                    })}
                     <div className='bulk__grid'>
                         <div className='bulk__field'>
                             <label className='bulk__label'>{localize('Stake multiplier (1 = same stake as yours)')}</label>
@@ -138,6 +159,11 @@ const CopyTrading = () => {
                             {localize('Copied')}: <span className='bulk__good'>{c.copied}</span> · {localize('Failed')}: <span className='bulk__bad'>{c.failed}</span>
                             {c.last_error ? ` · ${c.last_error}` : ''}
                         </p>
+                        {mine && c.account_type !== mine && (
+                            <p className='bulk__bad'>
+                                {localize('Paused: you are on a')} {mine.toUpperCase()} {localize('account and this one is')} {c.account_type.toUpperCase()}.
+                            </p>
+                        )}
                         <div className='bulk__grid'>
                             <div className='bulk__field'>
                                 <label className='bulk__label'>{localize('Stake multiplier')}</label>
