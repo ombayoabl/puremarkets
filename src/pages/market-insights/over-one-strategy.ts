@@ -186,7 +186,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let in_a_row = 0;
             let recovering = false; // a loss happened: Over 1 is paused until a recovery trade wins
             let rec_open = false; // a recovery trade is bought and not settled yet
-            let resume_at = 0; // end of the 5-10 second break
+            let resume_at = 0; // no break after a loss
+            let rec_flip = false; // alternates the recovery trade: Over 4, Under 5, Over 4...
 
             const publish = () => {
                 const next: Record<string, Over1Row> = {};
@@ -227,8 +228,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     // a loss (Over 1 or recovery, slow or fast mode): break for 5-10 seconds, then analyse and recover
                     if (is_recovery || !recovering) {
                         recovering = true;
-                        resume_at = Date.now() + BREAK_MIN_MS + Math.random() * (BREAK_MAX_MS - BREAK_MIN_MS);
-                        setStatus(localize('Loss. Taking a 5-10 second break, then analysing the last 50 ticks…'));
+                        resume_at = 0;
+                        setStatus(localize('Loss. Recovering now with Over 4 / Under 5…'));
                     }
                 } else if (is_recovery) {
                     recovering = false;
@@ -307,11 +308,9 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 // after a loss: stay on this market, wait out the break, then look at the last 50 ticks
                 if (recovering && locked) {
                     if (!c.auto_trade || buying || rec_open || Date.now() < pause_until || Date.now() < resume_at) return;
-                    const last = (bufs[locked] || []).slice(-REC_TICKS);
-                    if (last.length < REC_TICKS) return;
-                    if (share(last, d => d >= 5) > REC_HIGH_MIN) placeTrade(locked, 'over4');
-                    else if (share(last, d => d <= 6) > REC_LOW_MIN) placeTrade(locked, 'under5');
-                    else setStatus(localize('Recovery: waiting for digits 5-9 above 80% or 0-6 above 85%…'));
+                    // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
+                    rec_flip = !rec_flip;
+                    placeTrade(locked, rec_flip ? 'over4' : 'under5');
                     return;
                 }
 
