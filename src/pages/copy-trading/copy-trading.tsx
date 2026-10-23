@@ -2,6 +2,7 @@
 import React, { useEffect, useReducer, useState } from 'react';
 import { localize } from '@deriv-com/translations';
 import '../bulk-trader/bulk-trader.scss';
+import './copy-trading.scss';
 import { copyEngine, fetchAccounts, myAccountType } from './copy-engine';
 
 // A big tick box that always shows its state (green for real, black for demo), whatever the theme
@@ -124,7 +125,7 @@ const CopyTrading = () => {
     const dot = (s: string) => (s === 'connected' ? '#14b86e' : s === 'connecting' ? '#e0a800' : '#c0283c');
 
     return (
-        <div className='bulk'>
+        <div className='bulk copy'>
             <h3 className='bulk__title' style={{ margin: '0 0 8px', fontWeight: 700 }}>
                 {localize('Copy Trading')}
             </h3>
@@ -239,8 +240,8 @@ const CopyTrading = () => {
                 <label className='bulk__label'>{localize('Copying onto')}</label>
                 {copyEngine.copiers.length === 0 && <p className='bulk__muted'>{localize('No account added yet.')}</p>}
                 {copyEngine.copiers.map(c => (
-                    <div key={c.id} className='bulk__box' style={{ margin: '8px 0', padding: 12, border: '1px solid var(--border-normal, #8884)', borderRadius: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div key={c.id} className='copy__card'>
+                        <div className='copy__card-head'>
                             <span style={{ width: 10, height: 10, borderRadius: '50%', background: dot(c.status) }} />
                             <b>{c.id}</b>
                             <span>{c.account_type === 'real' ? localize('REAL') : localize('DEMO')}</span>
@@ -251,7 +252,7 @@ const CopyTrading = () => {
                                 {c.status === 'connected' ? localize('connected') : c.status === 'connecting' ? localize('connecting…') : localize('offline')}
                             </span>
                         </div>
-                        <p className='bulk__muted' style={{ margin: '6px 0' }}>
+                        <p className='bulk__muted copy__stats'>
                             {localize('Copied')}: <span className='bulk__good'>{c.copied}</span> · {localize('Failed')}: <span className='bulk__bad'>{c.failed}</span>
                             {c.last_error ? ` · ${c.last_error}` : ''}
                         </p>
@@ -284,7 +285,7 @@ const CopyTrading = () => {
                                 />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+                        <div className='copy__actions'>
                             <Tick
                                 color='#14b86e'
                                 checked={c.enabled}
@@ -292,11 +293,11 @@ const CopyTrading = () => {
                                 label={localize('Copy to this account')}
                             />
                             {c.status === 'offline' && (
-                                <button type='button' className='bulk__run' onClick={() => copyEngine.connect(c)}>
+                                <button type='button' className='bulk__run copy__btn' onClick={() => copyEngine.connect(c)}>
                                     {localize('Reconnect')}
                                 </button>
                             )}
-                            <button type='button' className='bulk__stop' onClick={() => copyEngine.remove(c.id)}>
+                            <button type='button' className='bulk__stop copy__btn' onClick={() => copyEngine.remove(c.id)}>
                                 {localize('Remove')}
                             </button>
                         </div>
@@ -304,11 +305,11 @@ const CopyTrading = () => {
                 ))}
             </div>
 
-            <div className='bulk__log' style={{ marginTop: 16 }}>
+            <div className='bulk__log copy__log'>
                 <div className='bulk__log-head'>
                     <span>{localize('Copied trades')}</span>
                     {copyEngine.log.length > 0 && (
-                        <button type='button' className='bulk__stop' onClick={() => copyEngine.clearLog()}>
+                        <button type='button' className='bulk__stop copy__btn copy__btn--small' onClick={() => copyEngine.clearLog()}>
                             {localize('Clear')}
                         </button>
                     )}

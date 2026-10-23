@@ -1,0 +1,94 @@
+// Copy Trading layout: everything stacks in normal flow so nothing overlaps
+.bulk.copy {
+    display: block;
+
+    .bulk__field {
+        margin-bottom: 1.2rem;
+    }
+
+    .bulk__label {
+        margin-bottom: 0.6rem;
+        line-height: 1.3;
+    }
+
+    .bulk__modes {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+        margin: 1.2rem 0 0.8rem;
+    }
+
+    .bulk__muted,
+    .bulk__bad,
+    .bulk__hint {
+        margin: 0.6rem 0;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .bulk__run {
+        max-width: none;
+        height: 4.8rem;
+        margin: 0.8rem 0 1.2rem;
+    }
+
+    .copy__card {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: auto;
+        margin: 1.2rem 0;
+        padding: 1.6rem;
+        border: 1px solid rgba(128, 128, 128, 0.4);
+        border-radius: 0.8rem;
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .copy__card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.8rem 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .copy__stats {
+        margin: 0.6rem 0 1.2rem;
+    }
+
+    .copy__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.2rem;
+        margin-top: 1.2rem;
+    }
+
+    .copy__btn {
+        width: auto;
+        min-width: 10rem;
+        height: 4rem;
+        margin: 0;
+        padding: 0 1.6rem;
+
+        &--small {
+            min-width: 7rem;
+            height: 3.4rem;
+        }
+    }
+
+    .copy__log {
+        margin-top: 2.4rem;
+
+        .bulk__log-head {
+            align-items: center;
+            gap: 1.2rem;
+            margin-bottom: 1.2rem;
+        }
+
+        p {
+            margin: 0.4rem 0;
+            overflow-wrap: anywhere;
+        }
+    }
+}
