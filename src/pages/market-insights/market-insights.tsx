@@ -1,5 +1,5 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api_base } from '@/external/bot-skeleton';
 import { localize } from '@deriv-com/translations';
 import './market-insights.scss';
@@ -21,6 +21,33 @@ const MARKETS = [
 // Strategies offered in the "Select strategy" box (more are added here as they are built)
 const STRATEGIES = [{ key: 'over_under', label: 'Over & Under' }];
 
+// Scrolling "terminal" text that fills the page behind the box
+const LOG_PHRASES = [
+    '[WARNING] Analysing Volatility Index...',
+    '[SUCCESS] Data transmission complete...',
+    '[INFO] Connecting...',
+    'Every Man Market Insights...',
+    'Any moment, the story can change...',
+    'Easy is the only way I do anything.',
+    'I have to win...',
+    'What if I tell you we are hitting take profit...',
+    '[INFO] Predicting next digit...',
+    '[SECURITY] Authenticating API key...',
+    '[INFO] Compiling results...',
+];
+const buildLogLines = (count: number) => {
+    let seed = 7;
+    const rnd = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+    };
+    return Array.from({ length: count }, () => {
+        let line = '';
+        while (line.length < 900) line += `${LOG_PHRASES[Math.floor(rnd() * LOG_PHRASES.length)]} `;
+        return line;
+    });
+};
+
 const lastDigitOf = (quote: number, dp: number) => Number(quote.toFixed(dp).slice(-1));
 
 const MarketInsights = () => {
@@ -41,6 +68,7 @@ const MarketInsights = () => {
     const [try_n, setTryN] = useState(0);
 
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
+    const log_lines = useMemo(() => buildLogLines(90), []);
 
     // ---- live latest tick + last digit ----
     useEffect(() => {
@@ -99,6 +127,13 @@ const MarketInsights = () => {
 
     return (
         <div className='mi'>
+            <div className='mi__log' aria-hidden='true'>
+                {log_lines.map((l, i) => (
+                    <p key={i} className={i % 2 ? 'mi__log-r' : ''}>
+                        {l}
+                    </p>
+                ))}
+            </div>
             <div className='mi__core'>
                 <h2 className='mi__title'>{localize('DYNAMIC SIGNAL CORE')}</h2>
 
