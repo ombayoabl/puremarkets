@@ -104,6 +104,7 @@ const MarketInsights = observer(() => {
     useEffect(() => {
         if (is_over_under && scope === 'all' && over_one.running && picked_symbol) setSymbol(picked_symbol);
     }, [is_over_under, scope, over_one.running, picked_symbol]);
+    const show_all = is_over_under && scope === 'all' && !(over_one.running && picked_symbol);
     const onAnalyse = () => {
         if (!is_over_under) return;
         if (over_one.running) over_one.stop();
@@ -231,10 +232,22 @@ const MarketInsights = observer(() => {
                 </label>
                 <div className='mi__select mi__select--market'>
                     <span className='mi__badge' aria-hidden='true'>
-                        <b>{market.v}</b>
-                        {market.s1 && <i>1s</i>}
+                        {show_all ? <b className='mi__badge-all'>ALL</b> : <b>{market.v}</b>}
+                        {!show_all && market.s1 && <i>1s</i>}
                     </span>
-                    <select id='mi-market' value={symbol} disabled={is_over_under && scope === 'all' && over_one.running} onChange={e => setSymbol(e.target.value)}>
+                    <select
+                        id='mi-market'
+                        value={is_over_under && scope === 'all' ? 'ALL' : symbol}
+                        disabled={is_over_under && scope === 'all' && over_one.running}
+                        onChange={e => {
+                            if (e.target.value === 'ALL') setScope('all');
+                            else {
+                                setScope('one');
+                                setSymbol(e.target.value);
+                            }
+                        }}
+                    >
+                        {is_over_under && <option value='ALL'>{localize('Analyse all volatilities')}</option>}
                         {MARKETS.map(m => (
                             <option key={m.symbol} value={m.symbol}>
                                 {m.name}
@@ -242,19 +255,10 @@ const MarketInsights = observer(() => {
                         ))}
                     </select>
                 </div>
-
-                {is_over_under && (
-                    <>
-                        <label className='mi__label' htmlFor='mi-scope'>
-                            {localize('ANALYSE')}
-                        </label>
-                        <div className='mi__select'>
-                            <select id='mi-scope' value={scope} disabled={over_one.running} onChange={e => setScope(e.target.value as 'one' | 'all')}>
-                                <option value='all'>{localize('Analyse all volatilities')}</option>
-                                <option value='one'>{localize('Select market to analyse')}</option>
-                            </select>
-                        </div>
-                    </>
+                {is_over_under && scope === 'all' && over_one.running && picked_symbol && (
+                    <p className='mi__picked'>
+                        {over_one.traded ? localize('Trading:') : localize('Best so far:')} {market.name}
+                    </p>
                 )}
 
                 <div className='mi__tick'>
@@ -319,25 +323,6 @@ const MarketInsights = observer(() => {
                         </p>
                         {over_one.status && <p className='mi__over1-status'>{over_one.status}</p>}
                         {over_one.error && <p className='mi__over1-error'>{over_one.error}</p>}
-                        {over_one.pl && (
-                            <p className='mi__over1-pl'>
-                                {over_one.pl.n} {localize('trades')} · {localize('Profit/Loss')} {over_one.pl.total >= 0 ? '+' : ''}
-                                {over_one.pl.total.toFixed(2)} {client?.currency || 'USD'}
-                            </p>
-                        )}
-                        {over_one.trades.length > 0 && (
-                            <div className='mi__over1-trades'>
-                                {over_one.trades.map(t => (
-                                    <div key={t.id} className={`mi__over1-trade ${t.profit >= 0 ? 'mi__over1-trade--win' : 'mi__over1-trade--loss'}`}>
-                                        <span>{MARKETS.find(m => m.symbol === t.symbol)?.name.replace(' Index', '')} · Over 1 · {t.stake}</span>
-                                        <b>
-                                            {t.profit >= 0 ? localize('WIN') : localize('LOSS')} {t.profit >= 0 ? '+' : ''}
-                                            {t.profit.toFixed(2)}
-                                        </b>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                         {over_rows.length > 0 && (
                             <div className='mi__over1-table'>
                                 <div className='mi__over1-row mi__over1-row--head'>

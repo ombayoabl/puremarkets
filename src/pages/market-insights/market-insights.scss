@@ -365,3 +365,6 @@
     &--win { background: rgba(0, 200, 120, 0.15); border-left-color: #2ee59d; b { color: #2ee59d; } }
     &--loss { background: rgba(255, 80, 80, 0.15); border-left-color: #ff5c5c; b { color: #ff7b7b; } }
 }
+
+.mi__badge-all { font-size: 11px; letter-spacing: 0.05em; }
+.mi__picked { margin: 8px 2px 0; font-size: 12px; color: #19e6ff; font-family: 'Courier New', Courier, monospace; }
