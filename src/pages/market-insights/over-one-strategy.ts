@@ -307,7 +307,14 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
 
                 // after a loss: stay on this market, wait out the break, then look at the last 50 ticks
                 if (recovering && locked) {
-                    if (!c.auto_trade || buying || rec_open || Date.now() < pause_until || Date.now() < resume_at) return;
+                    if (!c.auto_trade || buying || Date.now() < pause_until) return;
+                    // normal mode: one recovery trade at a time. Fast mode: a recovery trade on the ticks of the
+                    // market (3 of every 4, to stay under Deriv's limit), without waiting for the last one to settle
+                    if (c.fast_mode) {
+                        if (!from_tick) return;
+                        tick_n += 1;
+                        if (tick_n % 4 === 0 || open >= 30) return;
+                    } else if (rec_open) return;
                     // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
                     rec_flip = !rec_flip;
                     placeTrade(locked, rec_flip ? 'over4' : 'under5');
