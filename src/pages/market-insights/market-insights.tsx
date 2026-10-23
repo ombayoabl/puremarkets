@@ -134,6 +134,7 @@ const MarketInsights = () => {
                     </p>
                 ))}
             </div>
+            <div className='mi__scroll'>
             <div className='mi__core'>
                 <h2 className='mi__title'>{localize('DYNAMIC SIGNAL CORE')}</h2>
 
@@ -211,6 +212,7 @@ const MarketInsights = () => {
                 <button type='button' className='mi__analyse'>
                     {localize('Analyse')}
                 </button>
+            </div>
             </div>
         </div>
     );

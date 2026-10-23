@@ -2,12 +2,27 @@
     --mi-cyan: #19e6ff;
     --mi-line: rgba(25, 230, 255, 0.45);
     position: relative;
-    padding: 22px 12px 40px;
+    padding: 0;
     background: #020b14;
     box-sizing: border-box;
     width: 100%;
-    min-height: 100%;
+    height: var(--tab-content-height, calc(100vh - 14rem));
+    height: var(--tab-content-height, calc(100dvh - 14rem));
+    min-height: 24rem;
     overflow: hidden;
+
+    /* the box itself scrolls (the terminal text stays put behind it) */
+    &__scroll {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 22px 12px 140px;
+        box-sizing: border-box;
+    }
 
     &__log {
         position: absolute;
@@ -256,7 +271,9 @@
     }
 
     @media (max-width: 760px) {
-        padding: 8px;
+        height: calc(100vh - 11rem);
+        height: calc(100dvh - 11rem);
+        &__scroll { padding: 8px 8px 140px; }
         &__title { font-size: 21px; letter-spacing: 0.12em; }
         &__core { padding: 16px 14px 24px; border-radius: 18px; }
         &__config input { width: 82%; }
@@ -274,7 +291,7 @@
 /* laptop: centred box, labels on the left and inputs on the right (matches everymanmarkets) */
 @media (min-width: 761px) {
     .mi {
-        padding-top: 26px;
+        .mi__scroll { padding-top: 26px; }
         &__core { max-width: 620px; padding: 22px 32px 28px; border-radius: 16px; box-shadow: 0 0 34px rgba(25, 230, 255, 0.3), inset 0 0 44px rgba(25, 230, 255, 0.07); }
         &__title { font-size: 20px; margin: 6px 0 22px; letter-spacing: 0.14em; }
         &__label { font-size: 11px; margin: 16px 0 8px; }
