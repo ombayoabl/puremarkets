@@ -225,6 +225,8 @@ class CopyEngine {
                 c.last_error = '';
                 this.retries.set(c.id, 0);
                 this.pings.set(c.id, setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ ping: 1 })), 25000));
+                // live balance: Deriv pushes a new balance after every trade and every settled contract
+                ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
                 this.emit();
             };
             ws.onmessage = ev => {
@@ -233,6 +235,11 @@ class CopyEngine {
                     data = JSON.parse(ev.data);
                 } catch (e) {
                     return;
+                }
+                if (data.msg_type === 'balance' && data.balance && data.balance.balance !== undefined) {
+                    c.balance = Number(data.balance.balance).toFixed(2);
+                    if (data.balance.currency) c.currency = data.balance.currency;
+                    this.emit();
                 }
                 const w = this.pending.get(c.id)?.get(data.req_id);
                 if (w) {
@@ -312,6 +319,7 @@ class CopyEngine {
             }).then(res => {
                 const ms = Date.now() - sent_at;
                 entry.pending = false;
+                if (res?.buy?.balance_after !== undefined) c.balance = Number(res.buy.balance_after).toFixed(2);
                 if (res?.buy?.contract_id) {
                     c.copied += 1;
                     entry.ok = true;
