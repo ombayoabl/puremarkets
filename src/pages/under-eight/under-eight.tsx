@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
+import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import { Check, NumInput } from '../bulk-trader/bulk-trader';
 import '../bulk-trader/bulk-trader.scss';
 
@@ -120,6 +121,7 @@ const UnderEight = observer(() => {
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [scan_pct, setScanPct] = useState<Record<string, number[]>>({});
     const [status, setStatus] = useState('');
+    const [limit, setLimit] = useState<LimitKind>(null);
     const [error, setError] = useState('');
     const [, setRetry] = useState(0);
 
@@ -270,9 +272,11 @@ const UnderEight = observer(() => {
             if (!stopped && c.take_profit > 0 && total >= c.take_profit) {
                 stopped = true;
                 setStatus(localize('Take profit reached. Trading stopped.'));
+                setLimit('tp');
             } else if (!stopped && c.stop_loss > 0 && total <= -c.stop_loss) {
                 stopped = true;
                 setStatus(localize('Stop loss reached. Trading stopped.'));
+                setLimit('sl');
             }
         };
         // add a trade's profit to the totals; if it was already counted from the tick, only the difference is added
@@ -616,6 +620,7 @@ const UnderEight = observer(() => {
 
     return (
         <div className='bulk'>
+            <LimitPopup kind={limit} onClose={() => setLimit(null)} />
             <h3 className='bulk__title' style={{ margin: '0 0 8px', fontWeight: 700 }}>
                 {on_list.map(n => STRATEGIES[n].name).join(' + ')}
             </h3>

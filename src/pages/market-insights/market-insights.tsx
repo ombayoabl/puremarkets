@@ -4,6 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
+import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import { OVER1_WINDOWS, useOverOneStrategy } from './over-one-strategy';
 import './market-insights.scss';
 
@@ -204,6 +205,7 @@ const MarketInsights = observer(() => {
 
     return (
         <div className='mi' ref={root_ref}>
+            <LimitPopup kind={over_one.limit} onClose={over_one.clearLimit} />
             <div className='mi__log' aria-hidden='true'>
                 {log_lines.map((l, i) => (
                     <p key={i} className={i % 2 ? 'mi__log-r' : ''}>

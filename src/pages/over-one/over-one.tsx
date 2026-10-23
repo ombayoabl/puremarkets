@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
+import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import { Check, NumInput } from '../bulk-trader/bulk-trader';
 import '../bulk-trader/bulk-trader.scss';
 
@@ -71,6 +72,7 @@ const OverOne = observer(() => {
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [scan_pct, setScanPct] = useState<Record<string, number[]>>({});
     const [status, setStatus] = useState('');
+    const [limit, setLimit] = useState<LimitKind>(null);
     const [error, setError] = useState('');
     const [, setRetry] = useState(0);
 
@@ -291,10 +293,12 @@ const OverOne = observer(() => {
 
                     if (c.take_profit > 0 && total >= c.take_profit) {
                         setStatus(`${localize('Take profit reached. Trading stopped.')}`);
+                        setLimit('tp');
                         break;
                     }
                     if (c.stop_loss > 0 && total <= -c.stop_loss) {
                         setStatus(`${localize('Stop loss reached. Trading stopped.')}`);
+                        setLimit('sl');
                         break;
                     }
                 }
@@ -458,6 +462,7 @@ const OverOne = observer(() => {
 
     return (
         <div className='bulk'>
+            <LimitPopup kind={limit} onClose={() => setLimit(null)} />
             <p className='bulk__hint'>
                 {`${localize('Run scans all 10 volatilities and, on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}, ${localize('trades Over 1 one trade at a time until you press Stop or your take profit / stop loss is reached.')}`}
             </p>

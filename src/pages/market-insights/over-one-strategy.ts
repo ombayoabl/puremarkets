@@ -73,6 +73,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
     const [rows, setRows] = useState<Record<string, Over1Row>>({});
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+    const [limit, setLimit] = useState<'tp' | 'sl' | null>(null);
     const [traded, setTraded] = useState(''); // the market the strategy is trading right now
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [trades, setTrades] = useState<{ id: number; symbol: string; stake: number; profit: number }[]>([]);
@@ -156,6 +157,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             const alive = () => run_id.current === my_run;
 
             setError('');
+            setLimit(null);
             setTraded('');
             setRows({});
             setPl(null);
@@ -204,6 +206,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let losses = 0;
             let mg_stake = 0; // martingale: the stake of the next trade after a loss (0 = base stake)
             let in_a_row = 0;
+            const sig_n: Record<string, number> = {}; // Over 1 trades placed on each market during its current signal
             let recovering = false; // a loss happened: Over 1 is paused until a recovery trade wins
             let rec_open = false; // a recovery trade is bought and not settled yet
             let resume_at = 0; // no break after a loss
@@ -270,11 +273,13 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 const c = cfg.current;
                 if (c.take_profit > 0 && total >= c.take_profit) {
                     stop();
+                    setLimit('tp');
                     setStatus(localize('Take profit reached. Trading stopped.'));
                     return;
                 }
                 if (c.stop_loss > 0 && total <= -c.stop_loss) {
                     stop();
+                    setLimit('sl');
                     setStatus(localize('Stop loss reached. Trading stopped.'));
                     return;
                 }
@@ -291,7 +296,10 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 }[kind];
                 const amount = c.martingale && mg_stake > 0 ? mg_stake : c.stake;
                 buying = true;
-                if (kind === 'over1') in_a_row += 1;
+                if (kind === 'over1') {
+                    in_a_row += 1;
+                    sig_n[symbol] = (sig_n[symbol] || 0) + 1;
+                }
                 else rec_open = true;
                 setStatus(`${spec.label} ${localize('on')} ${nameOf(symbol)}, ${localize('stake')} ${amount} ${c.currency}…`);
                 try {
@@ -316,7 +324,10 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     if (kind !== 'over1') rec_open = false;
                     if (e?.error?.code === 'RateLimit') {
                         // Deriv's request limit: back off for a moment instead of stopping
-                        if (kind === 'over1') in_a_row = Math.max(0, in_a_row - 1);
+                        if (kind === 'over1') {
+                            in_a_row = Math.max(0, in_a_row - 1);
+                            sig_n[symbol] = Math.max(0, (sig_n[symbol] || 1) - 1);
+                        }
                         pause_until = Date.now() + 4000;
                         if (alive()) setStatus(localize('Deriv rate limit reached. Pausing a few seconds…'));
                     } else {
@@ -354,13 +365,23 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
 
                 // every market with a signal is traded in turn, and the list is refreshed on every tick, so a market
                 // that loses its signal drops out and a newly found one joins
-                active = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score).map(r => r.symbol);
+                const signalled = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score).map(r => r.symbol);
+                // a market's count starts again once its signal is gone
+                Object.keys(sig_n).forEach(k => {
+                    if (!all[k]?.signal) delete sig_n[k];
+                });
+                // maximum trades per signal: a market that has had its maximum waits for a new signal
+                active = signalled.filter(sym => !(c.max_trades > 0 && (sig_n[sym] || 0) >= c.max_trades));
                 if (!active.length) {
                     if (locked && open === 0) {
                         locked = '';
                         setTraded('');
                         in_a_row = 0;
-                        setStatus(localize('Signal gone. Watching live ticks for the next one…'));
+                        setStatus(
+                            signalled.length
+                                ? localize('Max trades for this signal reached. Watching for the next signal…')
+                                : localize('Signal gone. Watching live ticks for the next one…')
+                        );
                     }
                     return;
                 }
@@ -381,15 +402,6 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     if (Math.floor(tick_n * FAST_RATE) === Math.floor((tick_n - 1) * FAST_RATE)) return;
                 } else if (open > 0) return;
                 if (open >= 30) return;
-                if (c.max_trades > 0 && in_a_row >= c.max_trades) {
-                    if (open === 0) {
-                        locked = '';
-                        setTraded('');
-                        in_a_row = 0;
-                        setStatus(localize('Max trades for this signal reached. Watching for the next signal…'));
-                    }
-                    return;
-                }
                 locked = pickMarket(active);
                 setTraded(locked);
                 placeTrade(locked);
@@ -462,5 +474,5 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
         [markets, stop, waitForResult]
     );
 
-    return { running, rows, status, error, pl, trades, traded, start, stop };
+    return { running, rows, status, error, pl, trades, traded, start, stop, limit, clearLimit: () => setLimit(null) };
 };
