@@ -72,7 +72,7 @@ const CopyTrading = () => {
             const list = await fetchAccounts(token.trim(), app_id);
             setAccounts(list);
             const mine = myAccountType();
-            const match = list.find((a: any) => a.account_type === mine && copyEngine.allow[a.account_type]);
+            const match = list.find((a: any) => (!mine || a.account_type === mine) && copyEngine.allow[a.account_type]);
             if (mine && !list.some((a: any) => a.account_type === mine)) {
                 setError(
                     `${localize('You are trading on a')} ${mine.toUpperCase()} ${localize('account, and that token has no')} ${mine.toUpperCase()} ${localize('account to copy onto.')}`
@@ -89,7 +89,8 @@ const CopyTrading = () => {
     const add = async () => {
         setError('');
         const account = accounts.find(a => a.account_id === pick);
-        if (!account) return;
+        if (!account) return setError(localize('Choose the account to copy onto first. Greyed accounts are not allowed: tick real to real or demo to demo, and use the same type as the account you trade on.'));
+        if (!agree) return setError(localize('Tick the box saying this person agreed, then press Start copying.'));
         try {
             await copyEngine.add(token.trim(), account, Math.max(0.01, Number(mult) || 1), Math.max(0, Number(cap) || 0), app_id);
             setToken('');
@@ -195,9 +196,10 @@ const CopyTrading = () => {
                         <input type='checkbox' checked={agree} onChange={e => setAgree(e.target.checked)} />
                         <span>{localize('This person gave me their token and agreed to have my trades placed on their account.')}</span>
                     </label>
-                    <button type='button' className='bulk__run' disabled={!agree || !pick} onClick={add}>
+                    <button type='button' className='bulk__run' onClick={add}>
                         {localize('Start copying onto this account')}
                     </button>
+                    {error && <p className='bulk__bad'>{error}</p>}
                 </div>
             )}
 

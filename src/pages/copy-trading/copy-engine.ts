@@ -9,6 +9,7 @@
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import { isProduction } from '@/components/shared';
 import { isDemoAccount } from '@/utils/account-helpers';
+import { api_base } from '@/external/bot-skeleton';
 import brandConfig from '../../../brand.config.json';
 
 export type CopierAccount = { account_id: string; balance: string; currency: string; account_type: 'demo' | 'real'; status?: string };
@@ -34,8 +35,9 @@ const ALLOW_KEY = 'copy_trading_allow';
 /** Whether the account you are trading on in this app is a demo or a real one (null when not known). */
 export const myAccountType = (): 'demo' | 'real' | null => {
     try {
-        const id = localStorage.getItem('active_loginid');
-        if (!id || id === 'null') return null;
+        const stored = localStorage.getItem('active_loginid');
+        const id = stored && stored !== 'null' ? stored : api_base?.account_id;
+        if (!id) return null;
         return isDemoAccount(id) ? 'demo' : 'real';
     } catch (e) {
         return null;
