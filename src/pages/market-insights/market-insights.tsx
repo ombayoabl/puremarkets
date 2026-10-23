@@ -59,7 +59,7 @@ const buildLogLines = (count: number) => {
 const lastDigitOf = (quote: number, dp: number) => Number(quote.toFixed(dp).slice(-1));
 
 const MarketInsights = observer(() => {
-    const { client, transactions } = useStore();
+    const { client, transactions, run_panel } = useStore();
     const [strategy, setStrategy] = useState(STRATEGIES[0].key);
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
@@ -91,6 +91,7 @@ const MarketInsights = observer(() => {
         currency: client?.currency || 'USD',
         is_logged_in: !!client?.is_logged_in,
         transactions,
+        run_panel,
     });
     const is_over_under = strategy === 'over_under';
     const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
@@ -315,6 +316,19 @@ const MarketInsights = observer(() => {
                                 {over_one.pl.n} {localize('trades')} · {localize('Profit/Loss')} {over_one.pl.total >= 0 ? '+' : ''}
                                 {over_one.pl.total.toFixed(2)} {client?.currency || 'USD'}
                             </p>
+                        )}
+                        {over_one.trades.length > 0 && (
+                            <div className='mi__over1-trades'>
+                                {over_one.trades.map(t => (
+                                    <div key={t.id} className={`mi__over1-trade ${t.profit >= 0 ? 'mi__over1-trade--win' : 'mi__over1-trade--loss'}`}>
+                                        <span>{MARKETS.find(m => m.symbol === t.symbol)?.name.replace(' Index', '')} · Over 1 · {t.stake}</span>
+                                        <b>
+                                            {t.profit >= 0 ? localize('WIN') : localize('LOSS')} {t.profit >= 0 ? '+' : ''}
+                                            {t.profit.toFixed(2)}
+                                        </b>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                         {over_rows.length > 0 && (
                             <div className='mi__over1-table'>

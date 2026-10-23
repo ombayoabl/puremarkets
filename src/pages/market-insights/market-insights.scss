@@ -357,3 +357,11 @@
     &-hit { color: #2ee59d; font-weight: 700; }
     &-best { margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: #19e6ff; color: #022a36; font-size: 10px; }
 }
+
+.mi__over1-trades { margin-top: 10px; max-height: 180px; overflow-y: auto; }
+.mi__over1-trade {
+    display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; margin-bottom: 4px;
+    border-radius: 4px; font-size: 12px; border-left: 3px solid transparent;
+    &--win { background: rgba(0, 200, 120, 0.15); border-left-color: #2ee59d; b { color: #2ee59d; } }
+    &--loss { background: rgba(255, 80, 80, 0.15); border-left-color: #ff5c5c; b { color: #ff7b7b; } }
+}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api_base } from '@/external/bot-skeleton';
 import { localize } from '@deriv-com/translations';
+import { run_panel as RUN_PANEL } from '@/constants/run-panel';
 
 // Over 1 pays when the last digit is 2-9. Place it when the share of digits 2-9 in the last N ticks
 // is above the level set for that window (any one window meeting its level is a signal).
@@ -50,6 +51,7 @@ type Cfg = {
     currency: string;
     is_logged_in: boolean;
     transactions?: any;
+    run_panel?: any;
 };
 
 export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: number }[], cfg_in: Cfg) => {
@@ -58,6 +60,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
+    const [trades, setTrades] = useState<{ id: number; symbol: string; stake: number; profit: number }[]>([]);
 
     const cfg = useRef<Cfg>(cfg_in);
     cfg.current = cfg_in;
@@ -139,7 +142,19 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             setError('');
             setRows({});
             setPl(null);
+            setTrades([]);
             setRunning(true);
+            // show every trade (with win / loss) in the Transactions tab of the Run panel
+            try {
+                const rp = cfg.current.run_panel;
+                if (rp) {
+                    rp.run_id = `run-${Date.now()}`;
+                    rp.toggleDrawer?.(true);
+                    rp.setActiveTabIndex?.(RUN_PANEL.TRANSACTIONS);
+                }
+            } catch (e) {
+                // the panel is optional
+            }
             setStatus(localize('Analysing the last 1,000 ticks…'));
 
             const bufs: Record<string, number[]> = {};
@@ -206,6 +221,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                         in_a_row += 1;
                         losses = profit < 0 ? losses + 1 : 0;
                         setPl({ n, total });
+                        setTrades(prev => [{ id: cid, symbol, stake: amount, profit }, ...prev].slice(0, 50));
 
                         if (c.take_profit > 0 && total >= c.take_profit) {
                             setError('');
@@ -318,5 +334,5 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
         [markets, stop, waitForResult]
     );
 
-    return { running, rows, status, error, pl, start, stop };
+    return { running, rows, status, error, pl, trades, start, stop };
 };
