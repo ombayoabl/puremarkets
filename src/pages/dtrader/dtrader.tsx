@@ -190,6 +190,15 @@ const DTrader = observer(() => {
     const [feed_status, setFeedStatus] = useState(localize('Connecting…'));
     const [quotes, setQuotes] = useState<any[]>([]);
     const [trades, setTrades] = useState<any[]>([]);
+    // the digit trade being played out on screen: tick-by-tick, then won (green) / lost (red)
+    const [run, setRun] = useState<any>(null);
+    const run_ref = useRef<any>(null);
+    const last_epoch_ref = useRef(0);
+    const updateRun = (fn: (r: any) => any) => {
+        const n = fn(run_ref.current);
+        run_ref.current = n;
+        setRun(n);
+    };
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [pos_open, setPosOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 760);
@@ -324,7 +333,12 @@ const DTrader = observer(() => {
             setPrevQ(last_q_ref.current);
             last_q_ref.current = quote;
             setLastTick({ epoch: data.tick.epoch, quote });
+            last_epoch_ref.current = Number(data.tick.epoch);
             publishDigits();
+            const r = run_ref.current;
+            if (r && r.ticks.length < r.total && Number(data.tick.epoch) > r.from_epoch) {
+                updateRun(cur => (cur ? { ...cur, ticks: [...cur.ticks, { quote, digit: toDigit(quote, pip) }] } : cur));
+            }
         });
 
         const start = async () => {
@@ -485,11 +499,15 @@ const DTrader = observer(() => {
             const tmp = `tmp-${Date.now()}-${Math.random()}`;
             const label = type.kind === 'accu' ? 'Accumulators' : `${type.label}: ${s.label}`;
             setTrades(prev => [{ id: tmp, label, market: market.name, stake: price, profit: null, status: 'open' }, ...prev].slice(0, 30));
+            if (type.dur === 'ticks') {
+                updateRun(() => ({ id: tmp, total: ticks_dur, ticks: [], from_epoch: last_epoch_ref.current || Math.floor(Date.now() / 1000) - 1 }));
+            }
             try {
                 const parameters = buildParams(s);
                 const res = await batch_lanes.sendFast({ buy: '1', price, parameters }, r => api_base.api.send(r));
                 const id = res.buy.contract_id;
                 setTrades(prev => prev.map(t => (t.id === tmp ? { ...t, id } : t)));
+                updateRun(r => (r && r.id === tmp ? { ...r, id } : r));
                 // follow the contract in the background
                 api_base.api
                     .send({ proposal_open_contract: 1, contract_id: id, subscribe: 1 })
@@ -499,11 +517,22 @@ const DTrader = observer(() => {
                     .catch(() => {});
             } catch (e) {
                 setTrades(prev => prev.filter(t => t.id !== tmp));
+                updateRun(r => (r && r.id === tmp ? null : r));
                 setError(errMsg(e));
             }
         },
-        [is_logged_in, stake_ok, stake_n, quotes, buildParams, type.key, market, basis, side]
+        [is_logged_in, stake_ok, stake_n, quotes, buildParams, type.key, market, basis, side, ticks_dur]
     );
+
+    const run_trade = run ? trades.find(t => t.id === run.id) : null;
+    const run_result: 'won' | 'lost' | null = run_trade && run_trade.status !== 'open' ? run_trade.status : null;
+    const run_last = run && run.ticks.length ? run.ticks[run.ticks.length - 1] : null;
+    useEffect(() => {
+        if (!run_result || !run) return;
+        const id = run.id;
+        const t = setTimeout(() => updateRun(r => (r && r.id === id ? null : r)), 9000);
+        return () => clearTimeout(t);
+    }, [run_result, run?.id]);
 
     const hi = Math.max(...pct);
     const lo = Math.min(...pct);
@@ -983,6 +1012,16 @@ const DTrader = observer(() => {
 
                     {show_circles && (
                         <div className='dtrader__circles' role='group' aria-label={localize('Last digit statistics')}>
+                            {run && run_last && (
+                                <div className='dtrader__tickline'>
+                                    <span>
+                                        {localize('Tick')} {Math.min(run.ticks.length, run.total)} - <strong>{run_last.quote.toFixed(dp).slice(0, -1)}</strong>
+                                    </span>
+                                    <span className={classNames('dtrader__tickdigit', { 'dtrader__tickdigit--won': run_result === 'won', 'dtrader__tickdigit--lost': run_result === 'lost' })}>
+                                        {run_last.quote.toFixed(dp).slice(-1)}
+                                    </span>
+                                </div>
+                            )}
                             {DIGITS.map(d => {
                                 const is_hi = has_data && pct[d] === hi;
                                 const is_lo = has_data && pct[d] === lo;
@@ -998,6 +1037,8 @@ const DTrader = observer(() => {
                                             'dtrader__circle--low': is_lo && !is_hi,
                                             'dtrader__circle--picked': !!type.pick && digit === d,
                                             'dtrader__circle--last': last_digit === d,
+                                            'dtrader__circle--won': !!run_result && run_result === 'won' && run_last?.digit === d,
+                                            'dtrader__circle--lost': !!run_result && run_result === 'lost' && run_last?.digit === d,
                                         })}
                                     >
                                         <span className='dtrader__digit'>{d}</span>

@@ -1099,3 +1099,46 @@
         .dtm__chip * { line-height: 1.2; }
     }
 }
+
+/* digit trade playing out: tick line + green (won) / red (lost) result circle */
+.dtrader__tickline {
+    grid-column: 1 / -1;
+    flex: 0 0 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 20px;
+    color: #333;
+    strong { font-weight: 700; color: #111; }
+}
+.dtrader__tickdigit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid #2a6fd6;
+    font-weight: 700;
+    font-size: 22px;
+    color: #111;
+    background: #fff;
+    &--won { background: #4bb4b3; border-color: #4bb4b3; color: #fff; }
+    &--lost { background: #ec3f3f; border-color: #ec3f3f; color: #fff; }
+}
+.dtrader__circle--won,
+.dtrader__circle--lost {
+    transform: scale(1.18);
+    z-index: 2;
+    color: #fff;
+    &::before { background: #4bb4b3; }
+    .dtrader__pct { color: #eafffe; }
+}
+.dtrader__circle--won { box-shadow: 0 0 0 4px rgba(75, 180, 179, 0.28), 0 0 18px rgba(75, 180, 179, 0.6); background: #4bb4b3; }
+.dtrader__circle--lost {
+    box-shadow: 0 0 0 4px rgba(236, 63, 63, 0.25), 0 0 18px rgba(236, 63, 63, 0.55);
+    background: #ec3f3f;
+    &::before { background: #ec3f3f; }
+}
