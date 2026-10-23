@@ -72,11 +72,21 @@ const CopyTrading = () => {
 
             <div className='bulk__modes'>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={copyEngine.allow.real} onChange={e => copyEngine.setAllow('real', e.target.checked)} />
+                    <input
+                        type='checkbox'
+                        style={{ accentColor: '#14b86e', width: '2.2rem', height: '2.2rem', cursor: 'pointer' }}
+                        checked={copyEngine.allow.real}
+                        onChange={e => copyEngine.setAllow('real', e.target.checked)}
+                    />
                     <span>{localize('Enable real account to real account')}</span>
                 </label>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={copyEngine.allow.demo} onChange={e => copyEngine.setAllow('demo', e.target.checked)} />
+                    <input
+                        type='checkbox'
+                        style={{ accentColor: '#000', width: '2.2rem', height: '2.2rem', cursor: 'pointer', outline: '1px solid rgba(128,128,128,0.6)', outlineOffset: '1px' }}
+                        checked={copyEngine.allow.demo}
+                        onChange={e => copyEngine.setAllow('demo', e.target.checked)}
+                    />
                     <span>{localize('Enable demo account to demo account')}</span>
                 </label>
             </div>
