@@ -1,0 +1,150 @@
+.mi {
+    --mi-cyan: #19e6ff;
+    --mi-line: rgba(25, 230, 255, 0.45);
+    padding: 12px;
+    background: #fff;
+    box-sizing: border-box;
+    width: 100%;
+    overflow-x: hidden;
+
+    &__core {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 20px 18px 28px;
+        box-sizing: border-box;
+        border: 1px solid var(--mi-line);
+        border-radius: 22px;
+        background: radial-gradient(120% 60% at 50% 0%, #07324a 0%, #031826 38%, #020d17 100%);
+        box-shadow: 0 0 28px rgba(25, 230, 255, 0.22), inset 0 0 40px rgba(25, 230, 255, 0.06);
+        color: #e6f4ff;
+    }
+
+    &__title {
+        margin: 6px 0 22px;
+        text-align: center;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        color: var(--mi-cyan);
+        text-shadow: 0 0 8px rgba(25, 230, 255, 0.9), 0 0 22px rgba(25, 230, 255, 0.55);
+    }
+
+    &__label {
+        display: block;
+        margin: 18px 0 8px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #fff;
+    }
+
+    &__select {
+        position: relative;
+        select {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            box-sizing: border-box;
+            padding: 16px 44px 16px 20px;
+            border: 1px solid var(--mi-line);
+            border-radius: 12px;
+            background: rgba(2, 20, 34, 0.9);
+            color: #9fc3d6;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 18px;
+            outline: none;
+            &:focus { border-color: var(--mi-cyan); box-shadow: 0 0 10px rgba(25, 230, 255, 0.4); }
+        }
+        &::after {
+            content: '';
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            margin-top: -3px;
+            border: 7px solid transparent;
+            border-top-color: #fff;
+            pointer-events: none;
+        }
+        &--market select { padding-left: 74px; font-family: inherit; color: #6f8ea0; }
+    }
+
+    &__badge {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        pointer-events: none;
+        z-index: 1;
+        b {
+            background: #fff;
+            color: #111;
+            font-size: 10px;
+            line-height: 1;
+            padding: 3px 5px;
+            border-radius: 3px;
+        }
+        i {
+            font-style: normal;
+            background: #e03a3a;
+            color: #fff;
+            font-size: 8px;
+            line-height: 1;
+            padding: 3px 4px;
+            border-radius: 50%;
+            margin-left: -2px;
+            margin-top: -14px;
+        }
+    }
+
+    &__tick {
+        margin-top: 24px;
+        padding: 16px 20px;
+        border: 1px solid var(--mi-line);
+        border-radius: 12px;
+        background: rgba(2, 20, 34, 0.7);
+        font-family: 'Courier New', Courier, monospace;
+        p { margin: 14px 0; font-size: 22px; }
+        span { color: #d8ecf7; font-weight: 700; }
+        strong { color: var(--mi-cyan); font-weight: 700; margin-left: 10px; text-shadow: 0 0 8px rgba(25, 230, 255, 0.55); }
+    }
+
+    &__config {
+        margin-top: 30px;
+        padding: 18px 20px 24px;
+        border: 1px solid var(--mi-line);
+        border-radius: 12px;
+        background: rgba(2, 20, 34, 0.55);
+        h3 {
+            margin: 0 0 16px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: var(--mi-cyan);
+        }
+        label { display: block; margin: 14px 0 8px; font-size: 17px; color: #e6f4ff; }
+        input {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            padding: 14px 16px;
+            border: 1px solid #1d6a85;
+            border-radius: 8px;
+            background: #020b13;
+            color: #fff;
+            font-size: 20px;
+            outline: none;
+            &:focus { border-color: var(--mi-cyan); box-shadow: 0 0 8px rgba(25, 230, 255, 0.4); }
+        }
+    }
+
+    @media (max-width: 760px) {
+        padding: 8px;
+        &__title { font-size: 21px; letter-spacing: 0.12em; }
+        &__core { padding: 16px 14px 24px; border-radius: 18px; }
+        &__config input { width: 82%; }
+    }
+}

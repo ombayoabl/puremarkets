@@ -54,6 +54,7 @@ const UnderEight = lazy(() => import('../under-eight/under-eight'));
 const TradingBots = lazy(() => import('../trading-bots/trading-bots'));
 const QuickGuide = lazy(() => import('../quickguide/quickguide'));
 const DTrader = lazy(() => import('../dtrader/dtrader'));
+const MarketInsights = lazy(() => import('../market-insights/market-insights'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -87,7 +88,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide', 'dtrader'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide', 'dtrader', 'market_insights'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -516,6 +517,11 @@ const AppWrapper = observer(() => {
                             <div label='DTrader' id='id-dtrader'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading DTrader...')} />}>
                                     <DTrader />
+                                </Suspense>
+                            </div>
+                            <div label='Market Insights' id='id-market-insights'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Market Insights...')} />}>
+                                    <MarketInsights />
                                 </Suspense>
                             </div>
                         </Tabs>

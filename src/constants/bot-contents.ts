@@ -24,11 +24,12 @@ export const DBOT_TABS: TDashboardTabIndex = Object.freeze({
     UNDER_EIGHT: 9,
     QUICKGUIDE: 10,
     DTRADER: 11,
+    MARKET_INSIGHTS: 12,
 });
 
 export const MAX_STRATEGIES = 10;
 
-export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one', 'id-under-eight', 'id-quickguide', 'id-dtrader'];
+export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one', 'id-under-eight', 'id-quickguide', 'id-dtrader', 'id-market-insights'];
 
 export const DEBOUNCE_INTERVAL_TIME = 500;
 
@@ -45,7 +46,7 @@ export const NAV_ITEMS: TNavItem[] = [
     { key: 'quickguide', label: 'Quickguide', type: 'tab', tab_index: DBOT_TABS.QUICKGUIDE },
     { key: 'dashboard', label: 'Dashboard', type: 'tab', tab_index: DBOT_TABS.DASHBOARD },
     { key: 'bulk_trader', label: 'Bulk Trader', type: 'tab', tab_index: DBOT_TABS.BULK_TRADER },
-    { key: 'market_insights', label: 'Market Insights', type: 'soon' },
+    { key: 'market_insights', label: 'Market Insights', type: 'tab', tab_index: DBOT_TABS.MARKET_INSIGHTS },
     { key: 'freebots', label: 'Trading Bots', type: 'tab', tab_index: DBOT_TABS.TRADING_BOTS },
     { key: 'dtrader_circles', label: 'DTrader/Circles', type: 'tab', tab_index: DBOT_TABS.DTRADER },
     { key: 'super_analysis', label: 'Super Analysis', type: 'tab', tab_index: DBOT_TABS.SUPER_ANALYSIS },
