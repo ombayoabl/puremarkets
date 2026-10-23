@@ -1,7 +1,10 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
+import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
+import { OVER1_WINDOWS, useOverOneStrategy } from './over-one-strategy';
 import './market-insights.scss';
 
 // Deriv's 10 volatility indices (dp = default decimals; the API's pip_size overrides it)
@@ -55,7 +58,8 @@ const buildLogLines = (count: number) => {
 
 const lastDigitOf = (quote: number, dp: number) => Number(quote.toFixed(dp).slice(-1));
 
-const MarketInsights = () => {
+const MarketInsights = observer(() => {
+    const { client, transactions } = useStore();
     const [strategy, setStrategy] = useState(STRATEGIES[0].key);
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
@@ -66,6 +70,8 @@ const MarketInsights = () => {
     const [multiplier, setMultiplier] = useState<string>('2');
     const [max_trades, setMaxTrades] = useState<string>('200');
     const [fast_mode, setFastMode] = useState(false);
+    const [scope, setScope] = useState<'one' | 'all'>('one');
+    const [auto_trade, setAutoTrade] = useState(true);
 
     const [tick, setTick] = useState<number | null>(null);
     const [dp, setDp] = useState(2);
@@ -73,6 +79,27 @@ const MarketInsights = () => {
     const [try_n, setTryN] = useState(0);
 
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
+    const over_one = useOverOneStrategy(MARKETS, {
+        stake: Number(stake) || 0.35,
+        duration: Number(duration) || 1,
+        martingale,
+        multiplier: Number(multiplier) || 2,
+        stop_loss: Number(stoploss) || 0,
+        take_profit: Number(take_profit) || 0,
+        max_trades: Number(max_trades) || 0,
+        auto_trade,
+        currency: client?.currency || 'USD',
+        is_logged_in: !!client?.is_logged_in,
+        transactions,
+    });
+    const is_over_under = strategy === 'over_under';
+    const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
+    const best_symbol = over_rows[0] && over_rows[0].score > -Infinity ? over_rows[0].symbol : '';
+    const onAnalyse = () => {
+        if (!is_over_under) return;
+        if (over_one.running) over_one.stop();
+        else over_one.start(scope === 'all' ? MARKETS.map(m => m.symbol) : [symbol]);
+    };
     const log_lines = useMemo(() => buildLogLines(90), []);
     const root_ref = useRef<HTMLDivElement>(null);
 
@@ -207,6 +234,20 @@ const MarketInsights = () => {
                     </select>
                 </div>
 
+                {is_over_under && (
+                    <>
+                        <label className='mi__label' htmlFor='mi-scope'>
+                            {localize('ANALYSE')}
+                        </label>
+                        <div className='mi__select'>
+                            <select id='mi-scope' value={scope} disabled={over_one.running} onChange={e => setScope(e.target.value as 'one' | 'all')}>
+                                <option value='one'>{localize('Selected market only')}</option>
+                                <option value='all'>{localize('All volatilities (find the best market)')}</option>
+                            </select>
+                        </div>
+                    </>
+                )}
+
                 <div className='mi__tick'>
                     <p>
                         <span>{localize('Latest Tick:')}</span> <strong>{tick === null ? '—' : tick.toFixed(dp)}</strong>
@@ -238,6 +279,14 @@ const MarketInsights = () => {
                     <label htmlFor='mi-max'>{localize('Max trades per signal')}</label>
                     <input id='mi-max' type='number' inputMode='numeric' min='1' step='1' value={max_trades} onChange={e => setMaxTrades(e.target.value)} />
 
+                    {is_over_under && (
+                        <label className='mi__check' htmlFor='mi-auto'>
+                            <input id='mi-auto' type='checkbox' checked={auto_trade} onChange={e => setAutoTrade(e.target.checked)} />
+                            <span className='mi__box' aria-hidden='true' />
+                            <span>{localize('Auto-place Over 1 on a signal')}</span>
+                        </label>
+                    )}
+
                     <div className='mi__mode'>
                         <span className={fast_mode ? '' : 'on'}>{localize('NORMAL MODE')}</span>
                         <button type='button' role='switch' aria-checked={fast_mode} aria-label={localize('Fast mode')} className={fast_mode ? 'mi__switch mi__switch--on' : 'mi__switch'} onClick={() => setFastMode(f => !f)}>
@@ -248,13 +297,54 @@ const MarketInsights = () => {
                     {/* more trade configuration fields continue here */}
                 </div>
 
-                <button type='button' className='mi__analyse'>
-                    {localize('Analyse')}
+                <button type='button' className='mi__analyse' onClick={onAnalyse}>
+                    {over_one.running ? localize('Stop') : localize('Analyse')}
                 </button>
+
+                {is_over_under && (over_one.running || over_rows.length > 0 || over_one.error) && (
+                    <div className='mi__over1'>
+                        <h3>{localize('OVER 1 STRATEGY')}</h3>
+                        <p className='mi__over1-rule'>
+                            {localize('Digits 2-9 share:')}{' '}
+                            {OVER1_WINDOWS.map(w => `${w.ticks} ticks > ${w.min}%`).join(' · ')}
+                        </p>
+                        {over_one.status && <p className='mi__over1-status'>{over_one.status}</p>}
+                        {over_one.error && <p className='mi__over1-error'>{over_one.error}</p>}
+                        {over_one.pl && (
+                            <p className='mi__over1-pl'>
+                                {over_one.pl.n} {localize('trades')} · {localize('Profit/Loss')} {over_one.pl.total >= 0 ? '+' : ''}
+                                {over_one.pl.total.toFixed(2)} {client?.currency || 'USD'}
+                            </p>
+                        )}
+                        {over_rows.length > 0 && (
+                            <div className='mi__over1-table'>
+                                <div className='mi__over1-row mi__over1-row--head'>
+                                    <span>{localize('Market')}</span>
+                                    {OVER1_WINDOWS.map(w => (
+                                        <span key={w.ticks}>{w.ticks}</span>
+                                    ))}
+                                </div>
+                                {over_rows.map(r => (
+                                    <div key={r.symbol} className={`mi__over1-row${r.signal ? ' mi__over1-row--signal' : ''}`}>
+                                        <span>
+                                            {MARKETS.find(m => m.symbol === r.symbol)?.name.replace(' Index', '')}
+                                            {r.symbol === best_symbol && scope === 'all' && <b className='mi__over1-best'>{localize('BEST')}</b>}
+                                        </span>
+                                        {r.pct.map((p, i) => (
+                                            <span key={i} className={r.hit[i] ? 'mi__over1-hit' : ''}>
+                                                {p === null ? '—' : `${p.toFixed(1)}%`}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             </div>
         </div>
     );
-};
+});
 
 export default MarketInsights;
