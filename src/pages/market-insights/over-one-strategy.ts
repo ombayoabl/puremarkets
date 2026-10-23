@@ -178,6 +178,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let locked = ''; // the market being traded: stays on it while its signal holds
             let open = 0; // trades bought and not settled yet
             let buying = false;
+            let active: string[] = []; // every market with a signal right now, best first; trades alternate between them
+            let rot = 0; // which of the active markets takes the next trade
             let tick_n = 0; // fast mode: ticks seen on the market being traded
             let pause_until = 0; // after Deriv's rate limit, wait before buying again
             let total = 0;
@@ -317,31 +319,33 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     } else if (rec_open) return;
                     // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
                     rec_flip = !rec_flip;
-                    placeTrade(locked, rec_flip ? 'over4' : 'under5');
+                    const rec_list = active.length ? active : [locked];
+                    const rec_sym = rec_list[rot++ % rec_list.length];
+                    locked = rec_sym;
+                    setTraded(rec_sym);
+                    placeTrade(rec_sym, rec_flip ? 'over4' : 'under5');
                     return;
                 }
 
-                // keep the market we are on; only look for another one when its signal is gone
-                if (locked && !all[locked]?.signal) {
-                    if (open > 0) return;
-                    locked = '';
-                    setTraded('');
-                    in_a_row = 0;
-                    setStatus(localize('Signal gone. Watching live ticks for the next one…'));
+                // every market with a signal is traded in turn, and the list is refreshed on every tick, so a market
+                // that loses its signal drops out and a newly found one joins
+                active = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score).map(r => r.symbol);
+                if (!active.length) {
+                    if (locked && open === 0) {
+                        locked = '';
+                        setTraded('');
+                        in_a_row = 0;
+                        setStatus(localize('Signal gone. Watching live ticks for the next one…'));
+                    }
+                    return;
                 }
-                if (!locked) {
-                    const best = Object.values(all).filter(r => r.signal).sort((a, b) => b.score - a.score)[0];
-                    if (!best) return;
-                    if (!c.auto_trade) {
-                        setStatus(`${localize('Signal: Over 1 on')} ${nameOf(best.symbol)}`);
-                        return;
-                    }
-                    if (!c.is_logged_in) {
-                        setError(localize('Log in to place trades.'));
-                        return;
-                    }
-                    locked = best.symbol;
-                    setTraded(locked);
+                if (!c.auto_trade) {
+                    setStatus(`${localize('Signal: Over 1 on')} ${active.map(nameOf).join(', ')}`);
+                    return;
+                }
+                if (!c.is_logged_in) {
+                    setError(localize('Log in to place trades.'));
+                    return;
                 }
                 if (!c.auto_trade || buying || Date.now() < pause_until) return;
                 // normal mode: one trade at a time. Fast mode: a new trade on the ticks of the market (3 of every
@@ -361,6 +365,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     }
                     return;
                 }
+                locked = active[rot++ % active.length];
+                setTraded(locked);
                 placeTrade(locked);
             };
 
@@ -371,7 +377,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (data.tick.pip_size !== undefined) dps[s] = Number(data.tick.pip_size);
                 bufs[s].push(toDigit(data.tick.quote, dps[s]));
                 if (bufs[s].length > MAX_TICKS) bufs[s].shift();
-                check(s === locked || !locked);
+                check(active.includes(s) || s === locked || !locked);
             });
 
             // every market's last 1,000 ticks, all at the same time

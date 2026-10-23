@@ -63,7 +63,7 @@ const MarketInsights = observer(() => {
     const [strategy, setStrategy] = useState(STRATEGIES[0].key);
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
-    const [duration, setDuration] = useState<string>('10');
+    const [duration, setDuration] = useState<string>('1');
     const [stoploss, setStoploss] = useState<string>('1000');
     const [take_profit, setTakeProfit] = useState<string>('50');
     const [martingale, setMartingale] = useState(true);
