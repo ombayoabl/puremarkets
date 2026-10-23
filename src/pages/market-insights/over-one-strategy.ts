@@ -12,6 +12,15 @@ export const OVER1_WINDOWS = [
     { ticks: 1000, min: 83 },
 ];
 const MAX_TICKS = 1000;
+// After a loss: take a 5-10 second break, then look at the last 50 ticks of the market being traded.
+// Digits 5-9 above 80% -> recover with Over 4; digits 0-6 above 85% -> recover with Under 5.
+const REC_TICKS = 50;
+const REC_OVER4_MIN = 80;
+const REC_UNDER5_MIN = 85;
+const BREAK_MIN_MS = 5000;
+const BREAK_MAX_MS = 10000;
+const share = (digits: number[], test: (d: number) => boolean) =>
+    (digits.filter(test).length / (digits.length || 1)) * 100;
 const SETTLE_TIMEOUT_MS = 60000;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -175,6 +184,9 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             let n = 0;
             let losses = 0;
             let in_a_row = 0;
+            let recovering = false; // a loss happened: Over 1 is paused until a recovery trade wins
+            let rec_open = false; // a recovery trade is bought and not settled yet
+            let resume_at = 0; // end of the 5-10 second break
 
             const publish = () => {
                 const next: Record<string, Over1Row> = {};
@@ -198,7 +210,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             };
 
             // settle one bought trade in the background (profit / loss, martingale, take profit, stop loss)
-            const settle = async (cid: number, symbol: string, amount: number) => {
+            const settle = async (cid: number, symbol: string, amount: number, is_recovery = false) => {
                 const profit = await waitForResult(cid, my_run);
                 open = Math.max(0, open - 1);
                 if (!alive()) return;
@@ -210,6 +222,19 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 total = round2(total + profit);
                 n += 1;
                 losses = profit < 0 ? losses + 1 : 0;
+                if (is_recovery) rec_open = false;
+                if (profit < 0) {
+                    // a loss (Over 1 or recovery, slow or fast mode): break for 5-10 seconds, then analyse and recover
+                    if (is_recovery || !recovering) {
+                        recovering = true;
+                        resume_at = Date.now() + BREAK_MIN_MS + Math.random() * (BREAK_MAX_MS - BREAK_MIN_MS);
+                        setStatus(localize('Loss. Taking a 5-10 second break, then analysing the last 50 ticks…'));
+                    }
+                } else if (is_recovery) {
+                    recovering = false;
+                    in_a_row = 0;
+                    setStatus(localize('Recovered. Back to Over 1…'));
+                }
                 setPl({ n, total });
                 setTrades(prev => [{ id: cid, symbol, stake: amount, profit }, ...prev].slice(0, 50));
                 const c = cfg.current;
@@ -226,13 +251,19 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 check(false); // normal mode: the next trade goes straight out when this one settles
             };
 
-            // buy Over 1 right now on `symbol`
-            const placeTrade = async (symbol: string) => {
+            // buy right now on `symbol`: Over 1, or a recovery contract (Over 4 / Under 5) after a loss
+            const placeTrade = async (symbol: string, kind: 'over1' | 'over4' | 'under5' = 'over1') => {
                 const c = cfg.current;
+                const spec = {
+                    over1: { type: 'DIGITOVER', barrier: '1', label: 'Over 1' },
+                    over4: { type: 'DIGITOVER', barrier: '4', label: 'Over 4' },
+                    under5: { type: 'DIGITUNDER', barrier: '5', label: 'Under 5' },
+                }[kind];
                 const amount = c.martingale && losses > 0 ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
                 buying = true;
-                in_a_row += 1;
-                setStatus(`${localize('Over 1 on')} ${nameOf(symbol)}, ${localize('stake')} ${amount} ${c.currency}…`);
+                if (kind === 'over1') in_a_row += 1;
+                else rec_open = true;
+                setStatus(`${spec.label} ${localize('on')} ${nameOf(symbol)}, ${localize('stake')} ${amount} ${c.currency}…`);
                 try {
                     const res = await api_base.api.send({
                         buy: '1',
@@ -240,8 +271,8 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                         parameters: {
                             amount,
                             basis: 'stake',
-                            contract_type: 'DIGITOVER',
-                            barrier: '1',
+                            contract_type: spec.type,
+                            barrier: spec.barrier,
                             currency: c.currency,
                             duration: clamp(Math.round(c.duration) || 1, 1, 10),
                             duration_unit: 't',
@@ -250,11 +281,12 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     });
                     open += 1;
                     showTransactions();
-                    settle(res.buy.contract_id, symbol, amount);
+                    settle(res.buy.contract_id, symbol, amount, kind !== 'over1');
                 } catch (e) {
+                    if (kind !== 'over1') rec_open = false;
                     if (e?.error?.code === 'RateLimit') {
                         // Deriv's request limit: back off for a moment instead of stopping
-                        in_a_row = Math.max(0, in_a_row - 1);
+                        if (kind === 'over1') in_a_row = Math.max(0, in_a_row - 1);
                         pause_until = Date.now() + 4000;
                         if (alive()) setStatus(localize('Deriv rate limit reached. Pausing a few seconds…'));
                     } else {
@@ -271,6 +303,17 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 const all = publish();
                 if (!loaded || !alive()) return;
                 const c = cfg.current;
+
+                // after a loss: stay on this market, wait out the break, then look at the last 50 ticks
+                if (recovering && locked) {
+                    if (!c.auto_trade || buying || rec_open || Date.now() < pause_until || Date.now() < resume_at) return;
+                    const last = (bufs[locked] || []).slice(-REC_TICKS);
+                    if (last.length < REC_TICKS) return;
+                    if (share(last, d => d >= 5) > REC_OVER4_MIN) placeTrade(locked, 'over4');
+                    else if (share(last, d => d <= 6) > REC_UNDER5_MIN) placeTrade(locked, 'under5');
+                    else setStatus(localize('Recovery: waiting for Over 4 or Under 5 to show a clear edge…'));
+                    return;
+                }
 
                 // keep the market we are on; only look for another one when its signal is gone
                 if (locked && !all[locked]?.signal) {
