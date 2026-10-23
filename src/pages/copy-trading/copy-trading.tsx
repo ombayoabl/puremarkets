@@ -27,8 +27,8 @@ const CopyTrading = () => {
             const list = await fetchAccounts(token.trim());
             setAccounts(list);
             const mine = myAccountType();
-            const match = list.find((a: any) => a.account_type === mine);
-            if (mine && !match) {
+            const match = list.find((a: any) => a.account_type === mine && copyEngine.allow[a.account_type]);
+            if (mine && !list.some((a: any) => a.account_type === mine)) {
                 setError(
                     `${localize('You are trading on a')} ${mine.toUpperCase()} ${localize('account, and that token has no')} ${mine.toUpperCase()} ${localize('account to copy onto.')}`
                 );
@@ -72,12 +72,12 @@ const CopyTrading = () => {
 
             <div className='bulk__modes'>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={copyEngine.on} onChange={() => copyEngine.setOn(true)} />
-                    <span>{localize('Copy is ON')}</span>
+                    <input type='checkbox' checked={copyEngine.allow.real} onChange={e => copyEngine.setAllow('real', e.target.checked)} />
+                    <span>{localize('Enable real account to real account')}</span>
                 </label>
                 <label className='bulk__check'>
-                    <input type='checkbox' checked={!copyEngine.on} onChange={() => copyEngine.setOn(false)} />
-                    <span>{localize('Copy is OFF (no trades are copied)')}</span>
+                    <input type='checkbox' checked={copyEngine.allow.demo} onChange={e => copyEngine.setAllow('demo', e.target.checked)} />
+                    <span>{localize('Enable demo account to demo account')}</span>
                 </label>
             </div>
             <p className='bulk__muted'>
@@ -85,7 +85,8 @@ const CopyTrading = () => {
                     ? `${localize('You are trading on a')} ${mine.toUpperCase()} ${localize('account: trades are copied onto')} ${mine.toUpperCase()} ${localize('accounts only (real to real, demo to demo).')}`
                     : localize('Real is copied onto real and demo onto demo. Log in so the app knows which one you are on.')}
             </p>
-            {!copyEngine.on && <p className='bulk__bad'>{localize('Turn Copy is ON first, then paste the token.')}</p>}
+            <p className='bulk__muted'>{localize('A demo token only works with demo to demo, and a real token only works with real to real.')}</p>
+            {!copyEngine.on && <p className='bulk__bad'>{localize('Tick real to real or demo to demo first, then paste the token.')}</p>}
 
             <div className='bulk__field' style={{ marginTop: 12 }}>
                 <label className='bulk__label'>{localize('Their API token')}</label>
@@ -108,13 +109,18 @@ const CopyTrading = () => {
                 <div style={{ marginTop: 12 }}>
                     <label className='bulk__label'>{localize('Copy onto which account?')}</label>
                     {accounts.map(a => {
-                        const ok = !mine || a.account_type === mine;
+                        const ok = (!mine || a.account_type === mine) && copyEngine.allow[a.account_type];
                         return (
                             <label key={a.account_id} className='bulk__check' style={{ display: 'flex', gap: 8, margin: '6px 0', opacity: ok ? 1 : 0.5 }}>
                                 <input type='radio' name='copy_account' disabled={!ok} checked={pick === a.account_id} onChange={() => setPick(a.account_id)} />
                                 <span>
                                     {a.account_id} · <b>{a.account_type === 'real' ? localize('REAL') : localize('DEMO')}</b> · {a.balance} {a.currency}
-                                    {!ok && ` · ${localize('not allowed: you are on a')} ${mine.toUpperCase()} ${localize('account')}`}
+                                    {!ok &&
+                                        ` · ${
+                                            copyEngine.allow[a.account_type]
+                                                ? `${localize('not allowed: you are on a')} ${mine.toUpperCase()} ${localize('account')}`
+                                                : `${localize('tick')} ${a.account_type === 'real' ? localize('real to real') : localize('demo to demo')} ${localize('first')}`
+                                        }`}
                                 </span>
                             </label>
                         );

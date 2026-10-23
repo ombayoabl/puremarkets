@@ -29,7 +29,7 @@ export type Copier = {
 export type CopyLog = { id: number; time: number; account: string; text: string; ok: boolean };
 
 const STORE_KEY = 'copy_trading_copiers';
-const ON_KEY = 'copy_trading_on';
+const ALLOW_KEY = 'copy_trading_allow';
 /** Whether the account you are trading on in this app is a demo or a real one (null when not known). */
 export const myAccountType = (): 'demo' | 'real' | null => {
     try {
@@ -66,7 +66,11 @@ const fetchSocketUrl = async (token: string, account_id: string): Promise<string
 class CopyEngine {
     copiers: Copier[] = [];
     log: CopyLog[] = [];
-    on = false; // master switch: must be turned ON before a token can be added
+    // which kinds of copying are switched on: real account to real account, demo account to demo account
+    allow: { real: boolean; demo: boolean } = { real: false, demo: false };
+    get on() {
+        return this.allow.real || this.allow.demo;
+    }
     private sockets = new Map<string, WebSocket>();
     private pending = new Map<string, Map<number, { resolve: (v: any) => void; timer: any }>>();
     private seq = 0;
@@ -78,7 +82,7 @@ class CopyEngine {
 
     constructor() {
         try {
-            this.on = sessionStorage.getItem(ON_KEY) === '1';
+            this.allow = { real: false, demo: false, ...JSON.parse(sessionStorage.getItem(ALLOW_KEY) || '{}') };
             const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || '[]');
             saved.forEach((c: Copier) => {
                 this.copiers.push({ ...c, status: 'connecting', copied: c.copied || 0, failed: c.failed || 0, last_error: '' });
@@ -103,7 +107,13 @@ class CopyEngine {
     }
 
     async add(token: string, account: CopierAccount, multiplier = 1, max_stake = 0) {
-        if (!this.on) throw new Error('Turn copying ON first.');
+        if (!this.allow[account.account_type]) {
+            throw new Error(
+                account.account_type === 'real'
+                    ? 'Tick “Enable real account to real account” first.'
+                    : 'Tick “Enable demo account to demo account” first.'
+            );
+        }
         if (this.copiers.some(c => c.id === account.account_id)) throw new Error('That account is already added.');
         const mine = myAccountType();
         if (mine && account.account_type !== mine) {
@@ -141,10 +151,10 @@ class CopyEngine {
         this.emit();
     }
 
-    setOn(on: boolean) {
-        this.on = on;
+    setAllow(type: 'real' | 'demo', value: boolean) {
+        this.allow = { ...this.allow, [type]: value };
         try {
-            sessionStorage.setItem(ON_KEY, on ? '1' : '0');
+            sessionStorage.setItem(ALLOW_KEY, JSON.stringify(this.allow));
         } catch (e) {
             // storage is optional
         }
@@ -246,7 +256,7 @@ class CopyEngine {
         const p = req.parameters;
         const mine = myAccountType();
         this.copiers.forEach(c => {
-            if (!c.enabled || c.status !== 'connected') return;
+            if (!c.enabled || c.status !== 'connected' || !this.allow[c.account_type]) return;
             // real copies onto real only, demo onto demo only
             if (!mine || c.account_type !== mine) {
                 const text = mine
