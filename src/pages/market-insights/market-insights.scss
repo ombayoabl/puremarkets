@@ -273,7 +273,7 @@
     @media (max-width: 760px) {
         height: calc(100vh - 11rem);
         height: calc(100dvh - 11rem);
-        &__scroll { padding: 8px 8px 140px; }
+        &__scroll { padding: 8px 8px 40px; touch-action: pan-y; }
         &__title { font-size: 21px; letter-spacing: 0.12em; }
         &__core { padding: 16px 14px 24px; border-radius: 18px; }
         &__config input { width: 82%; }

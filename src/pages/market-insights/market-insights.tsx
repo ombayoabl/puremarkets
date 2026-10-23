@@ -1,5 +1,5 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api_base } from '@/external/bot-skeleton';
 import { localize } from '@deriv-com/translations';
 import './market-insights.scss';
@@ -69,6 +69,40 @@ const MarketInsights = () => {
 
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
     const log_lines = useMemo(() => buildLogLines(90), []);
+    const root_ref = useRef<HTMLDivElement>(null);
+
+    // Phones: size the page to exactly the space between its top and the Run bar, so the box scrolls
+    // inside it and nothing hides under the bar.
+    useLayoutEffect(() => {
+        const el = root_ref.current;
+        if (!el) return;
+        const mq = window.matchMedia('(max-width: 760px)');
+        const fit = () => {
+            if (!mq.matches) {
+                el.style.removeProperty('height');
+                return;
+            }
+            const top = el.getBoundingClientRect().top;
+            const bar = document.querySelector('.controls__section, .run-panel__footer') as HTMLElement | null;
+            const r = bar?.getBoundingClientRect();
+            const bar_top = r && r.height > 0 && r.top > top ? r.top : window.innerHeight;
+            el.style.height = `${Math.max(280, Math.floor(Math.min(window.innerHeight, bar_top) - top))}px`;
+        };
+        fit();
+        const timers = [setTimeout(fit, 150), setTimeout(fit, 600), setTimeout(fit, 1500)];
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', fit);
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+        ro?.observe(document.body);
+        const bar_el = document.querySelector('.controls__section, .run-panel__footer');
+        if (bar_el) ro?.observe(bar_el);
+        return () => {
+            timers.forEach(clearTimeout);
+            window.removeEventListener('resize', fit);
+            window.removeEventListener('orientationchange', fit);
+            ro?.disconnect();
+        };
+    }, []);
 
     // ---- live latest tick + last digit ----
     useEffect(() => {
@@ -126,7 +160,7 @@ const MarketInsights = () => {
     }, [symbol, try_n]);
 
     return (
-        <div className='mi'>
+        <div className='mi' ref={root_ref}>
             <div className='mi__log' aria-hidden='true'>
                 {log_lines.map((l, i) => (
                     <p key={i} className={i % 2 ? 'mi__log-r' : ''}>
