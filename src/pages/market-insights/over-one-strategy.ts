@@ -61,6 +61,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
     const [rows, setRows] = useState<Record<string, Over1Row>>({});
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+    const [traded, setTraded] = useState(''); // the market the strategy is trading right now
     const [pl, setPl] = useState<{ n: number; total: number } | null>(null);
     const [trades, setTrades] = useState<{ id: number; symbol: string; stake: number; profit: number }[]>([]);
 
@@ -143,6 +144,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
             const alive = () => run_id.current === my_run;
 
             setError('');
+            setTraded('');
             setRows({});
             setPl(null);
             setTrades([]);
@@ -274,6 +276,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (locked && !all[locked]?.signal) {
                     if (open > 0) return;
                     locked = '';
+                    setTraded('');
                     in_a_row = 0;
                     setStatus(localize('Signal gone. Watching live ticks for the next one…'));
                 }
@@ -289,6 +292,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                         return;
                     }
                     locked = best.symbol;
+                    setTraded(locked);
                 }
                 if (!c.auto_trade || buying || Date.now() < pause_until) return;
                 // normal mode: one trade at a time. Fast mode: a new trade on the ticks of the market (3 of every
@@ -302,6 +306,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (c.max_trades > 0 && in_a_row >= c.max_trades) {
                     if (open === 0) {
                         locked = '';
+                        setTraded('');
                         in_a_row = 0;
                         setStatus(localize('Max trades for this signal reached. Watching for the next signal…'));
                     }
@@ -377,5 +382,5 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
         [markets, stop, waitForResult]
     );
 
-    return { running, rows, status, error, pl, trades, start, stop };
+    return { running, rows, status, error, pl, trades, traded, start, stop };
 };

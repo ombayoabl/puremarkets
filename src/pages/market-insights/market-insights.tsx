@@ -70,7 +70,7 @@ const MarketInsights = observer(() => {
     const [multiplier, setMultiplier] = useState<string>('2');
     const [max_trades, setMaxTrades] = useState<string>('200');
     const [fast_mode, setFastMode] = useState(false);
-    const [scope, setScope] = useState<'one' | 'all'>('one');
+    const [scope, setScope] = useState<'one' | 'all'>('all');
     const [auto_trade, setAutoTrade] = useState(true);
 
     const [tick, setTick] = useState<number | null>(null);
@@ -98,6 +98,12 @@ const MarketInsights = observer(() => {
     const is_over_under = strategy === 'over_under';
     const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
     const best_symbol = over_rows[0] && over_rows[0].score > -Infinity ? over_rows[0].symbol : '';
+    // analysing all volatilities: the Select market box follows the market the analysis picked
+    // (the one being traded, otherwise the best one so far)
+    const picked_symbol = over_one.traded || best_symbol;
+    useEffect(() => {
+        if (is_over_under && scope === 'all' && over_one.running && picked_symbol) setSymbol(picked_symbol);
+    }, [is_over_under, scope, over_one.running, picked_symbol]);
     const onAnalyse = () => {
         if (!is_over_under) return;
         if (over_one.running) over_one.stop();
@@ -228,7 +234,7 @@ const MarketInsights = observer(() => {
                         <b>{market.v}</b>
                         {market.s1 && <i>1s</i>}
                     </span>
-                    <select id='mi-market' value={symbol} onChange={e => setSymbol(e.target.value)}>
+                    <select id='mi-market' value={symbol} disabled={is_over_under && scope === 'all' && over_one.running} onChange={e => setSymbol(e.target.value)}>
                         {MARKETS.map(m => (
                             <option key={m.symbol} value={m.symbol}>
                                 {m.name}
@@ -244,8 +250,8 @@ const MarketInsights = observer(() => {
                         </label>
                         <div className='mi__select'>
                             <select id='mi-scope' value={scope} disabled={over_one.running} onChange={e => setScope(e.target.value as 'one' | 'all')}>
-                                <option value='one'>{localize('Selected market only')}</option>
-                                <option value='all'>{localize('All volatilities (find the best market)')}</option>
+                                <option value='all'>{localize('Analyse all volatilities')}</option>
+                                <option value='one'>{localize('Select market to analyse')}</option>
                             </select>
                         </div>
                     </>
