@@ -1090,3 +1090,12 @@
         .dtrader__circle { max-width: 46px; }
     }
 }
+
+/* phone Accumulators: compact sheet like everymanmarkets (growth rate + stake + Buy, chart gets the room) */
+@media (max-width: 760px) {
+    .dtrader.dtrader--sheet.dtrader--accu {
+        .dtm__check, .dtm__maxes, .dtm__row--step ~ .dtm__row { display: none; }
+        .dtm__chip { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .dtm__chip * { line-height: 1.2; }
+    }
+}

@@ -12,7 +12,7 @@ import { useDevice } from '@deriv-com/ui';
 import ToolbarWidgets from './toolbar-widgets';
 import '@deriv-com/smartcharts-champion/dist/smartcharts.css';
 
-const Chart = observer(({ show_digits_stats, barriers = [] }: { show_digits_stats: boolean; barriers?: any[] }) => {
+const Chart = observer(({ show_digits_stats, barriers = [], force_light = false }: { show_digits_stats: boolean; barriers?: any[]; force_light?: boolean }) => {
     const { common, ui } = useStore();
     const { chart_store, run_panel, dashboard } = useStore();
     const [isSafari, setIsSafari] = useState(false);
@@ -42,7 +42,7 @@ const Chart = observer(({ show_digits_stats, barriers = [] }: { show_digits_stat
         isHighestLowestMarkerEnabled: false, // TODO: Pending UI,
         language: common.current_language.toLowerCase(),
         position: ui.is_chart_layout_default ? 'bottom' : 'left',
-        theme: ui.is_dark_mode_on ? 'dark' : 'light',
+        theme: !force_light && ui.is_dark_mode_on ? 'dark' : 'light',
     };
 
     useEffect(() => {

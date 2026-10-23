@@ -863,7 +863,7 @@ const DTrader = observer(() => {
     );
 
     return (
-        <div ref={root_ref} dir='ltr' className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone })}>
+        <div ref={root_ref} dir='ltr' className={classNames('dtrader', { 'dtrader--digit': type.dur === 'ticks', 'dtrader--sheet': sheet_mode, 'dtrader--dm': digit_phone, 'dtrader--accu': type.kind === 'accu' })}>
             {/* ---------- open positions ---------- */}
             <aside className={classNames('dtrader__positions', { 'dtrader__positions--closed': !pos_open, 'dtrader__positions--empty': trades.length === 0 })}>
                 <div className='dtrader__positions-head'>
@@ -918,7 +918,7 @@ const DTrader = observer(() => {
                 <div className='dtrader__plot'>
                     {show_chart && (
                         <div className='dtrader__chart dtrader__chart--smart'>
-                            <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} barriers={chart_barriers} />
+                            <ChartWrapper prefix='dtrader-chart' show_digits_stats={false} barriers={chart_barriers} force_light />
                         </div>
                     )}
 
