@@ -28,7 +28,7 @@ export type Copier = {
     failed: number;
     last_error: string;
 };
-export type CopyLog = { id: number; time: number; account: string; text: string; ok: boolean };
+export type CopyLog = { id: number; time: number; account: string; text: string; ok: boolean; pending?: boolean };
 
 const STORE_KEY = 'copy_trading_copiers';
 const ALLOW_KEY = 'copy_trading_allow';
@@ -271,9 +271,11 @@ class CopyEngine {
         });
     }
 
-    private addLog(account: string, text: string, ok: boolean) {
-        this.log.unshift({ id: ++this.log_id, time: Date.now(), account, text, ok });
+    private addLog(account: string, text: string, ok: boolean, pending = false): CopyLog {
+        const entry: CopyLog = { id: ++this.log_id, time: Date.now(), account, text, ok, pending };
+        this.log.unshift(entry);
         if (this.log.length > 60) this.log.length = 60;
+        return entry;
     }
 
     /** Copy one `buy` request (called for every trade the app places). */
@@ -299,18 +301,26 @@ class CopyEngine {
             if (c.max_stake > 0) amount = Math.min(amount, c.max_stake);
             if (!(amount > 0)) return;
             const label = `${String(p.contract_type || '').replace('DIGIT', '')} ${p.barrier ?? ''} ${p.underlying_symbol || p.symbol || ''}`.trim();
+            // show the trade on screen the moment it is sent, then fill in the result when Deriv answers
+            const sent_at = Date.now();
+            const entry = this.addLog(c.id, `${label} · stake ${amount} ${c.currency} · sending…`, true, true);
+            this.emit();
             this.request(c, {
                 buy: '1',
                 price: amount,
                 parameters: { ...p, amount, currency: c.currency },
             }).then(res => {
+                const ms = Date.now() - sent_at;
+                entry.pending = false;
                 if (res?.buy?.contract_id) {
                     c.copied += 1;
-                    this.addLog(c.id, `${label} · stake ${amount} ${c.currency}`, true);
+                    entry.ok = true;
+                    entry.text = `${label} · stake ${amount} ${c.currency} · ${ms} ms`;
                 } else {
                     c.failed += 1;
                     c.last_error = res?.error?.message || 'The trade was not accepted.';
-                    this.addLog(c.id, `${label} · ${c.last_error}`, false);
+                    entry.ok = false;
+                    entry.text = `${label} · ${c.last_error}`;
                 }
                 this.emit();
             });

@@ -316,7 +316,7 @@ const CopyTrading = () => {
                 </div>
                 {copyEngine.log.length === 0 && <p className='bulk__muted'>{localize('Trades you place will show here as they are copied.')}</p>}
                 {copyEngine.log.map(l => (
-                    <p key={l.id} className={l.ok ? 'bulk__good' : 'bulk__bad'} style={{ margin: '2px 0' }}>
+                    <p key={l.id} className={l.pending ? 'bulk__muted' : l.ok ? 'bulk__good' : 'bulk__bad'}>
                         {new Date(l.time).toLocaleTimeString()} · {l.account} · {l.text}
                     </p>
                 ))}
