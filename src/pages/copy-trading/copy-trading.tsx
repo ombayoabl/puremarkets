@@ -5,12 +5,29 @@ import '../bulk-trader/bulk-trader.scss';
 import { copyEngine, fetchAccounts, myAccountType } from './copy-engine';
 
 // A big tick box that always shows its state (green for real, black for demo), whatever the theme
-const Tick = ({ checked, onChange, label, color }: { checked: boolean; onChange: (v: boolean) => void; label: string; color: string }) => (
+const Tick = ({
+    checked,
+    onChange,
+    label,
+    color,
+    disabled = false,
+    show_state = true,
+    round = false,
+}: {
+    checked: boolean;
+    onChange: (v: boolean) => void;
+    label: React.ReactNode;
+    color: string;
+    disabled?: boolean;
+    show_state?: boolean;
+    round?: boolean;
+}) => (
     <button
         type='button'
         role='checkbox'
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        aria-disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
         style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -20,7 +37,8 @@ const Tick = ({ checked, onChange, label, color }: { checked: boolean; onChange:
             background: 'none',
             color: 'inherit',
             font: 'inherit',
-            cursor: 'pointer',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
             textAlign: 'left',
         }}
     >
@@ -29,7 +47,7 @@ const Tick = ({ checked, onChange, label, color }: { checked: boolean; onChange:
                 flex: '0 0 auto',
                 width: 26,
                 height: 26,
-                borderRadius: 5,
+                borderRadius: round ? 13 : 5,
                 border: '2px solid #fff',
                 boxShadow: '0 0 0 2px #888',
                 background: checked ? color : 'transparent',
@@ -43,7 +61,7 @@ const Tick = ({ checked, onChange, label, color }: { checked: boolean; onChange:
             {checked ? '✓' : ''}
         </span>
         <span>
-            {label} <b>{checked ? localize('(ON)') : localize('(OFF)')}</b>
+            {label} {show_state && <b>{checked ? localize('(ON)') : localize('(OFF)')}</b>}
         </span>
     </button>
 );
@@ -168,9 +186,16 @@ const CopyTrading = () => {
                     {accounts.map(a => {
                         const ok = (!mine || a.account_type === mine) && copyEngine.allow[a.account_type];
                         return (
-                            <label key={a.account_id} className='bulk__check' style={{ display: 'flex', gap: 8, margin: '6px 0', opacity: ok ? 1 : 0.5 }}>
-                                <input type='radio' name='copy_account' disabled={!ok} checked={pick === a.account_id} onChange={() => setPick(a.account_id)} />
-                                <span>
+                            <div key={a.account_id} style={{ margin: '8px 0' }}>
+                                <Tick
+                                    color='#14b86e'
+                                    round
+                                    show_state={false}
+                                    disabled={!ok}
+                                    checked={pick === a.account_id}
+                                    onChange={() => setPick(a.account_id)}
+                                    label={
+                                        <span>
                                     {a.account_id} · <b>{a.account_type === 'real' ? localize('REAL') : localize('DEMO')}</b> · {a.balance} {a.currency}
                                     {!ok &&
                                         ` · ${
@@ -179,7 +204,9 @@ const CopyTrading = () => {
                                                 : `${localize('tick')} ${a.account_type === 'real' ? localize('real to real') : localize('demo to demo')} ${localize('first')}`
                                         }`}
                                 </span>
-                            </label>
+                                    }
+                                />
+                            </div>
                         );
                     })}
                     <div className='bulk__grid'>
@@ -192,10 +219,15 @@ const CopyTrading = () => {
                             <input className='bulk__input' type='number' min='0' step='0.5' value={cap} onChange={e => setCap(e.target.value)} />
                         </div>
                     </div>
-                    <label className='bulk__check' style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
-                        <input type='checkbox' checked={agree} onChange={e => setAgree(e.target.checked)} />
-                        <span>{localize('This person gave me their token and agreed to have my trades placed on their account.')}</span>
-                    </label>
+                    <div style={{ margin: '12px 0' }}>
+                        <Tick
+                            color='#14b86e'
+                            show_state={false}
+                            checked={agree}
+                            onChange={setAgree}
+                            label={localize('This person gave me their token and agreed to have my trades placed on their account.')}
+                        />
+                    </div>
                     <button type='button' className='bulk__run' onClick={add}>
                         {localize('Start copying onto this account')}
                     </button>
@@ -253,10 +285,12 @@ const CopyTrading = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-                            <label className='bulk__check'>
-                                <input type='checkbox' checked={c.enabled} onChange={e => copyEngine.update(c.id, { enabled: e.target.checked })} />
-                                <span>{localize('Copy to this account')}</span>
-                            </label>
+                            <Tick
+                                color='#14b86e'
+                                checked={c.enabled}
+                                onChange={v => copyEngine.update(c.id, { enabled: v })}
+                                label={localize('Copy to this account')}
+                            />
                             {c.status === 'offline' && (
                                 <button type='button' className='bulk__run' onClick={() => copyEngine.connect(c)}>
                                     {localize('Reconnect')}
