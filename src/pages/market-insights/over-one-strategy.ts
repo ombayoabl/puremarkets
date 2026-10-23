@@ -22,6 +22,9 @@ const BREAK_MAX_MS = 10000;
 const share = (digits: number[], test: (d: number) => boolean) =>
     (digits.filter(test).length / (digits.length || 1)) * 100;
 const SETTLE_TIMEOUT_MS = 60000;
+// Fast mode trades on this share of the ticks (it was 0.75; now 30% slower = 0.525), so a loss has
+// settled and its martingale stake is known by the next trade
+const FAST_RATE = 0.525;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -339,7 +342,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                     if (c.fast_mode) {
                         if (!from_tick) return;
                         tick_n += 1;
-                        if (tick_n % 4 === 0 || open >= 30) return;
+                        if (Math.floor(tick_n * FAST_RATE) === Math.floor((tick_n - 1) * FAST_RATE) || open >= 30) return;
                     } else if (rec_open) return;
                     // no break, no analysis: recovery trades go out at once, alternating Over 4 and Under 5
                     rec_flip = !rec_flip;
@@ -375,7 +378,7 @@ export const useOverOneStrategy = (markets: { symbol: string; name: string; dp: 
                 if (c.fast_mode) {
                     if (!from_tick) return;
                     tick_n += 1;
-                    if (tick_n % 4 === 0) return;
+                    if (Math.floor(tick_n * FAST_RATE) === Math.floor((tick_n - 1) * FAST_RATE)) return;
                 } else if (open > 0) return;
                 if (open >= 30) return;
                 if (c.max_trades > 0 && in_a_row >= c.max_trades) {
