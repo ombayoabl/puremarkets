@@ -44,6 +44,7 @@ import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
 import './main.scss';
+import '../copy-trading/copy-engine'; // starts copying trades as soon as the app loads
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 const Tutorial = lazy(() => import('../tutorials'));
@@ -55,6 +56,7 @@ const TradingBots = lazy(() => import('../trading-bots/trading-bots'));
 const QuickGuide = lazy(() => import('../quickguide/quickguide'));
 const DTrader = lazy(() => import('../dtrader/dtrader'));
 const MarketInsights = lazy(() => import('../market-insights/market-insights'));
+const CopyTrading = lazy(() => import('../copy-trading/copy-trading'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -88,7 +90,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide', 'dtrader', 'market_insights'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'coming_soon', 'bulk_trader', 'super_analysis', 'trading_bots', 'over_one', 'under_eight', 'quickguide', 'dtrader', 'market_insights', 'copy_trading'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -522,6 +524,11 @@ const AppWrapper = observer(() => {
                             <div label='Market Insights' id='id-market-insights'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Market Insights...')} />}>
                                     <MarketInsights />
+                                </Suspense>
+                            </div>
+                            <div label='Copy Trading' id='id-copy-trading'>
+                                <Suspense fallback={<ChunkLoader message={localize('Loading Copy Trading...')} />}>
+                                    <CopyTrading />
                                 </Suspense>
                             </div>
                         </Tabs>

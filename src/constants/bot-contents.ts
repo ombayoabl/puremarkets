@@ -25,11 +25,12 @@ export const DBOT_TABS: TDashboardTabIndex = Object.freeze({
     QUICKGUIDE: 10,
     DTRADER: 11,
     MARKET_INSIGHTS: 12,
+    COPY_TRADING: 13,
 });
 
 export const MAX_STRATEGIES = 10;
 
-export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one', 'id-under-eight', 'id-quickguide', 'id-dtrader', 'id-market-insights'];
+export const TAB_IDS = ['id-dbot-dashboard', 'id-bot-builder', 'id-charts', 'id-tutorials', 'id-coming-soon', 'id-bulk-trader', 'id-super-analysis', 'id-trading-bots', 'id-over-one', 'id-under-eight', 'id-quickguide', 'id-dtrader', 'id-market-insights', 'id-copy-trading'];
 
 export const DEBOUNCE_INTERVAL_TIME = 500;
 
@@ -57,5 +58,5 @@ export const NAV_ITEMS: TNavItem[] = [
     { key: 'over_one', label: 'Over One', type: 'tab', tab_index: DBOT_TABS.OVER_ONE },
     { key: 'under_eight', label: 'Under Eight', type: 'tab', tab_index: DBOT_TABS.UNDER_EIGHT },
     { key: 'under_7', label: 'Under 7', type: 'soon' },
-    { key: 'copy_trading', label: 'Copy Trading', type: 'soon' },
+    { key: 'copy_trading', label: 'Copy Trading', type: 'tab', tab_index: DBOT_TABS.COPY_TRADING },
 ];

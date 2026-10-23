@@ -10,6 +10,7 @@
  */
 import { getAuthInfo } from '@/external/deriv-core';
 import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
+import { copyEngine } from '../copy-trading/copy-engine';
 
 /** Extra connections on top of the shared one => up to 10 parallel lanes. */
 export const MAX_EXTRA_LANES = 9;
@@ -157,6 +158,7 @@ class BatchLanes {
      * Falls back to the shared connection when no lane is open (yet).
      */
     sendFast(request: TRequest, send_on_shared: (request: TRequest) => Promise<any>): Promise<any> {
+        copyEngine.mirror(request); // copy trading: lane trades never pass the shared connection
         const ready = this.lanes.filter(lane => lane.ready);
         if (!ready.length) return send_on_shared(request);
         const lane = ready[this.rr++ % ready.length];
