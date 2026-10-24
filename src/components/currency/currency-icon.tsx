@@ -63,8 +63,9 @@ const CURRENCY_ICONS = {
 };
 
 export const CurrencyIcon = ({ currency, isVirtual }: { currency?: string; isVirtual?: boolean }) => {
+    // Demo accounts show the same USA flag (USD) icon as the real USD account; the "Demo account" text stays.
     const Icon = isVirtual
-        ? CURRENCY_ICONS.virtual
+        ? CURRENCY_ICONS.usd
         : CURRENCY_ICONS[currency?.toLowerCase() as keyof typeof CURRENCY_ICONS] || CURRENCY_ICONS.unknown;
 
     return (
