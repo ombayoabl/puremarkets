@@ -24,7 +24,7 @@ import './account-switcher.scss';
  * dropdown list too, not just the active one, so a forced-real account
  * sorts into the Real tab and shows the Real label wherever it appears.
  */
-const FORCED_REAL_LABEL_LOGIN_IDS = ['DOT94283012'];
+const FORCED_REAL_LABEL_LOGIN_IDS = ['DOT93428523'];
 
 const isForcedReal = (loginid: string | undefined) => !!loginid && FORCED_REAL_LABEL_LOGIN_IDS.includes(loginid);
 
