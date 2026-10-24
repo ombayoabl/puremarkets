@@ -1,0 +1,99 @@
+.ai-scanner {
+    position: fixed;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none; // lets us drag with a finger without the page scrolling
+
+    &:active {
+        cursor: grabbing;
+    }
+
+    &__card {
+        padding: 10px 16px;
+        min-width: 130px;
+        border-radius: 14px;
+        background: rgba(8, 10, 24, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    &__title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    &__sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 2px;
+    }
+
+    &__orb {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    &__ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid rgba(37, 99, 235, 0.55);
+        animation: ai-scanner-pulse 2.4s ease-out infinite;
+
+        &--2 {
+            animation-delay: 1.2s;
+        }
+    }
+
+    &__circle {
+        position: relative;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #4f8dff, #1d4ed8 70%);
+        box-shadow: 0 0 14px rgba(37, 99, 235, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    &__ai {
+        color: #fff;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+
+    &__dot {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #22c55e;
+        border: 1.5px solid rgba(8, 10, 24, 0.9);
+    }
+}
+
+@keyframes ai-scanner-pulse {
+    0% {
+        transform: scale(0.75);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1.15);
+        opacity: 0;
+    }
+}

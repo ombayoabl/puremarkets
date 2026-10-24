@@ -45,6 +45,7 @@ import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
 import { useSiteConfig } from '@/services/site-config';
+import AiScanner from '../../components/ai-scanner/ai-scanner';
 import './main.scss';
 import '../copy-trading/copy-engine'; // starts copying trades as soon as the app loads
 
@@ -438,6 +439,7 @@ const AppWrapper = observer(() => {
                     </div>
                 );
             })()}
+            <AiScanner />
             {site.announcement.on && site.announcement.text && <div className='site-announcement'>{site.announcement.text}</div>}
             <div className='main'>
                 <div
