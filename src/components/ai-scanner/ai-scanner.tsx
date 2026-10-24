@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ScannerPanel from './scanner-panel';
+import ScannerBot from './scanner-bot';
+import type { MarketScan } from './scanner-engine';
 import './ai-scanner.scss';
 
 const STORAGE_KEY = 'pm_ai_scanner_pos';
@@ -22,6 +24,11 @@ const AiScanner = () => {
     const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
     const [pos, setPos] = useState<Pos | null>(readSavedPos);
     const [open, setOpen] = useState(false);
+    const [bot_open, setBotOpen] = useState(false);
+    const [bot_running, setBotRunning] = useState(false);
+    const [results, setResults] = useState<MarketScan[]>([]);
+    const [found, setFound] = useState<MarketScan | null>(null);
+    const [scanned, setScanned] = useState(false);
 
     const clamp = useCallback((p: Pos): Pos => {
         const el = ref.current;
@@ -94,7 +101,7 @@ const AiScanner = () => {
             >
                 <div className='ai-scanner__card'>
                     <div className='ai-scanner__title'>AI Scanner</div>
-                    <div className='ai-scanner__sub'>Click to analyze</div>
+                    <div className='ai-scanner__sub'>{bot_running ? 'Bot running…' : 'Click to analyze'}</div>
                 </div>
                 <div className='ai-scanner__orb'>
                     <span className='ai-scanner__ring ai-scanner__ring--1' />
@@ -105,7 +112,28 @@ const AiScanner = () => {
                     <span className='ai-scanner__dot' />
                 </div>
             </div>
-            <ScannerPanel open={open} onClose={() => setOpen(false)} />
+            <ScannerPanel
+                open={open}
+                onClose={() => setOpen(false)}
+                found={found}
+                results={results}
+                scanned={scanned}
+                onResult={(list, best) => {
+                    setResults(list);
+                    setFound(best);
+                    setScanned(true);
+                }}
+                onLoadBot={() => {
+                    setOpen(false);
+                    setBotOpen(true);
+                }}
+            />
+            <ScannerBot
+                open={bot_open}
+                market={found}
+                onClose={() => setBotOpen(false)}
+                onRunningChange={setBotRunning}
+            />
         </>
     );
 };

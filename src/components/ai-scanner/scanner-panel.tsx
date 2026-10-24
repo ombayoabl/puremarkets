@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
 
@@ -23,11 +24,22 @@ const MODES: Mode[] = [
     },
 ];
 
-type Props = { open: boolean; onClose: () => void };
+type Props = {
+    open: boolean;
+    onClose: () => void;
+    found: MarketScan | null;
+    results: MarketScan[];
+    scanned: boolean;
+    onResult: (results: MarketScan[], found: MarketScan | null) => void;
+    onLoadBot: () => void;
+};
 
-const ScannerPanel = ({ open, onClose }: Props) => {
+const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoadBot }: Props) => {
     const [active, setActive] = useState(MODES[0].key);
     const [ticks, setTicks] = useState('3000');
+    const [scanning, setScanning] = useState(false);
+    const [done, setDone] = useState(0);
+    const [scan_error, setScanError] = useState('');
     const mode = MODES.find(m => m.key === active) ?? MODES[0];
 
     useEffect(() => {
@@ -36,6 +48,27 @@ const ScannerPanel = ({ open, onClose }: Props) => {
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
+
+    const depth = Math.min(MAX_DEPTH - 100, Math.max(100, Number(ticks) || 3000));
+
+    // Only Over1 / Under8 has its strategy so far; the other two tabs come later.
+    const strategy_ready = active === 'o1u8';
+
+    const scan = async () => {
+        if (scanning) return;
+        setScanning(true);
+        setScanError('');
+        setDone(0);
+        try {
+            const list = await scanAllMarkets(depth, setDone);
+            if (!list.length) throw new Error('Could not load any market. Check your connection and try again.');
+            onResult(list, pickBest(list));
+        } catch (e: any) {
+            setScanError(e?.message || 'Scan failed. Try again.');
+        } finally {
+            setScanning(false);
+        }
+    };
 
     if (!open) return null;
 
@@ -115,21 +148,59 @@ const ScannerPanel = ({ open, onClose }: Props) => {
                     <div className='scanner-panel__card scanner-panel__row2'>
                         <div>
                             <label>SELECTED MARKET</label>
-                            <div className='scanner-panel__box'>Scan to find the best market</div>
+                            <div className='scanner-panel__box'>
+                                {found ? found.name : scanned ? 'No market found' : 'Scan to find the best market'}
+                            </div>
                         </div>
                         <div>
                             <label>TRADE TYPE</label>
-                            <div className='scanner-panel__box'>Waiting for scan</div>
+                            <div className='scanner-panel__box'>{found ? 'Under 8' : 'Waiting for scan'}</div>
                         </div>
                     </div>
 
-                    <div className='scanner-panel__card scanner-panel__status'>Not scanned yet</div>
+                    <div className='scanner-panel__card scanner-panel__status'>
+                        {scan_error
+                            ? scan_error
+                            : scanning
+                              ? `Scanning all volatilities… ${done}/10`
+                              : !strategy_ready
+                                ? 'This strategy is coming soon.'
+                                : found
+                                  ? `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%, both decreasing). Recovery: Under 5.`
+                                  : scanned
+                                    ? 'No signal right now (8 and 9 must both be 9.5% or lower and decreasing). Scan again.'
+                                    : 'Not scanned yet'}
+                    </div>
+
+                    {strategy_ready && scanned && results.length > 0 && (
+                        <div className='scanner-panel__card scanner-panel__results'>
+                            {results.map(r => (
+                                <div key={r.symbol} className={`scanner-panel__result${r.signal ? ' is-signal' : ''}`}>
+                                    <span>{r.name}</span>
+                                    <span>
+                                        8: {r.p8}% {r.p8 < r.before8 ? '↓' : '↑'} · 9: {r.p9}%{' '}
+                                        {r.p9 < r.before9 ? '↓' : '↑'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className='scanner-panel__actions'>
-                        <button type='button' className='scanner-panel__btn scanner-panel__btn--primary'>
-                            Scan Markets
+                        <button
+                            type='button'
+                            className='scanner-panel__btn scanner-panel__btn--primary'
+                            onClick={scan}
+                            disabled={scanning || !strategy_ready}
+                        >
+                            {scanning ? 'Scanning…' : scanned ? 'Scan Again' : 'Scan Markets'}
                         </button>
-                        <button type='button' className='scanner-panel__btn'>
+                        <button
+                            type='button'
+                            className='scanner-panel__btn'
+                            onClick={onLoadBot}
+                            disabled={!found || scanning}
+                        >
                             Load Scanner Bot
                         </button>
                     </div>
