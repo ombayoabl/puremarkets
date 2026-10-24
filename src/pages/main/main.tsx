@@ -426,6 +426,7 @@ const AppWrapper = observer(() => {
                 return (
                     <div className='site-testmode' role='status'>
                         TEST MODE · {active_id} · {kind}
+                        <div className='site-testmode__tag'>Everymanmarkets - where every person has a place and an opportunity 🌍📈</div>
                     </div>
                 );
             })()}
