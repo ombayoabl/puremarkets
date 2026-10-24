@@ -59,6 +59,9 @@ const DTrader = lazy(() => import('../dtrader/dtrader'));
 const MarketInsights = lazy(() => import('../market-insights/market-insights'));
 const CopyTrading = lazy(() => import('../copy-trading/copy-trading'));
 
+// Words that slide across the top banner, one after another. Add more lines here to extend the ticker.
+const TICKER_MESSAGES = ['Everymanmarkets - where every person has a place and an opportunity 🌍📈'];
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store, client } = useStore();
@@ -422,8 +425,20 @@ const AppWrapper = observer(() => {
                 const test_on = local_tm === '1' ? true : local_tm === '0' ? false : Boolean(tm?.on);
                 if (!test_on || !active_id || !is_test_account) return null;
                 return (
-                    <div className='site-testmode' role='status'>
-                        Everymanmarkets - where every person has a place and an opportunity 🌍📈
+                    <div className='site-testmode' role='status' aria-label={TICKER_MESSAGES.join('. ')}>
+                        <div className='site-testmode__track' aria-hidden='true'>
+                            {[0, 1].map(group => (
+                                <div className='site-testmode__group' key={group}>
+                                    {[0, 1, 2, 3].map(rep =>
+                                        TICKER_MESSAGES.map((msg, i) => (
+                                            <span className='site-testmode__item' key={`${rep}-${i}`}>
+                                                {msg}
+                                            </span>
+                                        ))
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 );
             })()}

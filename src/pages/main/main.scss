@@ -799,11 +799,38 @@
 .site-testmode {
     position: relative;
     z-index: 5;
-    padding: 0.8rem 1.6rem;
+    overflow: hidden;
+    padding: 0.8rem 0;
     background: linear-gradient(90deg, #0e7a4b, #d4a82a);
     color: #fff;
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: 0.04em;
-    text-align: center;
+    white-space: nowrap;
+
+    &__track {
+        display: flex;
+        width: max-content;
+        animation: site-testmode-scroll 40s linear infinite;
+    }
+
+    &__group {
+        display: flex;
+        flex: none;
+    }
+
+    &__item {
+        flex: none;
+        padding: 0 4rem;
+    }
+}
+
+@keyframes site-testmode-scroll {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
 }
