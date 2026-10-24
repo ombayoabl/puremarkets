@@ -15,9 +15,9 @@ export const MARKETS = [
 ];
 
 // ---- Over1 / Under8 strategy ----
-// Signal "Under 8": digits 8 and 9 are each at or below 10% AND both are decreasing.
-// "Decreasing" = the digit's share over the latest window is lower than its share over the same-size
-// window that ended LOOKBACK ticks earlier.
+// Signal "Under 8": digits 8 and 9 are each at or below 10%. Among the markets that qualify, the best entry
+// is the one with the lowest 8 + 9 total. (The ↑/↓ arrows compare the latest window with the same-size window
+// that ended LOOKBACK ticks earlier; they are shown for information only.)
 export const LOW_LIMIT = 10;
 export const LOOKBACK = 100;
 export const MAX_DEPTH = 5000;
@@ -52,7 +52,8 @@ export const analyse = (digits: number[], depth: number) => {
     const before9 = shown(share(earlier, 9));
     const low = p8 <= LOW_LIMIT && p9 <= LOW_LIMIT;
     const falling = earlier.length >= depth && p8 < before8 && p9 < before9;
-    return { p8, p9, before8, before9, low, falling, signal: low && falling };
+    // a market is a candidate whenever 8 and 9 are both at or below the limit; the best entry is picked later
+    return { p8, p9, before8, before9, low, falling, signal: low };
 };
 
 // Scan all 10 volatilities at once (one history request each, all sent together).

@@ -24,6 +24,12 @@ const MODES: Mode[] = [
     },
 ];
 
+// "1HZ10V" -> "V10 (1s)", "R_50" -> "V50"
+const shortName = (symbol: string) => {
+    const m = symbol.match(/^(1HZ)?(?:R_)?(\d+)V?$/);
+    return m ? `V${m[2]}${m[1] ? ' (1s)' : ''}` : symbol;
+};
+
 type Props = {
     open: boolean;
     onClose: () => void;
@@ -226,20 +232,26 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                               : !strategy_ready
                                 ? 'This strategy is coming soon.'
                                 : found
-                                  ? `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%, both decreasing). Recovery: Under 5.`
+                                  ? `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%). Recovery: Under 5.`
                                   : scanned
-                                    ? 'No signal right now (8 and 9 must both be 10% or lower and decreasing). Scan again.'
+                                    ? 'No signal right now (8 and 9 must both be 10% or lower). Scan again.'
                                     : 'Not scanned yet'}
                     </div>
 
                     {strategy_ready && scanned && results.length > 0 && (
                         <div className='scanner-panel__card scanner-panel__results'>
                             {results.map(r => (
-                                <div key={r.symbol} className={`scanner-panel__result${r.signal ? ' is-signal' : ''}`}>
-                                    <span>{r.name}</span>
+                                <div
+                                    key={r.symbol}
+                                    className={`scanner-panel__result${r.signal ? ' is-signal' : ''}${found?.symbol === r.symbol ? ' is-best' : ''}`}
+                                    title={`${r.name} — 8: ${r.p8}%, 9: ${r.p9}%`}
+                                >
+                                    <b>
+                                        {found?.symbol === r.symbol ? '★ ' : ''}
+                                        {shortName(r.symbol)}
+                                    </b>
                                     <span>
-                                        8: {r.p8}% {r.p8 < r.before8 ? '↓' : '↑'} · 9: {r.p9}%{' '}
-                                        {r.p9 < r.before9 ? '↓' : '↑'}
+                                        {r.p8} · {r.p9}
                                     </span>
                                 </div>
                             ))}
