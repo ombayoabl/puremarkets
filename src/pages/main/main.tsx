@@ -411,7 +411,10 @@ const AppWrapper = observer(() => {
             {(() => {
                 const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
                 const tm = site.test_mode;
-                if (!tm?.on || !active_id || !tm.accounts.includes(active_id)) return null;
+                // Test mode shows automatically for test accounts (ids starting with D or R, e.g. DOT..., ROT...),
+                // and also for any account listed in the admin test-mode setting while that switch is on.
+                const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.on && tm.accounts?.includes(active_id));
+                if (!active_id || !is_test_account) return null;
                 const kind = isDemoAccount(active_id) ? 'DEMO account (virtual money)' : 'REAL account (real money)';
                 return (
                     <div className='site-testmode' role='status'>
