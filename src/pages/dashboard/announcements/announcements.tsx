@@ -77,7 +77,8 @@ const Announcements = observer(({ is_mobile, is_tablet, handleTabChange }: TAnno
         if (allUserAccounts) {
             allUserAccounts = JSON.parse(allUserAccounts);
             const currentAccount = allUserAccounts?.find(account => account.loginid == loggedInAccountId);
-            accountDate = new Date(currentAccount.created_at * 1000);
+            // the active account may not be in the saved list yet (new login, account switch): skip instead of crashing
+            if (currentAccount?.created_at) accountDate = new Date(currentAccount.created_at * 1000);
         }
 
         BOT_ANNOUNCEMENTS_LIST.map(item => {
