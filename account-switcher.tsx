@@ -28,6 +28,15 @@ const FORCED_REAL_LABEL_LOGIN_IDS = ['DOT93428523'];
 
 const isForcedReal = (loginid: string | undefined) => !!loginid && FORCED_REAL_LABEL_LOGIN_IDS.includes(loginid);
 
+/**
+ * Login IDs whose row in the account dropdown is invisible but still takes
+ * up space and can be clicked to switch to that account.
+ */
+const HIDDEN_BUT_CLICKABLE_LOGIN_IDS = ['ROT92069621'];
+
+const isHiddenButClickable = (loginid: string | undefined) =>
+    !!loginid && HIDDEN_BUT_CLICKABLE_LOGIN_IDS.includes(loginid);
+
 const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<'real' | 'demo'>('real');
@@ -243,6 +252,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-dropdown__account', {
                                         'acc-dropdown__account--selected': accountIsActive,
                                         'acc-dropdown__account--virtual': accountDisplayAsVirtual,
+                                        'acc-dropdown__account--hidden': isHiddenButClickable(account.loginid),
                                     })}
                                     onClick={() => handleAccountSelect(account.loginid)}
                                     onKeyDown={e => {

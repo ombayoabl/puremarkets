@@ -997,3 +997,10 @@
         }
     }
 }
+
+/* Invisible but still clickable account row in the dropdown */
+.acc-dropdown__account--hidden {
+    opacity: 0;
+    pointer-events: auto;
+    cursor: pointer;
+}
