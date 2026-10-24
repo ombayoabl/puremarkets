@@ -50,44 +50,38 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [found_popup, setFoundPopup] = useState(false);
     const audio = useRef<any>(null);
 
-    // Soft, machine-like beeping while scanning. It is a short looping buffer on the audio clock.
+    // The scratching sound taken from the user's video, looped for as long as the scan is running.
+    const scratch = useRef<any>(null); // decoded sound, loaded once
+    const loadScratch = async (ctx: any) => {
+        if (scratch.current) return scratch.current;
+        const base = (window as any).__webpack_public_path__ || '/';
+        const res = await fetch(`${base}assets/media/scan-scratch.mp3`);
+        scratch.current = await ctx.decodeAudioData(await res.arrayBuffer());
+        return scratch.current;
+    };
     useEffect(() => {
         if (!scanning) return;
         const ctx = audio.current;
         if (!ctx) return;
         let src: any = null;
-        try {
-            const rate = ctx.sampleRate;
-            const buf = ctx.createBuffer(1, Math.floor(rate * 1.6), rate);
-            const data = buf.getChannelData(0);
-            const edge = Math.floor(rate * 0.008);
-            for (let k = 0; k < 2; k++) {
-                [0, 0.15].forEach(offset => {
-                    const from = Math.floor(rate * (k * 0.8 + offset));
-                    const n = Math.floor(rate * 0.07);
-                    for (let i = 0; i < n; i++) {
-                        const t = (2 * Math.PI * 1100 * i) / rate;
-                        const wave = Math.sin(t) + Math.sin(3 * t) / 3 + Math.sin(5 * t) / 5;
-                        data[from + i] = wave * Math.min(1, i / edge, (n - i) / edge) * 0.18;
-                    }
-                });
-            }
-            src = ctx.createBufferSource();
-            src.buffer = buf;
-            src.loop = true;
-            const soften = ctx.createBiquadFilter();
-            soften.type = 'lowpass';
-            soften.frequency.value = 2600;
-            const gain = ctx.createGain();
-            gain.gain.value = 0.5;
-            src.connect(soften);
-            soften.connect(gain);
-            gain.connect(ctx.destination);
-            src.start();
-        } catch (e) {
-            // no sound available
-        }
+        let stopped = false;
+        loadScratch(ctx)
+            .then(buf => {
+                if (stopped) return;
+                src = ctx.createBufferSource();
+                src.buffer = buf;
+                src.loop = true;
+                const gain = ctx.createGain();
+                gain.gain.value = 0.9;
+                src.connect(gain);
+                gain.connect(ctx.destination);
+                src.start();
+            })
+            .catch(() => {
+                // no sound available
+            });
         return () => {
+            stopped = true;
             try {
                 src?.stop();
             } catch (e) {
@@ -95,6 +89,9 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
             }
         };
     }, [scanning]);
+    const cancel_scan = useRef(false);
+    const scan_id = useRef(0); // a new scan makes any older, still-finishing scan stop quietly
+    const [round, setRound] = useState(0);
     const mode = MODES.find(m => m.key === active) ?? MODES[0];
 
     useEffect(() => {
@@ -124,21 +121,50 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
         setScanning(true);
         setScanError('');
         setDone(0);
+        setRound(1);
+        cancel_scan.current = false;
+        scan_id.current += 1;
+        const my_id = scan_id.current;
+        const stale = () => cancel_scan.current || scan_id.current !== my_id;
+        const MIN_MS = 7000; // the sound plays for at least about 7 seconds, even if a market is found at once
+        const started = Date.now();
         try {
-            const started = Date.now();
-            const list = await scanAllMarkets(depth, setDone);
-            // keep the scanning state (and its beeping) up for a moment so it can be heard
-            await new Promise(r => setTimeout(r, Math.max(0, 2500 - (Date.now() - started))));
-            if (!list.length) throw new Error('Could not load any market. Check your connection and try again.');
-            const best = pickBest(list);
-            onResult(list, best);
-            if (best) setFoundPopup(true); // small "market found" popup, straight away
+            let rounds = 0;
+            // keep analysing until a market with the best entry is found (or Stop is pressed)
+            while (!stale()) {
+                rounds += 1;
+                setRound(rounds);
+                setDone(0);
+                const list = await scanAllMarkets(depth, setDone);
+                if (stale()) return;
+                if (!list.length) throw new Error('Could not load any market. Check your connection and try again.');
+                const best = pickBest(list);
+                if (best) {
+                    await new Promise(r => setTimeout(r, Math.max(0, MIN_MS - (Date.now() - started))));
+                    if (stale()) return;
+                    onResult(list, best);
+                    setFoundPopup(true); // small "market found" popup, straight away
+                    return;
+                }
+                onResult(list, null); // show the latest numbers while it keeps looking
+                await new Promise(r => setTimeout(r, 2000));
+            }
         } catch (e: any) {
             setScanError(e?.message || 'Scan failed. Try again.');
         } finally {
-            setScanning(false);
+            if (scan_id.current === my_id) setScanning(false);
         }
     };
+
+    const stopScan = () => {
+        cancel_scan.current = true;
+        setScanning(false);
+    };
+
+    // closing the panel stops the scan (and its sound)
+    useEffect(() => {
+        if (!open) cancel_scan.current = true;
+    }, [open]);
 
     if (!open) return null;
 
@@ -266,7 +292,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                         {scan_error
                             ? scan_error
                             : scanning
-                              ? `Scanning all volatilities… ${done}/10`
+                              ? `Analysing all volatilities… round ${round} (${done}/10). It keeps looking until the best entry is found.`
                               : !strategy_ready
                                 ? 'This strategy is coming soon.'
                                 : found
@@ -299,11 +325,11 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                     <div className='scanner-panel__actions'>
                         <button
                             type='button'
-                            className='scanner-panel__btn scanner-panel__btn--primary'
-                            onClick={scan}
-                            disabled={scanning || !strategy_ready}
+                            className={`scanner-panel__btn ${scanning ? 'scanner-panel__btn--stop' : 'scanner-panel__btn--primary'}`}
+                            onClick={scanning ? stopScan : scan}
+                            disabled={!strategy_ready}
                         >
-                            {scanning ? 'Scanning…' : scanned ? 'Scan Again' : 'Scan Markets'}
+                            {scanning ? 'Stop Scan' : scanned ? 'Scan Again' : 'Scan Markets'}
                         </button>
                         <button
                             type='button'
