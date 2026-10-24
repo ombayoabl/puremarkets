@@ -46,6 +46,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [scanning, setScanning] = useState(false);
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
+    const [found_popup, setFoundPopup] = useState(false);
     const audio = useRef<any>(null);
 
     // Soft, machine-like beeping while scanning. It is a short looping buffer on the audio clock.
@@ -128,7 +129,9 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
             // keep the scanning state (and its beeping) up for a moment so it can be heard
             await new Promise(r => setTimeout(r, Math.max(0, 2500 - (Date.now() - started))));
             if (!list.length) throw new Error('Could not load any market. Check your connection and try again.');
-            onResult(list, pickBest(list));
+            const best = pickBest(list);
+            onResult(list, best);
+            if (best) setFoundPopup(true); // small "market found" popup, straight away
         } catch (e: any) {
             setScanError(e?.message || 'Scan failed. Try again.');
         } finally {
@@ -140,6 +143,30 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     return (
         <div className='scanner-panel__backdrop' onClick={onClose}>
+            {found_popup && found && (
+                <div className='scanner-found' onClick={e => e.stopPropagation()} role='alertdialog'>
+                    <div className='scanner-found__title'>Market found ✅</div>
+                    <div className='scanner-found__market'>{found.name}</div>
+                    <div className='scanner-found__sub'>
+                        Under 8 · digit 8 {found.p8}% · digit 9 {found.p9}%
+                    </div>
+                    <div className='scanner-found__actions'>
+                        <button
+                            type='button'
+                            className='scanner-found__btn scanner-found__btn--primary'
+                            onClick={() => {
+                                setFoundPopup(false);
+                                onLoadBot();
+                            }}
+                        >
+                            Load Scanner Bot
+                        </button>
+                        <button type='button' className='scanner-found__btn' onClick={() => setFoundPopup(false)}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className='scanner-panel' role='dialog' aria-label='Entry Scanner' onClick={e => e.stopPropagation()}>
                 <div className='scanner-panel__header'>
                     <h2>Entry Scanner</h2>
