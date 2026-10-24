@@ -36,8 +36,8 @@
 
     &__orb {
         position: relative;
-        width: 124px;
-        height: 124px;
+        width: 84px;
+        height: 84px;
         flex: none;
         display: flex;
         align-items: center;
@@ -58,8 +58,8 @@
 
     &__circle {
         position: relative;
-        width: 96px;
-        height: 96px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: radial-gradient(circle at 35% 30%, #4f8dff, #1d4ed8 70%);
         box-shadow: 0 0 14px rgba(37, 99, 235, 0.8);
@@ -70,7 +70,7 @@
 
     &__ai {
         color: #fff;
-        font-size: 54px;
+        font-size: 36px;
         font-weight: 800;
         line-height: 1;
         letter-spacing: 0.5px;
@@ -78,10 +78,10 @@
 
     &__dot {
         position: absolute;
-        top: 12px;
-        right: 14px;
-        width: 10px;
-        height: 10px;
+        top: 8px;
+        right: 9px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: #22c55e;
         border: 1.5px solid rgba(8, 10, 24, 0.9);
