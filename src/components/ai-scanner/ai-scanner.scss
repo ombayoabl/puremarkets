@@ -254,9 +254,9 @@
             cursor: pointer;
 
             &.is-active {
-                background: #fff;
-                color: #14284d;
-                box-shadow: 0 4px 14px rgba(40, 80, 160, 0.25);
+                background: linear-gradient(90deg, #1d4ed8, #2f9bff);
+                color: #fff;
+                box-shadow: 0 4px 14px rgba(40, 80, 160, 0.35);
             }
         }
     }
@@ -326,4 +326,84 @@
 @keyframes scanner-panel-up {
     from { transform: translateY(40px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+.scanner-panel {
+    &__status {
+        font-size: 14px;
+        font-weight: 700;
+        color: #14284d;
+    }
+
+    &__actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    &__btn {
+        padding: 16px 10px;
+        border-radius: 16px;
+        border: 1px solid #dbe4f3;
+        background: #fff;
+        color: #4a6290;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+
+        &--primary {
+            border: 0;
+            color: #fff;
+            background: linear-gradient(90deg, #1d4ed8, #2f9bff);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+        }
+    }
+
+    // Radar sweep turns round, AI blinks and spins while the panel is open.
+    &__sweep {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg, rgba(79, 216, 255, 0) 0deg, rgba(79, 216, 255, 0.45) 70deg, rgba(79, 216, 255, 0) 71deg);
+        animation: scanner-spin 3s linear infinite;
+    }
+
+    &__radar-ring--2 {
+        animation: scanner-spin 12s linear infinite;
+        border-style: dashed;
+    }
+
+    &__blip {
+        animation: scanner-blink 1.2s ease-in-out infinite;
+        &--b { animation-delay: 0.4s; }
+        &--c { animation-delay: 0.8s; }
+    }
+
+    &__radar-ai {
+        display: inline-block;
+        animation: scanner-ai 2.4s linear infinite;
+    }
+}
+
+.ai-scanner.is-open .ai-scanner__ai {
+    display: inline-block;
+    animation: scanner-ai 2.4s linear infinite;
+}
+
+@keyframes scanner-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes scanner-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+}
+
+// blink + turn around its own upright axis
+@keyframes scanner-ai {
+    0% { transform: rotateY(0deg); opacity: 1; text-shadow: 0 0 10px #fff; }
+    25% { opacity: 0.2; }
+    50% { transform: rotateY(180deg); opacity: 1; }
+    75% { opacity: 0.2; }
+    100% { transform: rotateY(360deg); opacity: 1; text-shadow: 0 0 10px #fff; }
 }

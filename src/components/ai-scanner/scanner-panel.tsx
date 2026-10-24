@@ -70,6 +70,7 @@ const ScannerPanel = ({ open, onClose }: Props) => {
                             <span className='scanner-panel__radar-ring scanner-panel__radar-ring--1' />
                             <span className='scanner-panel__radar-ring scanner-panel__radar-ring--2' />
                             <span className='scanner-panel__radar-ring scanner-panel__radar-ring--3' />
+                            <span className='scanner-panel__sweep' />
                             <span className='scanner-panel__radar-ai'>AI</span>
                             <span className='scanner-panel__blip scanner-panel__blip--a' />
                             <span className='scanner-panel__blip scanner-panel__blip--b' />
@@ -120,6 +121,17 @@ const ScannerPanel = ({ open, onClose }: Props) => {
                             <label>TRADE TYPE</label>
                             <div className='scanner-panel__box'>Waiting for scan</div>
                         </div>
+                    </div>
+
+                    <div className='scanner-panel__card scanner-panel__status'>Not scanned yet</div>
+
+                    <div className='scanner-panel__actions'>
+                        <button type='button' className='scanner-panel__btn scanner-panel__btn--primary'>
+                            Scan Markets
+                        </button>
+                        <button type='button' className='scanner-panel__btn'>
+                            Load Scanner Bot
+                        </button>
                     </div>
                 </div>
             </div>

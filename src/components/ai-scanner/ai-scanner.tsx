@@ -83,7 +83,7 @@ const AiScanner = () => {
         <>
             <div
                 ref={ref}
-                className='ai-scanner'
+                className={`ai-scanner${open ? ' is-open' : ''}`}
                 style={pos ? { left: pos.x, top: pos.y } : { visibility: 'hidden' }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
