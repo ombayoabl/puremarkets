@@ -10,6 +10,7 @@ import Dialog from '@/components/shared_ui/dialog';
 import MobileWrapper from '@/components/shared_ui/mobile-wrapper';
 import Tabs from '@/components/shared_ui/tabs/tabs';
 import TradeTypeConfirmationModal from '@/components/trade-type-confirmation-modal';
+import TradingViewComponent from '@/components/trading-view-chart/trading-view';
 import TradingViewModal from '@/components/trading-view-chart/trading-view-modal';
 import { DBOT_TABS, NAV_ITEMS, TAB_IDS, TNavItem } from '@/constants/bot-contents';
 import { api_base, updateWorkspaceName } from '@/external/bot-skeleton';
@@ -378,7 +379,9 @@ const AppWrapper = observer(() => {
             setComingSoonItem(null);
             handleTabChange(item.tab_index);
         } else if (item.type === 'trading_view') {
-            setTradingViewModalVisibility();
+            // Trading View is a normal tab page (no pop-up, nothing to close)
+            setComingSoonItem(item);
+            handleTabChange(DBOT_TABS.COMING_SOON);
         } else {
             // Feature not built yet: show a Coming soon page
             setComingSoonItem(item);
@@ -528,7 +531,13 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
                             <div label='Coming soon' id='id-coming-soon'>
-                                <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
+                                {coming_soon_item?.type === 'trading_view' ? (
+                                    <div className='tv-tab'>
+                                        <TradingViewComponent />
+                                    </div>
+                                ) : (
+                                    <ComingSoon name={coming_soon_item?.label ?? ''} icon={coming_soon_item?.key} />
+                                )}
                             </div>
                             <div label='Bulk Trader' id='id-bulk-trader'>
                                 <Suspense fallback={<ChunkLoader message={localize('Loading Bulk Trader...')} />}>

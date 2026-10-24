@@ -54,3 +54,20 @@
         }
     }
 }
+
+// Trading View as a normal tab page: fills the tab area (same height as the Charts tab).
+.tv-tab {
+    position: relative;
+    width: 100%;
+    height: var(--tab-content-height);
+    background: #fff;
+
+    @media (max-width: 926px) {
+        height: var(--tab-content-height-mobile);
+    }
+
+    iframe {
+        position: absolute;
+        inset: 0;
+    }
+}
