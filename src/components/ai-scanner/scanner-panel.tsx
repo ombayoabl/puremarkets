@@ -267,9 +267,8 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                         {found?.symbol === r.symbol ? '★ ' : ''}
                                         {shortName(r.symbol)}
                                     </b>
-                                    <span>
-                                        {r.p8} · {r.p9}
-                                    </span>
+                                    <span className='scanner-panel__d'>8: {r.p8}%</span>
+                                    <span className='scanner-panel__d'>9: {r.p9}%</span>
                                 </div>
                             ))}
                         </div>

@@ -1,5 +1,6 @@
 // @ts-nocheck — uses the shared Deriv API connection (api_base), which is loosely typed upstream
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
@@ -206,7 +207,10 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange }: Props) 
 
     return (
         <>
-            <LimitPopup kind={limit} onClose={() => setLimit(null)} />
+            {createPortal(
+                <LimitPopup kind={limit} onClose={() => setLimit(null)} z_index={2147483100} />,
+                document.body
+            )}
             {open && (
                 <div className='scanner-panel__backdrop' onClick={onClose}>
                     <div

@@ -574,3 +574,9 @@
     from { opacity: 0; transform: translate(-50%, -46%); }
     to { opacity: 1; transform: translate(-50%, -50%); }
 }
+
+.scanner-panel__d {
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
