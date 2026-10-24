@@ -76,7 +76,7 @@ const TradingBots = observer(() => {
     };
 
     return (
-        <div className='sub-tabs-page'>
+        <div className='sub-tabs-page tbots-page'>
             <div className='sub-tabs-page__tabs' role='tablist'>
                 {SUB_TABS.map(t => (
                     <button

@@ -1,19 +1,35 @@
+// full-width white page with three big cards per row (same feel as the Freebots page it is modelled on)
+.sub-tabs-page.tbots-page {
+    max-width: none;
+    margin: 0;
+    padding: 0 2.4rem 6rem;
+    background: #fff;
+    color: #1c2b24;
+    min-height: calc(100vh - 16rem);
+
+    .sub-tabs-page__tab { color: #1c2b24; font-size: 1.7rem; padding: 2rem 0.4rem; }
+    .sub-tabs-page__tabs { margin-bottom: 0; }
+}
+
 .tbots {
     &__head {
-        padding: 2.4rem 0 1.2rem;
+        padding: 3.2rem 0 2.4rem;
         text-align: center;
 
-        h2 { margin: 0 0 0.8rem; font-size: 2.4rem; }
-        p { margin: 0; font-size: 1.6rem; opacity: 0.85; }
+        h2 { margin: 0 0 0.8rem; font-size: 3rem; font-weight: 800; color: #0b3d27; }
+        p { margin: 0; font-size: 1.6rem; color: #2f3f37; opacity: 0.9; }
     }
 
     &__error { color: #ff6b78; text-align: center; }
 
     &__grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
-        gap: 1.6rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2.4rem;
         padding-bottom: 6rem;
+
+        @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 700px) { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
     }
 
     &__card {
@@ -23,7 +39,7 @@
         flex-direction: column;
         gap: 0.8rem;
         min-width: 0;
-        padding: 2rem 2rem 1.8rem;
+        padding: 2.8rem 2.4rem 2.4rem;
         border: 1px solid rgba(201, 162, 39, 0.35);
         border-radius: 0.8rem;
         background: #fff;
@@ -43,7 +59,7 @@
 
         &:hover { transform: translateY(-0.2rem); box-shadow: 0 0.6rem 1.8rem rgba(201, 162, 39, 0.28); }
 
-        h3 { margin: 0.4rem 0 0; font-size: 1.7rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #0b3d27; overflow-wrap: anywhere; }
+        h3 { margin: 0.4rem 0 0.4rem; font-size: 2rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #0b3d27; overflow-wrap: anywhere; }
     }
 
     &__price {
@@ -54,9 +70,11 @@
         color: #fff;
         font-weight: 700;
     }
-    &__desc, &__content { margin: 0; line-height: 1.55; font-size: 1.5rem; color: #2f3f37; overflow-wrap: anywhere; }
+    &__desc, &__content { margin: 0; line-height: 1.6; font-size: 1.6rem; color: #2f3f37; overflow-wrap: anywhere; }
     &__desc--clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     &__content { white-space: pre-wrap; }
+
+    &__desc, &__content, &__more { margin-bottom: 0.4rem; }
 
     &__more {
         align-self: flex-start;
@@ -74,12 +92,15 @@
     }
 
     &__btn {
-        margin-top: auto;
+        margin-top: auto; // buttons line up along the bottom of every card
+        position: relative;
+        top: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        height: 4.2rem;
+        height: 4.8rem;
+        flex-shrink: 0;
         border: 0;
         border-radius: 0.4rem;
         background: linear-gradient(90deg, #0e7a4b 0%, #5a9a3a 50%, #d4a82a 100%);
