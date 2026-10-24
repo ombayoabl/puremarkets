@@ -71,10 +71,9 @@
         font-weight: 700;
     }
     &__desc, &__content { margin: 0; line-height: 1.6; font-size: 1.6rem; color: #2f3f37; overflow-wrap: anywhere; }
-    &__desc--clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     &__content { white-space: pre-wrap; }
 
-    &__desc, &__content, &__more { margin-bottom: 0.4rem; }
+    &__desc, &__content { flex: 1 1 auto; margin-bottom: 0.8rem; } // the full description fills the card
 
     &__more {
         align-self: flex-start;
