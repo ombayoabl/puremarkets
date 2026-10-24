@@ -17,10 +17,11 @@ type Props = {
     market: MarketScan | null;
     onClose: () => void;
     onRunningChange: (running: boolean) => void;
+    onFinished: () => void; // a run ended (Stop, take profit or stop loss): the found signal is cleared
 };
 
 // The bot lives here for as long as the widget is on the page; closing the window does not stop it.
-const ScannerBot = observer(({ open, market, onClose, onRunningChange }: Props) => {
+const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinished }: Props) => {
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
 
@@ -195,7 +196,16 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange }: Props) 
         } finally {
             if (run_id.current === my_run) run_id.current += 1;
             setRunning(false);
+            onFinished();
         }
+    };
+
+    // closing the take profit / stop loss popup clears the result from the box, ready for the next run
+    const clearLimit = () => {
+        setLimit(null);
+        setPl({ n: 0, wins: 0, total: 0 });
+        setStatus('Ready. Scan for a market, then press Run.');
+        setError('');
     };
 
     const stop = () => {
@@ -207,10 +217,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange }: Props) 
 
     return (
         <>
-            {createPortal(
-                <LimitPopup kind={limit} onClose={() => setLimit(null)} z_index={2147483100} />,
-                document.body
-            )}
+            {createPortal(<LimitPopup kind={limit} onClose={clearLimit} z_index={2147483100} />, document.body)}
             {open && (
                 <div className='scanner-panel__backdrop' onClick={onClose}>
                     <div

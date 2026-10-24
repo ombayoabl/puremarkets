@@ -40,9 +40,10 @@ type Props = {
     scanned: boolean;
     onResult: (results: MarketScan[], found: MarketScan | null) => void;
     onLoadBot: () => void;
+    onClear: () => void;
 };
 
-const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoadBot }: Props) => {
+const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoadBot, onClear }: Props) => {
     const [active, setActive] = useState(MODES[0].key);
     const [ticks, setTicks] = useState('1000');
     const [scanning, setScanning] = useState(false);
@@ -71,6 +72,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const scan = async () => {
         if (scanning) return;
         unlockScanSound(); // browsers only allow sound after a click
+        onClear(); // a new scan starts clean: the earlier signal is forgotten
         setScanning(true);
         setScanError('');
         setDone(0);

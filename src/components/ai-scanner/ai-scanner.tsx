@@ -29,6 +29,12 @@ const AiScanner = () => {
     const [results, setResults] = useState<MarketScan[]>([]);
     const [found, setFound] = useState<MarketScan | null>(null);
     const [scanned, setScanned] = useState(false);
+    // forget the found signal and the market list, so the next scan starts again from analysing
+    const clearSignal = () => {
+        setFound(null);
+        setResults([]);
+        setScanned(false);
+    };
 
     const clamp = useCallback((p: Pos): Pos => {
         const el = ref.current;
@@ -116,6 +122,7 @@ const AiScanner = () => {
                 open={open}
                 onClose={() => setOpen(false)}
                 found={found}
+                onClear={clearSignal}
                 results={results}
                 scanned={scanned}
                 onResult={(list, best) => {
