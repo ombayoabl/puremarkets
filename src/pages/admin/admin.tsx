@@ -66,23 +66,6 @@ const BotForm = ({ bot, onSave, onCancel }) => {
         r.readAsText(f);
         if (!b.name) set('name', f.name.replace(/\.xml$/i, ''));
     };
-    // Test mode switch saves straight away so it takes effect without pressing Save.
-    const toggleTestMode = async (on: boolean) => {
-        const next = { ...s, test_mode: { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on } };
-        setS(next);
-        setSaved(false);
-        setBusy(true);
-        try {
-            await api('save_settings', { settings: next });
-            await reload();
-            setSaved(true);
-        } catch (e) {
-            setS(p => ({ ...p, test_mode: { ...(p.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: !on } }));
-            fail(e);
-        } finally {
-            setBusy(false);
-        }
-    };
     const save = async () => {
         setBusy(true);
         setError('');
@@ -203,12 +186,32 @@ const Bots = ({ bots, reload, fail }) => {
 
 const Controls = ({ settings, reload, fail }) => {
     const [s, setS] = useState(settings);
+    const localTm = () => { try { return localStorage.getItem('pm_test_mode'); } catch (e) { return null; } };
     const [saved, setSaved] = useState(false);
     const [busy, setBusy] = useState(false);
-    useEffect(() => setS(settings), [settings]);
+    useEffect(() => {
+        const l = localTm();
+        setS(l === null ? settings : { ...settings, test_mode: { ...(settings.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: l === '1' || (l !== '0' && settings.test_mode?.on) } });
+    }, [settings]);
     const set = (k: string, v: any) => {
         setSaved(false);
         setS(p => ({ ...p, [k]: v }));
+    };
+    // Test mode switch: flips instantly on this browser, then saves to the server in the background.
+    const [tm_note, setTmNote] = useState('');
+    const toggleTestMode = async (on: boolean) => {
+        try {
+            localStorage.setItem('pm_test_mode', on ? '1' : '0');
+        } catch (e) {}
+        setS(p => ({ ...p, test_mode: { ...(p.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on } }));
+        setTmNote(on ? 'Turned ON on this browser. Saving for all pages…' : 'Turned OFF on this browser. Saving for all pages…');
+        try {
+            const next = { ...s, test_mode: { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on } };
+            await api('save_settings', { settings: next });
+            setTmNote(on ? 'Test mode is ON (saved).' : 'Test mode is OFF (saved).');
+        } catch (e) {
+            setTmNote(`Switched ${on ? 'ON' : 'OFF'} on this browser, but saving for everyone failed: ${e.message}`);
+        }
     };
     const save = async () => {
         setBusy(true);
@@ -269,12 +272,12 @@ const Controls = ({ settings, reload, fail }) => {
                     role='switch'
                     aria-checked={Boolean(s.test_mode?.on)}
                     className={`adm-switch${s.test_mode?.on ? ' adm-switch--on' : ''}`}
-                    disabled={busy}
                     onClick={() => toggleTestMode(!s.test_mode?.on)}
                 >
                     <span className='adm-switch__knob' />
                     <span className='adm-switch__text'>Test mode is {s.test_mode?.on ? 'ON' : 'OFF'} (tap to turn {s.test_mode?.on ? 'off' : 'on'})</span>
                 </button>
+                {tm_note && <p className='adm-muted'>{tm_note}</p>}
                 <input
                     value={(s.test_mode?.accounts || DEFAULT_SITE_SETTINGS.test_mode.accounts).join(', ')}
                     onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), accounts: e.target.value.split(',').map(a => a.trim()) })}

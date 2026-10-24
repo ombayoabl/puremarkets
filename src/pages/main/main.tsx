@@ -415,7 +415,13 @@ const AppWrapper = observer(() => {
                 // (ids starting with D or R, e.g. DOT.../ROT...) and for any account listed in the admin setting.
                 // While it is OFF, nothing shows.
                 const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.accounts?.includes(active_id));
-                if (!tm?.on || !active_id || !is_test_account) return null;
+                let local_tm: string | null = null;
+                try {
+                    local_tm = localStorage.getItem('pm_test_mode');
+                } catch (e) {}
+                // The switch on this browser (set from /admin) wins; otherwise the saved site setting decides.
+                const test_on = local_tm === '1' ? true : local_tm === '0' ? false : Boolean(tm?.on);
+                if (!test_on || !active_id || !is_test_account) return null;
                 const kind = isDemoAccount(active_id) ? 'DEMO account (virtual money)' : 'REAL account (real money)';
                 return (
                     <div className='site-testmode' role='status'>
