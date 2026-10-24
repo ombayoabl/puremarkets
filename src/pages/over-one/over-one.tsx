@@ -50,6 +50,28 @@ const digitPercents = (list: number[]) => {
 // compared the way they are shown (1 decimal), so a box that reads 9.2% counts as 9.2%
 const meets = (pct: number[]) => RULES.every(r => Number(pct[r.digit].toFixed(1)) >= r.min);
 
+// Strategy 2 ("Entry on 0/1"): 1-tick Over 1. A market qualifies when its highest (green) bar is on a digit 5-9 and
+// is 10.5% or more, and its lowest (red) bar is 9% or less. Then each trade waits for the last digit to be 0 or 1
+// (once or twice in a row) before Over 1 is placed.
+type Strategy = 'levels' | 'entry01';
+const GREEN_MIN = 10.5;
+const RED_MAX = 9;
+const shownPct = (v: number) => Number(v.toFixed(1));
+const greenRed = (pct: number[]) => {
+    let hi = 0;
+    let lo = 0;
+    pct.forEach((v, d) => {
+        if (v > pct[hi]) hi = d;
+        if (v < pct[lo]) lo = d;
+    });
+    return { hi, lo, green: hi >= 5 && shownPct(pct[hi]) >= GREEN_MIN, red: shownPct(pct[lo]) <= RED_MAX };
+};
+const meetsStrategy = (pct: number[], strategy: Strategy) => {
+    if (strategy === 'levels') return meets(pct);
+    const g = greenRed(pct);
+    return g.green && g.red;
+};
+
 const OverOne = observer(() => {
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
@@ -66,6 +88,8 @@ const OverOne = observer(() => {
     const [ticks_input, setTicksInput] = useState<number>(1000);
     const [ticks_count, setTicksCount] = useState<number>(1000);
     const [auto_trade, setAutoTrade] = useState(true);
+    const [strategy, setStrategy] = useState<Strategy>('levels');
+    const [wait_hits, setWaitHits] = useState<number>(1);
 
     const [scanning, setScanning] = useState(false);
     const [trading, setTrading] = useState(false);
@@ -93,6 +117,8 @@ const OverOne = observer(() => {
         rec_type,
         rec_digit,
         multiplier,
+        strategy,
+        wait_hits,
     };
 
     // ---- sound (made with the browser's own audio, no files) ----
@@ -235,6 +261,48 @@ const OverOne = observer(() => {
         []
     );
 
+    // Strategy 2: wait until the last digit on `symbol` has been 0 or 1 `hits` times in a row.
+    // Resolves false when the run is stopped meanwhile.
+    const waitForEntry = useCallback(
+        (symbol: string, hits: number, my_run: number) =>
+            new Promise<boolean>(resolve => {
+                let done = false;
+                let streak = 0;
+                let dp = MARKETS.find(m => m.symbol === symbol)?.dp ?? 2;
+                let sub_id = '';
+                const finish = (v: boolean) => {
+                    if (done) return;
+                    done = true;
+                    clearInterval(poll);
+                    msg.unsubscribe();
+                    cancel_wait.current = null;
+                    if (sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+                    resolve(v);
+                };
+                const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
+                    if (data?.msg_type !== 'tick' || data.tick?.symbol !== symbol) return;
+                    if (data.tick.pip_size !== undefined) dp = Number(data.tick.pip_size);
+                    const d = toDigit(data.tick.quote, dp);
+                    streak = d === 0 || d === 1 ? streak + 1 : 0;
+                    if (streak >= hits) finish(true);
+                });
+                const poll = setInterval(() => {
+                    if (run_id.current !== my_run) finish(false);
+                }, 300);
+                cancel_wait.current = () => finish(false);
+                api_base.api
+                    .send({ ticks: symbol, subscribe: 1 })
+                    .then((r: any) => {
+                        sub_id = r?.subscription?.id || '';
+                        if (done && sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+                    })
+                    .catch(() => {
+                        // already streamed by another page: the ticks still reach us
+                    });
+            }),
+        []
+    );
+
     // Trade one contract at a time on `symbol`: Over 1, or the recovery contract after a loss,
     // until Stop is pressed or take profit / stop loss is reached
     const runTrades = useCallback(
@@ -257,7 +325,15 @@ const OverOne = observer(() => {
                     const barrier = recovering ? rec_digit_ok : OVER1.digit;
                     const label = recovering ? `${c.rec_type === 'under' ? 'Under' : 'Over'} ${barrier}` : OVER1.label;
                     const amount = recovering ? round2(c.stake * Math.pow(Math.max(1, c.multiplier), losses)) : c.stake;
-                    setStatus(`${localize('Trading')} ${name}: ${label}, ${localize('stake')} ${amount} ${c.currency}…`);
+                    if (!recovering && c.strategy === 'entry01') {
+                        const hits = clamp(Math.round(c.wait_hits) || 1, 1, 2);
+                        setStatus(`${name}: ${localize('waiting for the digit to hit 0 or 1')} (${hits}x)…`);
+                        const ok = await waitForEntry(symbol, hits, my_run);
+                        if (!ok || run_id.current !== my_run) break;
+                    }
+                    setStatus(
+                        `${localize('Trading')} ${name}: ${label}, ${localize('stake')} ${amount} ${c.currency}…`
+                    );
 
                     let cid: number;
                     try {
@@ -270,7 +346,7 @@ const OverOne = observer(() => {
                                 contract_type: key,
                                 barrier: String(barrier),
                                 currency: c.currency,
-                                duration: clamp(Math.round(c.duration) || 1, 1, 10),
+                                duration: c.strategy === 'entry01' ? 1 : clamp(Math.round(c.duration) || 1, 1, 10),
                                 duration_unit: 't',
                                 underlying_symbol: symbol,
                             },
@@ -306,7 +382,7 @@ const OverOne = observer(() => {
                 if (run_id.current === my_run) setTrading(false);
             }
         },
-        [waitForResult]
+        [waitForResult, waitForEntry]
     );
 
     // ---- scan all 10 volatilities, trade the first one that meets the rule ----
@@ -332,7 +408,7 @@ const OverOne = observer(() => {
 
         const check = () => {
             if (fired || cancelled || !loaded_all) return;
-            const hit = MARKETS.find(m => pct_now[m.symbol] && meets(pct_now[m.symbol]));
+            const hit = MARKETS.find(m => pct_now[m.symbol] && meetsStrategy(pct_now[m.symbol], cfg.current.strategy));
             if (!hit) return;
             fired = true;
             setScanning(false);
@@ -341,7 +417,9 @@ const OverOne = observer(() => {
             tone(1100, 0.16, 0.1, 0.2);
             tone(1320, 0.28, 0.1, 0.4);
             if (!cfg.current.auto_trade) {
-                setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Auto trade is off, so no trade was placed.')}`);
+                setStatus(
+                    `${localize('Signal found on')} ${hit.name}. ${localize('Auto trade is off, so no trade was placed.')}`
+                );
                 return;
             }
             setStatus(`${localize('Signal found on')} ${hit.name}. ${localize('Placing Over 1…')}`);
@@ -365,7 +443,13 @@ const OverOne = observer(() => {
             for (let i = 0; i < MARKETS.length; i++) {
                 if (cancelled) return;
                 const m = MARKETS[i];
-                const base = { ticks_history: m.symbol, adjust_start_time: 1, count: ticks_count, end: 'latest', style: 'ticks' };
+                const base = {
+                    ticks_history: m.symbol,
+                    adjust_start_time: 1,
+                    count: ticks_count,
+                    end: 'latest',
+                    style: 'ticks',
+                };
                 try {
                     let res;
                     try {
@@ -463,9 +547,29 @@ const OverOne = observer(() => {
     return (
         <div className='bulk'>
             <LimitPopup kind={limit} onClose={() => setLimit(null)} />
+            <div className='bulk__modes'>
+                <Check
+                    checked={strategy === 'levels'}
+                    onChange={() => setStrategy('levels')}
+                    label={localize('Strategy 1: digit levels')}
+                />
+                <Check
+                    checked={strategy === 'entry01'}
+                    onChange={() => setStrategy('entry01')}
+                    label={localize('Strategy 2: entry on 0 / 1')}
+                />
+            </div>
             <p className='bulk__hint'>
-                {`${localize('Run scans all 10 volatilities and, on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}, ${localize('trades Over 1 one trade at a time until you press Stop or your take profit / stop loss is reached.')}`}
+                {strategy === 'levels'
+                    ? `${localize('Run scans all 10 volatilities and, on the first one where')} ${RULES.map(r => `${r.digit} ≥ ${r.min}%`).join(', ')}, ${localize('trades Over 1 one trade at a time until you press Stop or your take profit / stop loss is reached.')}`
+                    : `${localize('Run scans all 10 volatilities for one whose green bar (highest, on digit 5-9) is')} ${GREEN_MIN}% ${localize('or more and whose red bar (lowest) is')} ${RED_MAX}% ${localize('or less. Then, before each 1-tick Over 1, it waits for the last digit to be 0 or 1.')}`}
             </p>
+            {strategy === 'entry01' && (
+                <div className='bulk__field'>
+                    <label className='bulk__label'>{localize('Wait for 0 or 1 (times in a row, 1 or 2)')}</label>
+                    <NumInput value={wait_hits} onChange={setWaitHits} min={1} max={2} integer fallback={1} />
+                </div>
+            )}
 
             <div className='bulk__grid bulk__grid--three'>
                 <div className='bulk__field'>
@@ -478,7 +582,14 @@ const OverOne = observer(() => {
                 </div>
                 <div className='bulk__field'>
                     <label className='bulk__label'>{localize('Ticks to analyse')}</label>
-                    <NumInput value={ticks_input} onChange={setTicksInput} min={20} max={MAX_TICKS} integer fallback={1000} />
+                    <NumInput
+                        value={ticks_input}
+                        onChange={setTicksInput}
+                        min={20}
+                        max={MAX_TICKS}
+                        integer
+                        fallback={1000}
+                    />
                 </div>
             </div>
             <div className='bulk__grid'>
@@ -493,11 +604,19 @@ const OverOne = observer(() => {
             </div>
 
             <div className='bulk__modes'>
-                <Check checked={auto_trade} onChange={() => setAutoTrade(v => !v)} label={localize('Auto trade after a signal')} />
+                <Check
+                    checked={auto_trade}
+                    onChange={() => setAutoTrade(v => !v)}
+                    label={localize('Auto trade after a signal')}
+                />
             </div>
 
             <div className='bulk__martingale'>
-                <Check checked={rec_on} onChange={() => setRecOn(v => !v)} label={localize('Recovery mode (after a loss)')} />
+                <Check
+                    checked={rec_on}
+                    onChange={() => setRecOn(v => !v)}
+                    label={localize('Recovery mode (after a loss)')}
+                />
                 {rec_on && (
                     <>
                         <div className='bulk__modes'>
@@ -557,7 +676,8 @@ const OverOne = observer(() => {
             <div className='bulk__scan-list'>
                 {MARKETS.map(m => {
                     const pct = scan_pct[m.symbol];
-                    const ok = !!pct && meets(pct);
+                    const ok = !!pct && meetsStrategy(pct, strategy);
+                    const gr = pct && strategy === 'entry01' ? greenRed(pct) : null;
                     return (
                         <div key={m.symbol} className={classNames('bulk__scan-row', { 'bulk__scan-row--hit': ok })}>
                             <div className='bulk__scan-name'>
@@ -573,9 +693,16 @@ const OverOne = observer(() => {
                                         <div
                                             key={d}
                                             className={classNames('bulk__scan-cell', {
-                                                'bulk__scan-cell--rule': !!rule,
-                                                'bulk__scan-cell--pass': pass,
+                                                'bulk__scan-cell--rule': strategy === 'levels' && !!rule,
+                                                'bulk__scan-cell--pass': strategy === 'levels' && pass,
                                             })}
+                                            style={
+                                                gr && d === gr.hi && gr.green
+                                                    ? { background: 'rgba(34,197,94,0.35)' }
+                                                    : gr && d === gr.lo && gr.red
+                                                      ? { background: 'rgba(239,68,68,0.35)' }
+                                                      : undefined
+                                            }
                                         >
                                             <strong>{d}</strong>
                                             <small>{v === null ? '—' : `${v.toFixed(1)}%`}</small>
