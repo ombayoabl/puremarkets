@@ -8,7 +8,7 @@ import './live-balance.scss';
  * DTrader app header and account-switcher.tsx. The balance value below is
  * always the true value; only this label is forced.
  */
-const FORCED_REAL_LABEL_LOGIN_IDS = ['DOT94283012'];
+const FORCED_REAL_LABEL_LOGIN_IDS = ['DOT93428523'];
 const formatBalance = (balance: string) => {
     const amount = Number(balance ?? 0);
     return amount.toLocaleString(undefined, {
