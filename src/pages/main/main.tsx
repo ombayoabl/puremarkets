@@ -44,7 +44,6 @@ import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
 import { useSiteConfig } from '@/services/site-config';
-import { isDemoAccount } from '@/utils/account-helpers';
 import './main.scss';
 import '../copy-trading/copy-engine'; // starts copying trades as soon as the app loads
 
@@ -422,11 +421,9 @@ const AppWrapper = observer(() => {
                 // The switch on this browser (set from /admin) wins; otherwise the saved site setting decides.
                 const test_on = local_tm === '1' ? true : local_tm === '0' ? false : Boolean(tm?.on);
                 if (!test_on || !active_id || !is_test_account) return null;
-                const kind = isDemoAccount(active_id) ? 'DEMO account (virtual money)' : 'REAL account (real money)';
                 return (
                     <div className='site-testmode' role='status'>
-                        TEST MODE · {active_id} · {kind}
-                        <div className='site-testmode__tag'>Everymanmarkets - where every person has a place and an opportunity 🌍📈</div>
+                        Everymanmarkets - where every person has a place and an opportunity 🌍📈
                     </div>
                 );
             })()}
