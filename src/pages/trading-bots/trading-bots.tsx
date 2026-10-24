@@ -16,6 +16,40 @@ const SUB_TABS = [
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+const Chevron = ({ up }: { up: boolean }) => (
+    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' aria-hidden='true' style={{ transform: up ? 'rotate(180deg)' : undefined }}>
+        <polyline points='6 9 12 15 18 9' />
+    </svg>
+);
+
+const BotCard = ({ b, onLoad, onAccess, can_access }: { b: SiteBot; onLoad: (b: SiteBot) => void; onAccess: (b: SiteBot) => void; can_access: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const long = (b.description || '').length > 110;
+    return (
+        <div className='tbots__card'>
+            <h3>{b.name}</h3>
+            {b.type === 'premium' && b.price && <span className='tbots__price'>{b.price}</span>}
+            {b.description && <p className={classNames('tbots__desc', { 'tbots__desc--clamp': long && !open })}>{b.description}</p>}
+            {long && (
+                <button type='button' className='tbots__more' onClick={() => setOpen(o => !o)}>
+                    {open ? localize('Show less') : localize('Learn more')} <Chevron up={open} />
+                </button>
+            )}
+            {b.type === 'strategy' && b.content && <p className='tbots__content'>{b.content}</p>}
+            {b.type !== 'premium' && b.xml && (
+                <button type='button' className='tbots__btn' onClick={() => onLoad(b)}>
+                    {localize('Load Bot')}
+                </button>
+            )}
+            {b.type === 'premium' && can_access && (
+                <button type='button' className='tbots__btn' onClick={() => onAccess(b)}>
+                    {localize('Get access')}
+                </button>
+            )}
+        </div>
+    );
+};
+
 const TradingBots = observer(() => {
     const { dashboard, load_modal } = useStore();
     const { bots, settings } = useSiteConfig();
@@ -65,22 +99,13 @@ const TradingBots = observer(() => {
             {message && <p className='tbots__error'>{message}</p>}
             <div className='tbots__grid'>
                 {list.map(b => (
-                    <div key={b.id} className='tbots__card'>
-                        <h3>{b.name}</h3>
-                        {b.type === 'premium' && b.price && <span className='tbots__price'>{b.price}</span>}
-                        {b.description && <p className='tbots__desc'>{b.description}</p>}
-                        {b.type === 'strategy' && b.content && <p className='tbots__content'>{b.content}</p>}
-                        {b.type !== 'premium' && b.xml && (
-                            <button type='button' className='tbots__btn' onClick={() => openBot(b)}>
-                                {localize('Load in Bot Builder')}
-                            </button>
-                        )}
-                        {b.type === 'premium' && (b.link || settings.contact_link) && (
-                            <button type='button' className='tbots__btn' onClick={() => getAccess(b)}>
-                                {localize('Get access')}
-                            </button>
-                        )}
-                    </div>
+                    <BotCard
+                        key={b.id}
+                        b={b}
+                        onLoad={openBot}
+                        onAccess={getAccess}
+                        can_access={Boolean(b.link || settings.contact_link)}
+                    />
                 ))}
             </div>
         </div>
