@@ -15,10 +15,10 @@ export const MARKETS = [
 ];
 
 // ---- Over1 / Under8 strategy ----
-// Signal "Under 8": digits 8 and 9 are each at or below 9.5% AND both are decreasing.
+// Signal "Under 8": digits 8 and 9 are each at or below 10% AND both are decreasing.
 // "Decreasing" = the digit's share over the latest window is lower than its share over the same-size
 // window that ended LOOKBACK ticks earlier.
-export const LOW_LIMIT = 9.5;
+export const LOW_LIMIT = 10;
 export const LOOKBACK = 100;
 export const MAX_DEPTH = 5000;
 

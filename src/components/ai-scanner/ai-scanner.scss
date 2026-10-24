@@ -467,3 +467,16 @@
         }
     }
 }
+
+.scanner-panel__check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+
+    input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+    }
+}

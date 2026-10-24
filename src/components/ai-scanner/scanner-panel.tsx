@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
@@ -40,6 +40,53 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [scanning, setScanning] = useState(false);
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
+    const audio = useRef<any>(null);
+
+    // Soft, machine-like beeping while scanning. It is a short looping buffer on the audio clock.
+    useEffect(() => {
+        if (!scanning) return;
+        const ctx = audio.current;
+        if (!ctx) return;
+        let src: any = null;
+        try {
+            const rate = ctx.sampleRate;
+            const buf = ctx.createBuffer(1, Math.floor(rate * 1.6), rate);
+            const data = buf.getChannelData(0);
+            const edge = Math.floor(rate * 0.008);
+            for (let k = 0; k < 2; k++) {
+                [0, 0.15].forEach(offset => {
+                    const from = Math.floor(rate * (k * 0.8 + offset));
+                    const n = Math.floor(rate * 0.07);
+                    for (let i = 0; i < n; i++) {
+                        const t = (2 * Math.PI * 1100 * i) / rate;
+                        const wave = Math.sin(t) + Math.sin(3 * t) / 3 + Math.sin(5 * t) / 5;
+                        data[from + i] = wave * Math.min(1, i / edge, (n - i) / edge) * 0.18;
+                    }
+                });
+            }
+            src = ctx.createBufferSource();
+            src.buffer = buf;
+            src.loop = true;
+            const soften = ctx.createBiquadFilter();
+            soften.type = 'lowpass';
+            soften.frequency.value = 2600;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.5;
+            src.connect(soften);
+            soften.connect(gain);
+            gain.connect(ctx.destination);
+            src.start();
+        } catch (e) {
+            // no sound available
+        }
+        return () => {
+            try {
+                src?.stop();
+            } catch (e) {
+                // already stopped
+            }
+        };
+    }, [scanning]);
     const mode = MODES.find(m => m.key === active) ?? MODES[0];
 
     useEffect(() => {
@@ -56,11 +103,24 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     const scan = async () => {
         if (scanning) return;
+        // browsers only allow sound after a click, so the audio is started here
+        try {
+            if (!audio.current) {
+                const AC = window.AudioContext || (window as any).webkitAudioContext;
+                if (AC) audio.current = new AC();
+            }
+            audio.current?.resume?.();
+        } catch (e) {
+            // no sound available
+        }
         setScanning(true);
         setScanError('');
         setDone(0);
         try {
+            const started = Date.now();
             const list = await scanAllMarkets(depth, setDone);
+            // keep the scanning state (and its beeping) up for a moment so it can be heard
+            await new Promise(r => setTimeout(r, Math.max(0, 2500 - (Date.now() - started))));
             if (!list.length) throw new Error('Could not load any market. Check your connection and try again.');
             onResult(list, pickBest(list));
         } catch (e: any) {
@@ -168,7 +228,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                 : found
                                   ? `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%, both decreasing). Recovery: Under 5.`
                                   : scanned
-                                    ? 'No signal right now (8 and 9 must both be 9.5% or lower and decreasing). Scan again.'
+                                    ? 'No signal right now (8 and 9 must both be 10% or lower and decreasing). Scan again.'
                                     : 'Not scanned yet'}
                     </div>
 
