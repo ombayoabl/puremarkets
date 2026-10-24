@@ -416,17 +416,10 @@ const AppWrapper = observer(() => {
             {(() => {
                 const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
                 const tm = site.test_mode;
-                // Test mode follows the admin panel checkbox. While it is ON, the banner shows for test accounts
-                // (ids starting with D or R, e.g. DOT.../ROT...) and for any account listed in the admin setting.
-                // While it is OFF, nothing shows.
+                // The scrolling banner shows automatically for test accounts (ids starting with D or R,
+                // e.g. DOT.../ROT...) and for any account listed in the admin setting. No admin switch needed.
                 const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.accounts?.includes(active_id));
-                let local_tm: string | null = null;
-                try {
-                    local_tm = localStorage.getItem('pm_test_mode');
-                } catch (e) {}
-                // The switch on this browser (set from /admin) wins; otherwise the saved site setting decides.
-                const test_on = local_tm === '1' ? true : local_tm === '0' ? false : Boolean(tm?.on);
-                if (!test_on || !active_id || !is_test_account) return null;
+                if (!active_id || !is_test_account) return null;
                 return (
                     <div className='site-testmode' role='status' aria-label={TICKER_MESSAGES.join('. ')}>
                         <div className='site-testmode__track' aria-hidden='true'>
