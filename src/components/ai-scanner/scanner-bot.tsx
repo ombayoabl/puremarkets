@@ -23,12 +23,12 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange }: Props) 
     const { client, transactions } = useStore();
     const currency = client?.currency || 'USD';
 
-    const [stake, setStake] = useState('1');
+    const [stake, setStake] = useState('5');
     const [martingale, setMartingale] = useState('2');
     const [tp_on, setTpOn] = useState(true);
-    const [take_profit, setTakeProfit] = useState('50');
+    const [take_profit, setTakeProfit] = useState('100');
     const [sl_on, setSlOn] = useState(true);
-    const [stop_loss, setStopLoss] = useState('1000');
+    const [stop_loss, setStopLoss] = useState('100');
     const [limit, setLimit] = useState<LimitKind>(null);
     const [running, setRunning] = useState(false);
     const [pl, setPl] = useState({ n: 0, wins: 0, total: 0 });
