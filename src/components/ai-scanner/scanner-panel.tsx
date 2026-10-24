@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
+import { playConfirmSound, unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
@@ -98,6 +98,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                     await new Promise(r => setTimeout(r, Math.max(0, MIN_MS - (Date.now() - started))));
                     if (stale()) return;
                     onResult(list, best);
+                    playConfirmSound(); // tick + chime, then the popup
                     setFoundPopup(true); // small "market found" popup, straight away
                     return;
                 }

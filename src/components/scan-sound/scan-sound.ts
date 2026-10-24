@@ -67,3 +67,30 @@ export const useScanSound = (active: boolean) => {
         };
     }, [active]);
 };
+
+/** A short "confirmed" sound: a soft tick, then two rising chime notes. Made with the browser's own audio, no file. */
+export const playConfirmSound = () => {
+    unlockScanSound();
+    if (!ctx) return;
+    try {
+        const t0 = ctx.currentTime + 0.02;
+        const note = (freq: number, start: number, dur: number, vol: number) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, t0 + start);
+            gain.gain.exponentialRampToValueAtTime(vol, t0 + start + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t0 + start);
+            osc.stop(t0 + start + dur + 0.02);
+        };
+        note(2200, 0, 0.05, 0.12); // the tick
+        note(880, 0.1, 0.35, 0.2); // chime, first note
+        note(1320, 0.24, 0.55, 0.2); // chime, second note (a fifth higher)
+    } catch (e) {
+        // no sound available
+    }
+};
