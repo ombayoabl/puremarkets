@@ -22,6 +22,14 @@ export const LOW_LIMIT = 10;
 export const LOOKBACK = 100;
 export const MAX_DEPTH = 5000;
 
+// ---- Over 1 strategy ----
+// Signal "Over 1": the highest (green) bar is on digit 5-9 and is 10.5% or more, and the lowest (red) bar is 9% or less.
+// The bot then waits for the last digit to be 0 or 1 before each Over 1.
+export const O1_GREEN_MIN = 10.5;
+export const O1_RED_MAX = 9;
+
+export type Kind = 'under8' | 'over1';
+
 export type MarketScan = {
     symbol: string;
     name: string;
@@ -32,9 +40,15 @@ export type MarketScan = {
     low: boolean; // 8 and 9 at or below the limit
     falling: boolean; // both decreasing
     signal: boolean;
+    o1: boolean; // Over 1 signal
+    o1_hi: number; // digit of the green bar
+    o1_lo: number; // digit of the red bar
+    o1_hi_pct: number;
+    o1_lo_pct: number;
+    kind?: Kind; // which strategy this market was picked for
 };
 
-const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toFixed(dp).slice(-1));
+export const toDigit = (quote: number | string, dp: number) => Number(Number(quote).toFixed(dp).slice(-1));
 const share = (digits: number[], d: number) => {
     if (!digits.length) return 0;
     let n = 0;
@@ -53,7 +67,28 @@ export const analyse = (digits: number[], depth: number) => {
     const low = p8 <= LOW_LIMIT && p9 <= LOW_LIMIT;
     const falling = earlier.length >= depth && p8 < before8 && p9 < before9;
     // a market is a candidate whenever 8 and 9 are both at or below the limit; the best entry is picked later
-    return { p8, p9, before8, before9, low, falling, signal: low };
+    const pct = Array.from({ length: 10 }, (_, d) => shown(share(now, d)));
+    let hi = 0;
+    let lo = 0;
+    pct.forEach((v, d) => {
+        if (v > pct[hi]) hi = d;
+        if (v < pct[lo]) lo = d;
+    });
+    const o1 = now.length > 0 && hi >= 5 && pct[hi] >= O1_GREEN_MIN && pct[lo] <= O1_RED_MAX;
+    return {
+        p8,
+        p9,
+        before8,
+        before9,
+        low,
+        falling,
+        signal: low,
+        o1,
+        o1_hi: hi,
+        o1_lo: lo,
+        o1_hi_pct: pct[hi],
+        o1_lo_pct: pct[lo],
+    };
 };
 
 // Scan all 10 volatilities at once (one history request each, all sent together).
@@ -85,6 +120,47 @@ export const scanAllMarkets = async (depth: number, onProgress?: (done: number) 
     return out.filter(Boolean) as MarketScan[];
 };
 
-// best market = the one with the lowest 8 + 9 share among those with a signal
-export const pickBest = (list: MarketScan[]) =>
-    list.filter(m => m.signal).sort((a, b) => a.p8 + a.p9 - (b.p8 + b.p9))[0] || null;
+// Picks the favoured signal: Under 8 first (the market with the lowest 8 + 9 share); if there is none, Over 1
+// (the market with the widest gap between its green and red bar). The result says which strategy it is for.
+export const pickBest = (list: MarketScan[]): MarketScan | null => {
+    const u8 = list.filter(m => m.signal).sort((a, b) => a.p8 + a.p9 - (b.p8 + b.p9))[0];
+    if (u8) return { ...u8, kind: 'under8' };
+    const o1 = list.filter(m => m.o1).sort((a, b) => b.o1_hi_pct - b.o1_lo_pct - (a.o1_hi_pct - a.o1_lo_pct))[0];
+    return o1 ? { ...o1, kind: 'over1' } : null;
+};
+
+// Resolves true once the last digit on `symbol` has been 0 or 1 `hits` times in a row; false when cancelled.
+export const waitForLowDigit = (symbol: string, hits: number, dp0: number, isCancelled: () => boolean) =>
+    new Promise<boolean>(resolve => {
+        let done = false;
+        let streak = 0;
+        let dp = dp0;
+        let sub_id = '';
+        const finish = (v: boolean) => {
+            if (done) return;
+            done = true;
+            clearInterval(poll);
+            msg.unsubscribe();
+            if (sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+            resolve(v);
+        };
+        const msg = api_base.api.onMessage().subscribe(({ data }: any) => {
+            if (data?.msg_type !== 'tick' || data.tick?.symbol !== symbol) return;
+            if (data.tick.pip_size !== undefined) dp = Number(data.tick.pip_size);
+            const d = toDigit(data.tick.quote, dp);
+            streak = d === 0 || d === 1 ? streak + 1 : 0;
+            if (streak >= hits) finish(true);
+        });
+        const poll = setInterval(() => {
+            if (isCancelled()) finish(false);
+        }, 300);
+        api_base.api
+            .send({ ticks: symbol, subscribe: 1 })
+            .then((r: any) => {
+                sub_id = r?.subscription?.id || '';
+                if (done && sub_id) api_base.api.send({ forget: sub_id }).catch(() => {});
+            })
+            .catch(() => {
+                // already streamed by another page: the ticks still reach us
+            });
+    });

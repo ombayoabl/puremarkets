@@ -6,7 +6,8 @@ import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { batch_lanes } from '@/pages/bulk-trader/batch-sockets';
 import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
-import type { MarketScan } from './scanner-engine';
+import { MARKETS, waitForLowDigit } from './scanner-engine';
+import type { Kind, MarketScan } from './scanner-engine';
 
 const MAIN_DIGIT = 8; // Under 8
 const RECOVERY_DIGIT = 5; // Under 5 after a loss
@@ -32,6 +33,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
     const [take_profit, setTakeProfit] = useState('100');
     const [sl_on, setSlOn] = useState(true);
     const [stop_loss, setStopLoss] = useState('100');
+    const [wait_hits, setWaitHits] = useState('1'); // Over 1: how many 0/1 digits in a row to wait for (1 or 2)
     const [limit, setLimit] = useState<LimitKind>(null);
     const [running, setRunning] = useState(false);
     const [pl, setPl] = useState({ n: 0, wins: 0, total: 0 });
@@ -39,6 +41,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
     const [error, setError] = useState('');
     const run_id = useRef(0);
     const bot_market = useRef<MarketScan | null>(null);
+    const bot_kind = useRef<Kind>('under8');
 
     useEffect(() => {
         onRunningChange(running);
@@ -54,7 +57,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
 
     // buy one 1-tick contract and wait until it is sold
     const trade = useCallback(
-        (symbol: string, barrier: number, amount: number, my_run: number) =>
+        (symbol: string, contract: string, barrier: number, amount: number) =>
             new Promise<number>(async (resolve, reject) => {
                 try {
                     const res = await batch_lanes.sendFast(
@@ -64,7 +67,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                             parameters: {
                                 amount,
                                 basis: 'stake',
-                                contract_type: 'DIGITUNDER',
+                                contract_type: contract,
                                 barrier: String(barrier),
                                 currency,
                                 duration: 1,
@@ -156,6 +159,10 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         run_id.current += 1;
         const my_run = run_id.current;
         bot_market.current = m;
+        const kind: Kind = m.kind || 'under8';
+        bot_kind.current = kind;
+        const over1 = kind === 'over1';
+        const hits = Math.min(2, Math.max(1, Math.round(Number(wait_hits)) || 1));
         setRunning(true);
         setPl({ n: 0, wins: 0, total: 0 });
         batch_lanes.warm(1);
@@ -166,12 +173,20 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         try {
             while (run_id.current === my_run) {
                 const recovering = losses > 0;
-                const barrier = recovering ? RECOVERY_DIGIT : MAIN_DIGIT;
+                const contract = over1 ? 'DIGITOVER' : 'DIGITUNDER';
+                const barrier = over1 ? 1 : recovering ? RECOVERY_DIGIT : MAIN_DIGIT;
                 const amount = recovering ? round2(base * Math.pow(mult, losses)) : base;
+                if (over1 && !recovering) {
+                    // Over 1 waits for the last digit to hit 0 or 1 first; after a loss it recovers straight away
+                    setStatus(`Waiting for the digit to hit 0 or 1 (${hits}x) on ${m.name}…`);
+                    const dp = MARKETS.find(x => x.symbol === m.symbol)?.dp ?? 2;
+                    const ok = await waitForLowDigit(m.symbol, hits, dp, () => run_id.current !== my_run);
+                    if (!ok || run_id.current !== my_run) break;
+                }
                 setStatus(
-                    `${recovering ? 'Recovery' : 'Trading'}: Under ${barrier} on ${m.name}, stake ${amount.toFixed(2)} ${currency}`
+                    `${recovering ? 'Recovery' : 'Trading'}: ${over1 ? 'Over' : 'Under'} ${barrier} on ${m.name}, stake ${amount.toFixed(2)} ${currency}`
                 );
-                const profit = await trade(m.symbol, barrier, amount, my_run);
+                const profit = await trade(m.symbol, contract, barrier, amount);
                 n += 1;
                 total = round2(total + profit);
                 if (profit >= 0) {
@@ -220,6 +235,8 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
     };
 
     const shown_market = running ? bot_market.current : market;
+    const shown_kind: Kind = running ? bot_kind.current : market?.kind || 'under8';
+    const bot_title = shown_kind === 'over1' ? 'Over 1 Bot' : 'Under 8 Bot';
 
     return (
         <>
@@ -229,11 +246,11 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                     <div
                         className='scanner-panel'
                         role='dialog'
-                        aria-label='Scanner Bot'
+                        aria-label={bot_title}
                         onClick={e => e.stopPropagation()}
                     >
                         <div className='scanner-panel__header'>
-                            <h2>Scanner Bot</h2>
+                            <h2>{bot_title}</h2>
                             <button type='button' className='scanner-panel__close' onClick={onClose} aria-label='Close'>
                                 <svg
                                     width='22'
@@ -256,7 +273,11 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                                 </div>
                                 <div>
                                     <label>TRADE</label>
-                                    <div className='scanner-panel__box'>Under 8 · recovery Under 5</div>
+                                    <div className='scanner-panel__box'>
+                                        {shown_kind === 'over1'
+                                            ? 'Over 1 · waits for 0 / 1'
+                                            : 'Under 8 · recovery Under 5'}
+                                    </div>
                                 </div>
                             </div>
 
@@ -321,6 +342,19 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                                     />
                                 </div>
                             </div>
+
+                            {shown_kind === 'over1' && (
+                                <div className='scanner-panel__card'>
+                                    <label>WAIT FOR 0 OR 1 (TIMES IN A ROW, 1 OR 2)</label>
+                                    <input
+                                        className='scanner-panel__input'
+                                        inputMode='numeric'
+                                        value={wait_hits}
+                                        disabled={running}
+                                        onChange={e => setWaitHits(e.target.value.replace(/\D/g, '').slice(0, 1))}
+                                    />
+                                </div>
+                            )}
 
                             <div className='scanner-panel__card scanner-panel__row3 scanner-panel__stats'>
                                 <div className='scanner-panel__field'>

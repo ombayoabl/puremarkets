@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { playConfirmSound, unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
@@ -49,7 +48,6 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [scanning, setScanning] = useState(false);
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
-    const [found_popup, setFoundPopup] = useState(false);
 
     useScanSound(scanning); // the scratching sound from the user's video, looped while scanning
     const cancel_scan = useRef(false);
@@ -98,8 +96,8 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                     await new Promise(r => setTimeout(r, Math.max(0, MIN_MS - (Date.now() - started))));
                     if (stale()) return;
                     onResult(list, best);
-                    playConfirmSound(); // tick + chime, then the popup
-                    setFoundPopup(true); // small "market found" popup, straight away
+                    playConfirmSound(); // tick + chime, then the matching bot opens by itself
+                    onLoadBot();
                     return;
                 }
                 onResult(list, null); // show the latest numbers while it keeps looking
@@ -126,40 +124,6 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     return (
         <div className='scanner-panel__backdrop' onClick={onClose}>
-            {found_popup &&
-                found &&
-                createPortal(
-                    <div className='scanner-found__overlay' onClick={() => setFoundPopup(false)}>
-                        <div className='scanner-found' onClick={e => e.stopPropagation()} role='alertdialog'>
-                            <div className='scanner-found__title'>Market found ✅</div>
-                            <div className='scanner-found__market'>{found.name}</div>
-                            <div className='scanner-found__sub'>
-                                Under 8 · digit 8 {found.p8}% · digit 9 {found.p9}%
-                            </div>
-                            <div className='scanner-found__actions'>
-                                <button
-                                    type='button'
-                                    className='scanner-found__btn scanner-found__btn--primary'
-                                    onClick={() => {
-                                        setFoundPopup(false);
-                                        onLoadBot();
-                                    }}
-                                >
-                                    Load Scanner Bot
-                                </button>
-                                <button
-                                    type='button'
-                                    className='scanner-found__btn'
-                                    onClick={() => setFoundPopup(false)}
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
-                )}
-
             <div className='scanner-panel' role='dialog' aria-label='Entry Scanner' onClick={e => e.stopPropagation()}>
                 <div className='scanner-panel__header'>
                     <h2>Entry Scanner</h2>
@@ -240,7 +204,9 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                         </div>
                         <div>
                             <label>TRADE TYPE</label>
-                            <div className='scanner-panel__box'>{found ? 'Under 8' : 'Waiting for scan'}</div>
+                            <div className='scanner-panel__box'>
+                                {found ? (found.kind === 'over1' ? 'Over 1' : 'Under 8') : 'Waiting for scan'}
+                            </div>
                         </div>
                     </div>
 
@@ -252,9 +218,11 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                               : !strategy_ready
                                 ? 'This strategy is coming soon.'
                                 : found
-                                  ? `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%). Recovery: Under 5.`
+                                  ? found.kind === 'over1'
+                                      ? `Found: ${found.name} — signal Over 1 (green bar digit ${found.o1_hi} ${found.o1_hi_pct}%, red bar digit ${found.o1_lo} ${found.o1_lo_pct}%). It waits for 0 or 1 before each trade.`
+                                      : `Found: ${found.name} — signal Under 8 (digit 8 ${found.p8}%, digit 9 ${found.p9}%). Recovery: Under 5.`
                                   : scanned
-                                    ? 'No signal right now (8 and 9 must both be 10% or lower). Scan again.'
+                                    ? 'No signal right now (Under 8: 8 and 9 both 10% or lower; Over 1: green bar 10.5%+ on digit 5-9 and red bar 9% or lower). Scan again.'
                                     : 'Not scanned yet'}
                     </div>
 
@@ -263,7 +231,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                             {results.map(r => (
                                 <div
                                     key={r.symbol}
-                                    className={`scanner-panel__result${r.signal ? ' is-signal' : ''}${found?.symbol === r.symbol ? ' is-best' : ''}`}
+                                    className={`scanner-panel__result${r.signal || r.o1 ? ' is-signal' : ''}${found?.symbol === r.symbol ? ' is-best' : ''}`}
                                     title={`${r.name} — 8: ${r.p8}%, 9: ${r.p9}%`}
                                 >
                                     <b>
@@ -272,6 +240,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                     </b>
                                     <span className='scanner-panel__d'>8: {r.p8}%</span>
                                     <span className='scanner-panel__d'>9: {r.p9}%</span>
+                                    {r.o1 && <span className='scanner-panel__d'>O1 ✓</span>}
                                 </div>
                             ))}
                         </div>
@@ -292,7 +261,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                             onClick={onLoadBot}
                             disabled={!found || scanning}
                         >
-                            Load Scanner Bot
+                            {found?.kind === 'over1' ? 'Load Over 1 Bot' : 'Load Under 8 Bot'}
                         </button>
                     </div>
                 </div>
