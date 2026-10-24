@@ -66,6 +66,23 @@ const BotForm = ({ bot, onSave, onCancel }) => {
         r.readAsText(f);
         if (!b.name) set('name', f.name.replace(/\.xml$/i, ''));
     };
+    // Test mode switch saves straight away so it takes effect without pressing Save.
+    const toggleTestMode = async (on: boolean) => {
+        const next = { ...s, test_mode: { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on } };
+        setS(next);
+        setSaved(false);
+        setBusy(true);
+        try {
+            await api('save_settings', { settings: next });
+            await reload();
+            setSaved(true);
+        } catch (e) {
+            setS(p => ({ ...p, test_mode: { ...(p.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: !on } }));
+            fail(e);
+        } finally {
+            setBusy(false);
+        }
+    };
     const save = async () => {
         setBusy(true);
         setError('');
@@ -246,11 +263,18 @@ const Controls = ({ settings, reload, fail }) => {
             </div>
             <div className='adm-card'>
                 <h3>Test mode</h3>
-                <p className='adm-muted'>Tick the box to turn test mode on, untick it to turn it off. While on, a TEST MODE banner shows whenever the logged-in account starts with D or R, or is listed below. The banner always says whether the account is demo or real; nothing about the account is changed.</p>
-                <label className='adm-check'>
-                    <input type='checkbox' checked={s.test_mode?.on || false} onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: e.target.checked })} />
-                    Turn test mode on
-                </label>
+                <p className='adm-muted'>Tap the switch to turn test mode on or off (it saves straight away). While on, a TEST MODE banner shows whenever the logged-in account starts with D or R, or is listed below. The banner always says whether the account is demo or real; nothing about the account is changed.</p>
+                <button
+                    type='button'
+                    role='switch'
+                    aria-checked={Boolean(s.test_mode?.on)}
+                    className={`adm-switch${s.test_mode?.on ? ' adm-switch--on' : ''}`}
+                    disabled={busy}
+                    onClick={() => toggleTestMode(!s.test_mode?.on)}
+                >
+                    <span className='adm-switch__knob' />
+                    <span className='adm-switch__text'>Test mode is {s.test_mode?.on ? 'ON' : 'OFF'} (tap to turn {s.test_mode?.on ? 'off' : 'on'})</span>
+                </button>
                 <input
                     value={(s.test_mode?.accounts || DEFAULT_SITE_SETTINGS.test_mode.accounts).join(', ')}
                     onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), accounts: e.target.value.split(',').map(a => a.trim()) })}

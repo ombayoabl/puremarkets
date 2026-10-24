@@ -32,6 +32,13 @@
     .adm-item select { width: auto; min-width: 14rem; }
     .adm-check { display: flex; align-items: center; gap: 0.8rem; color: var(--text); }
     .adm-check input { width: 1.8rem; height: 1.8rem; }
+    .adm-switch { display: flex; align-items: center; gap: 1.2rem; width: 100%; margin: 0.8rem 0; padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 0.8rem; background: #232b36; color: var(--text); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+    .adm-switch:disabled { opacity: 0.6; cursor: wait; }
+    .adm-switch__knob { position: relative; flex: none; width: 5rem; height: 2.8rem; border-radius: 1.4rem; background: #5a2530; transition: background 0.2s; }
+    .adm-switch__knob::after { content: ''; position: absolute; top: 0.3rem; left: 0.3rem; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+    .adm-switch--on { border-color: #0e7a4b; }
+    .adm-switch--on .adm-switch__knob { background: #0e7a4b; }
+    .adm-switch--on .adm-switch__knob::after { transform: translateX(2.2rem); }
     .adm-muted { color: var(--mute); margin: 0.4rem 0; overflow-wrap: anywhere; }
     .adm-bad { color: #ff6b78; margin: 0.8rem auto; }
     .adm-good { color: #2fd18b; }
