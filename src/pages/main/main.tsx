@@ -411,10 +411,11 @@ const AppWrapper = observer(() => {
             {(() => {
                 const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
                 const tm = site.test_mode;
-                // Test mode shows automatically for test accounts (ids starting with D or R, e.g. DOT..., ROT...),
-                // and also for any account listed in the admin test-mode setting while that switch is on.
-                const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.on && tm.accounts?.includes(active_id));
-                if (!active_id || !is_test_account) return null;
+                // Test mode follows the admin panel checkbox. While it is ON, the banner shows for test accounts
+                // (ids starting with D or R, e.g. DOT.../ROT...) and for any account listed in the admin setting.
+                // While it is OFF, nothing shows.
+                const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.accounts?.includes(active_id));
+                if (!tm?.on || !active_id || !is_test_account) return null;
                 const kind = isDemoAccount(active_id) ? 'DEMO account (virtual money)' : 'REAL account (real money)';
                 return (
                     <div className='site-testmode' role='status'>

@@ -246,7 +246,7 @@ const Controls = ({ settings, reload, fail }) => {
             </div>
             <div className='adm-card'>
                 <h3>Test mode</h3>
-                <p className='adm-muted'>Shows a clear TEST MODE banner on the site for the accounts below. The banner always says whether the account is demo or real; nothing about the account is changed.</p>
+                <p className='adm-muted'>Tick the box to turn test mode on, untick it to turn it off. While on, a TEST MODE banner shows whenever the logged-in account starts with D or R, or is listed below. The banner always says whether the account is demo or real; nothing about the account is changed.</p>
                 <label className='adm-check'>
                     <input type='checkbox' checked={s.test_mode?.on || false} onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: e.target.checked })} />
                     Turn test mode on
