@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
@@ -42,7 +43,7 @@ type Props = {
 
 const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoadBot }: Props) => {
     const [active, setActive] = useState(MODES[0].key);
-    const [ticks, setTicks] = useState('3000');
+    const [ticks, setTicks] = useState('1000');
     const [scanning, setScanning] = useState(false);
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
@@ -103,7 +104,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
 
-    const depth = Math.min(MAX_DEPTH - 100, Math.max(100, Number(ticks) || 3000));
+    const depth = Math.min(MAX_DEPTH - 100, Math.max(100, Number(ticks) || 1000));
 
     // Only Over1 / Under8 has its strategy so far; the other two tabs come later.
     const strategy_ready = active === 'o1u8';
@@ -143,30 +144,40 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     return (
         <div className='scanner-panel__backdrop' onClick={onClose}>
-            {found_popup && found && (
-                <div className='scanner-found' onClick={e => e.stopPropagation()} role='alertdialog'>
-                    <div className='scanner-found__title'>Market found ✅</div>
-                    <div className='scanner-found__market'>{found.name}</div>
-                    <div className='scanner-found__sub'>
-                        Under 8 · digit 8 {found.p8}% · digit 9 {found.p9}%
-                    </div>
-                    <div className='scanner-found__actions'>
-                        <button
-                            type='button'
-                            className='scanner-found__btn scanner-found__btn--primary'
-                            onClick={() => {
-                                setFoundPopup(false);
-                                onLoadBot();
-                            }}
-                        >
-                            Load Scanner Bot
-                        </button>
-                        <button type='button' className='scanner-found__btn' onClick={() => setFoundPopup(false)}>
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
+            {found_popup &&
+                found &&
+                createPortal(
+                    <div className='scanner-found__overlay' onClick={() => setFoundPopup(false)}>
+                        <div className='scanner-found' onClick={e => e.stopPropagation()} role='alertdialog'>
+                            <div className='scanner-found__title'>Market found ✅</div>
+                            <div className='scanner-found__market'>{found.name}</div>
+                            <div className='scanner-found__sub'>
+                                Under 8 · digit 8 {found.p8}% · digit 9 {found.p9}%
+                            </div>
+                            <div className='scanner-found__actions'>
+                                <button
+                                    type='button'
+                                    className='scanner-found__btn scanner-found__btn--primary'
+                                    onClick={() => {
+                                        setFoundPopup(false);
+                                        onLoadBot();
+                                    }}
+                                >
+                                    Load Scanner Bot
+                                </button>
+                                <button
+                                    type='button'
+                                    className='scanner-found__btn'
+                                    onClick={() => setFoundPopup(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
             <div className='scanner-panel' role='dialog' aria-label='Entry Scanner' onClick={e => e.stopPropagation()}>
                 <div className='scanner-panel__header'>
                     <h2>Entry Scanner</h2>
