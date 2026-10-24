@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ScannerPanel from './scanner-panel';
 import './ai-scanner.scss';
 
 const STORAGE_KEY = 'pm_ai_scanner_pos';
 const DRAG_THRESHOLD = 5; // px of movement before a press counts as a drag, not a click
 
 type Pos = { x: number; y: number };
-
-// Set this when you decide where the AI Scanner should open. Until then a click shows a small note.
-const handleScannerOpen = (): boolean => false;
 
 const readSavedPos = (): Pos | null => {
     try {
@@ -23,7 +21,7 @@ const AiScanner = () => {
     const ref = useRef<HTMLDivElement>(null);
     const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
     const [pos, setPos] = useState<Pos | null>(readSavedPos);
-    const [note, setNote] = useState(false);
+    const [open, setOpen] = useState(false);
 
     const clamp = useCallback((p: Pos): Pos => {
         const el = ref.current;
@@ -76,37 +74,39 @@ const AiScanner = () => {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: rect.left, y: rect.top }));
                 } catch (err) {}
             }
-        } else if (!handleScannerOpen()) {
-            setNote(true);
-            window.setTimeout(() => setNote(false), 2200);
+        } else {
+            setOpen(true);
         }
     };
 
     return (
-        <div
-            ref={ref}
-            className='ai-scanner'
-            style={pos ? { left: pos.x, top: pos.y } : { visibility: 'hidden' }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            role='button'
-            aria-label='AI Scanner'
-        >
-            <div className='ai-scanner__card'>
-                <div className='ai-scanner__title'>AI Scanner</div>
-                <div className='ai-scanner__sub'>{note ? 'Coming soon' : 'Click to analyze'}</div>
+        <>
+            <div
+                ref={ref}
+                className='ai-scanner'
+                style={pos ? { left: pos.x, top: pos.y } : { visibility: 'hidden' }}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+                role='button'
+                aria-label='AI Scanner'
+            >
+                <div className='ai-scanner__card'>
+                    <div className='ai-scanner__title'>AI Scanner</div>
+                    <div className='ai-scanner__sub'>Click to analyze</div>
+                </div>
+                <div className='ai-scanner__orb'>
+                    <span className='ai-scanner__ring ai-scanner__ring--1' />
+                    <span className='ai-scanner__ring ai-scanner__ring--2' />
+                    <span className='ai-scanner__circle'>
+                        <span className='ai-scanner__ai'>AI</span>
+                    </span>
+                    <span className='ai-scanner__dot' />
+                </div>
             </div>
-            <div className='ai-scanner__orb'>
-                <span className='ai-scanner__ring ai-scanner__ring--1' />
-                <span className='ai-scanner__ring ai-scanner__ring--2' />
-                <span className='ai-scanner__circle'>
-                    <span className='ai-scanner__ai'>AI</span>
-                </span>
-                <span className='ai-scanner__dot' />
-            </div>
-        </div>
+            <ScannerPanel open={open} onClose={() => setOpen(false)} />
+        </>
     );
 };
 
