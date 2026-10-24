@@ -840,3 +840,160 @@
         font-size: 1.2rem;
     }
 }
+
+// Account dropdown layout — Real / Demo tabs, "Deriv account" header, account
+// row (icon, label + ID on the left, balance on the right), Trader's Hub
+// link and the "Manage accounts" button.
+.acc-dropdown--panel {
+    min-width: 32rem;
+    width: 34rem;
+    padding: 0;
+    color: var(--text-prominent);
+
+    .acc-dropdown {
+        &__tabs {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            border-bottom: 1px solid var(--general-section-1);
+        }
+
+        &__tab {
+            flex: 1 1 50%;
+            padding: 1.4rem 1rem 1.2rem;
+            border: 0;
+            border-bottom: 0.3rem solid transparent;
+            border-radius: 0 0 1.6rem 1.6rem;
+            background: transparent;
+            color: var(--text-prominent);
+            font-size: 1.6rem;
+            line-height: 1.4;
+            text-align: center;
+            cursor: pointer;
+
+            &--active {
+                border-bottom-color: #3b82f6;
+            }
+        }
+
+        &__section-header {
+            padding: 1.8rem 1.6rem 0.8rem;
+            color: var(--text-less-prominent);
+            font-size: 1.4rem;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        &__list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        &__empty {
+            padding: 1.2rem 1.6rem;
+            color: var(--text-less-prominent);
+            font-size: 1.3rem;
+        }
+
+        &__account {
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.4rem 1.6rem;
+            border-bottom: 0;
+
+            &--selected {
+                background: var(--state-active, #d6dadb);
+            }
+        }
+
+        &__account-left {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            min-width: 0;
+        }
+
+        &__account-type {
+            display: block;
+            color: var(--status-success, #2cb5b0);
+            font-size: 1.5rem !important;
+            line-height: 1.3;
+
+            &--virtual {
+                color: $color-yellow;
+            }
+        }
+
+        &__account-id {
+            color: var(--text-less-prominent);
+            font-size: 1.3rem;
+            line-height: 1.3;
+        }
+
+        &__balance {
+            margin-left: auto;
+            color: var(--text-prominent);
+            font-size: 1.5rem !important;
+            font-weight: 700;
+            white-space: nowrap;
+            text-align: right;
+        }
+
+        &__reset-btn {
+            margin-left: auto;
+            padding: 0.6rem 1.2rem;
+            border: 0.1rem solid var(--status-success);
+            border-radius: 0.8rem;
+            background: transparent;
+            color: var(--status-success);
+            font-size: 1.2rem;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+
+            &:disabled {
+                opacity: 0.6;
+                cursor: default;
+            }
+        }
+
+        &__cfd-link {
+            display: block;
+            padding: 1.6rem 1.6rem 1.2rem;
+            color: var(--text-prominent);
+            font-size: 1.4rem;
+            line-height: 1.4;
+            text-align: center;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+
+        &__footer {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0.8rem 1.6rem 1.6rem;
+        }
+
+        &__manage-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.1rem 2.4rem;
+            border: 1px solid var(--general-section-1, #d6dadb);
+            border-radius: 10rem;
+            background: transparent;
+            color: var(--text-prominent);
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-decoration: none;
+
+            &:hover {
+                background: var(--state-hover);
+            }
+        }
+    }
+}
