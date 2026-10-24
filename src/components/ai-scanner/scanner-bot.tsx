@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { observer } from 'mobx-react-lite';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
+import { batch_lanes } from '@/pages/bulk-trader/batch-sockets';
 import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import type { MarketScan } from './scanner-engine';
 
@@ -56,20 +57,23 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         (symbol: string, barrier: number, amount: number, my_run: number) =>
             new Promise<number>(async (resolve, reject) => {
                 try {
-                    const res = await api_base.api.send({
-                        buy: '1',
-                        price: Number(amount),
-                        parameters: {
-                            amount,
-                            basis: 'stake',
-                            contract_type: 'DIGITUNDER',
-                            barrier: String(barrier),
-                            currency,
-                            duration: 1,
-                            duration_unit: 't',
-                            underlying_symbol: symbol,
+                    const res = await batch_lanes.sendFast(
+                        {
+                            buy: '1',
+                            price: Number(amount),
+                            parameters: {
+                                amount,
+                                basis: 'stake',
+                                contract_type: 'DIGITUNDER',
+                                barrier: String(barrier),
+                                currency,
+                                duration: 1,
+                                duration_unit: 't',
+                                underlying_symbol: symbol,
+                            },
                         },
-                    });
+                        r => api_base.api.send(r)
+                    );
                     const cid = res.buy.contract_id;
                     let finished = false;
                     let sub_id = '';
@@ -93,7 +97,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                             .send({ proposal_open_contract: 1, contract_id: cid })
                             .then((r: any) => handle(r?.proposal_open_contract))
                             .catch(() => {});
-                    }, 3000);
+                    }, 1000);
                     const timeout = setTimeout(() => {
                         if (finished) return;
                         finished = true;
@@ -154,6 +158,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         bot_market.current = m;
         setRunning(true);
         setPl({ n: 0, wins: 0, total: 0 });
+        batch_lanes.warm(1);
         let losses = 0;
         let n = 0;
         let wins = 0;
@@ -196,6 +201,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         } finally {
             if (run_id.current === my_run) run_id.current += 1;
             setRunning(false);
+            setPl({ n: 0, wins: 0, total: 0 }); // the box is cleared; the trades stay in Bot Builder > Transactions
             onFinished();
         }
     };
@@ -354,9 +360,6 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                                         Run
                                     </button>
                                 )}
-                                <button type='button' className='scanner-panel__btn' onClick={onClose}>
-                                    Close (bot keeps running)
-                                </button>
                             </div>
                         </div>
                     </div>

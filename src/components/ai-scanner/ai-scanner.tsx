@@ -4,7 +4,7 @@ import ScannerBot from './scanner-bot';
 import type { MarketScan } from './scanner-engine';
 import './ai-scanner.scss';
 
-const STORAGE_KEY = 'pm_ai_scanner_pos';
+const STORAGE_KEY = 'pm_ai_scanner_pos_v2';
 const DRAG_THRESHOLD = 5; // px of movement before a press counts as a drag, not a click
 
 type Pos = { x: number; y: number };
@@ -46,11 +46,13 @@ const AiScanner = () => {
         };
     }, []);
 
-    // Default spot: bottom-left. Also keep it on screen when the window is resized.
+    // Default spot: bottom-right. Also keep it on screen when the window is resized.
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
-        setPos(prev => clamp(prev ?? { x: 16, y: window.innerHeight - el.offsetHeight - 90 }));
+        setPos(prev =>
+            clamp(prev ?? { x: window.innerWidth - el.offsetWidth - 12, y: window.innerHeight - el.offsetHeight - 90 })
+        );
         const onResize = () => setPos(prev => (prev ? clamp(prev) : prev));
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
@@ -140,6 +142,7 @@ const AiScanner = () => {
                 market={found}
                 onClose={() => setBotOpen(false)}
                 onRunningChange={setBotRunning}
+                onFinished={clearSignal}
             />
         </>
     );
