@@ -11,6 +11,7 @@ import type { Kind, MarketScan } from './scanner-engine';
 
 const MAIN_DIGIT = 8; // Under 8
 const RECOVERY_DIGIT = 5; // Under 5 after a loss
+const OVER1_RECOVERY_DIGIT = 4; // Over 4 after a loss on Over 1
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const errMsg = (e: any) => e?.error?.message || e?.message || 'Something went wrong';
 
@@ -174,7 +175,13 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
             while (run_id.current === my_run) {
                 const recovering = losses > 0;
                 const contract = over1 ? 'DIGITOVER' : 'DIGITUNDER';
-                const barrier = over1 ? 1 : recovering ? RECOVERY_DIGIT : MAIN_DIGIT;
+                const barrier = over1
+                    ? recovering
+                        ? OVER1_RECOVERY_DIGIT
+                        : 1
+                    : recovering
+                      ? RECOVERY_DIGIT
+                      : MAIN_DIGIT;
                 const amount = recovering ? round2(base * Math.pow(mult, losses)) : base;
                 if (over1 && !recovering) {
                     // Over 1 waits for the last digit to hit 0 or 1 first; after a loss it recovers straight away
@@ -275,7 +282,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                                     <label>TRADE</label>
                                     <div className='scanner-panel__box'>
                                         {shown_kind === 'over1'
-                                            ? 'Over 1 · waits for 0 / 1'
+                                            ? 'Over 1 · recovery Over 4'
                                             : 'Under 8 · recovery Under 5'}
                                     </div>
                                 </div>
