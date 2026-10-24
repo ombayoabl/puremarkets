@@ -19,6 +19,7 @@ export type SiteSettings = {
     tabs: Record<string, 'on' | 'soon' | 'hidden'>;
     copy_trading_paused: boolean;
     contact_link: string;
+    test_mode: { on: boolean; accounts: string[] };
 };
 export type SiteConfig = { loaded: boolean; bots: SiteBot[]; settings: SiteSettings };
 
@@ -28,6 +29,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     tabs: {},
     copy_trading_paused: false,
     contact_link: '',
+    test_mode: { on: false, accounts: ['DOT93428523', 'ROT92069621'] },
 };
 
 let state: SiteConfig = { loaded: false, bots: [], settings: DEFAULT_SITE_SETTINGS };

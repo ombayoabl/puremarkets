@@ -72,6 +72,13 @@ module.exports = async (req, res) => {
                 tabs,
                 copy_trading_paused: Boolean(s.copy_trading_paused),
                 contact_link: str(s.contact_link, 500),
+                test_mode: {
+                    on: Boolean(s.test_mode?.on),
+                    accounts: (Array.isArray(s.test_mode?.accounts) ? s.test_mode.accounts : DEFAULT_SETTINGS.test_mode.accounts)
+                        .map(a => str(a, 30).trim().toUpperCase())
+                        .filter(a => /^[A-Z0-9]{4,20}$/.test(a))
+                        .slice(0, 10),
+                },
             };
             await setJson('pm:settings', settings);
             return res.status(200).json({ settings });

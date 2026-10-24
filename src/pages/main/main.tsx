@@ -44,6 +44,7 @@ import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
 import { useSiteConfig } from '@/services/site-config';
+import { isDemoAccount } from '@/utils/account-helpers';
 import './main.scss';
 import '../copy-trading/copy-engine'; // starts copying trades as soon as the app loads
 
@@ -61,7 +62,7 @@ const CopyTrading = lazy(() => import('../copy-trading/copy-trading'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
-    const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
+    const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store, client } = useStore();
     const { is_loading } = blockly_store;
     const {
         active_tab,
@@ -407,6 +408,17 @@ const AppWrapper = observer(() => {
                     <p>{site.maintenance.message || 'We are making improvements. Please check back soon.'}</p>
                 </div>
             )}
+            {(() => {
+                const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
+                const tm = site.test_mode;
+                if (!tm?.on || !active_id || !tm.accounts.includes(active_id)) return null;
+                const kind = isDemoAccount(active_id) ? 'DEMO account (virtual money)' : 'REAL account (real money)';
+                return (
+                    <div className='site-testmode' role='status'>
+                        TEST MODE · {active_id} · {kind}
+                    </div>
+                );
+            })()}
             {site.announcement.on && site.announcement.text && <div className='site-announcement'>{site.announcement.text}</div>}
             <div className='main'>
                 <div

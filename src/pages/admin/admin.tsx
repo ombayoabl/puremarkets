@@ -245,6 +245,19 @@ const Controls = ({ settings, reload, fail }) => {
                 </label>
             </div>
             <div className='adm-card'>
+                <h3>Test mode</h3>
+                <p className='adm-muted'>Shows a clear TEST MODE banner on the site for the accounts below. The banner always says whether the account is demo or real; nothing about the account is changed.</p>
+                <label className='adm-check'>
+                    <input type='checkbox' checked={s.test_mode?.on || false} onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), on: e.target.checked })} />
+                    Turn test mode on
+                </label>
+                <input
+                    value={(s.test_mode?.accounts || DEFAULT_SITE_SETTINGS.test_mode.accounts).join(', ')}
+                    onChange={e => set('test_mode', { ...(s.test_mode || DEFAULT_SITE_SETTINGS.test_mode), accounts: e.target.value.split(',').map(a => a.trim()) })}
+                    placeholder='DOT93428523, ROT92069621'
+                />
+            </div>
+            <div className='adm-card'>
                 <h3>Contact link</h3>
                 <p className='adm-muted'>Used by the “Get access” button on Premium Bots that have no link of their own.</p>
                 <input value={s.contact_link} onChange={e => set('contact_link', e.target.value)} placeholder='https://wa.me/254…' />

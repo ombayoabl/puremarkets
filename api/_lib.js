@@ -36,6 +36,7 @@ const DEFAULT_SETTINGS = {
     tabs: {}, // nav key -> 'on' | 'soon' | 'hidden'
     copy_trading_paused: false,
     contact_link: '',
+    test_mode: { on: false, accounts: ['DOT93428523', 'ROT92069621'] }, // labelled test mode: shows a TEST MODE banner for these accounts
 };
 const getSettings = async () => ({ ...DEFAULT_SETTINGS, ...(await getJson('pm:settings', {})) });
 const getBots = async () => {

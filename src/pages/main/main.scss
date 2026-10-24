@@ -795,3 +795,15 @@
     h2 { margin: 0; font-size: 3rem; }
     p { margin: 0; max-width: 48rem; font-size: 1.8rem; line-height: 1.5; }
 }
+
+.site-testmode {
+    position: relative;
+    z-index: 5;
+    padding: 0.8rem 1.6rem;
+    background: linear-gradient(90deg, #0e7a4b, #d4a82a);
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
