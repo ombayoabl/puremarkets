@@ -377,10 +377,10 @@ const AppWrapper = observer(() => {
         if (item.type === 'tab') {
             setComingSoonItem(null);
             handleTabChange(item.tab_index);
-        } else if (item.type === 'trading_view' && isDesktop) {
+        } else if (item.type === 'trading_view') {
             setTradingViewModalVisibility();
         } else {
-            // Feature not built yet (or TradingView on mobile): show a Coming soon page
+            // Feature not built yet: show a Coming soon page
             setComingSoonItem(item);
             handleTabChange(DBOT_TABS.COMING_SOON);
         }
