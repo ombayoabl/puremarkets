@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
@@ -48,47 +49,8 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
     const [found_popup, setFoundPopup] = useState(false);
-    const audio = useRef<any>(null);
 
-    // The scratching sound taken from the user's video, looped for as long as the scan is running.
-    const scratch = useRef<any>(null); // decoded sound, loaded once
-    const loadScratch = async (ctx: any) => {
-        if (scratch.current) return scratch.current;
-        const base = (window as any).__webpack_public_path__ || '/';
-        const res = await fetch(`${base}assets/media/scan-scratch.mp3`);
-        scratch.current = await ctx.decodeAudioData(await res.arrayBuffer());
-        return scratch.current;
-    };
-    useEffect(() => {
-        if (!scanning) return;
-        const ctx = audio.current;
-        if (!ctx) return;
-        let src: any = null;
-        let stopped = false;
-        loadScratch(ctx)
-            .then(buf => {
-                if (stopped) return;
-                src = ctx.createBufferSource();
-                src.buffer = buf;
-                src.loop = true;
-                const gain = ctx.createGain();
-                gain.gain.value = 0.9;
-                src.connect(gain);
-                gain.connect(ctx.destination);
-                src.start();
-            })
-            .catch(() => {
-                // no sound available
-            });
-        return () => {
-            stopped = true;
-            try {
-                src?.stop();
-            } catch (e) {
-                // already stopped
-            }
-        };
-    }, [scanning]);
+    useScanSound(scanning); // the scratching sound from the user's video, looped while scanning
     const cancel_scan = useRef(false);
     const scan_id = useRef(0); // a new scan makes any older, still-finishing scan stop quietly
     const [round, setRound] = useState(0);
@@ -108,16 +70,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     const scan = async () => {
         if (scanning) return;
-        // browsers only allow sound after a click, so the audio is started here
-        try {
-            if (!audio.current) {
-                const AC = window.AudioContext || (window as any).webkitAudioContext;
-                if (AC) audio.current = new AC();
-            }
-            audio.current?.resume?.();
-        } catch (e) {
-            // no sound available
-        }
+        unlockScanSound(); // browsers only allow sound after a click
         setScanning(true);
         setScanError('');
         setDone(0);

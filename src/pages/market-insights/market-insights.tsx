@@ -6,6 +6,7 @@ import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import { OVER1_WINDOWS, useOverOneStrategy } from './over-one-strategy';
+import { unlockScanSound, useScanSound } from '@/components/scan-sound/scan-sound';
 import './market-insights.scss';
 
 // Deriv's 10 volatility indices (dp = default decimals; the API's pip_size overrides it)
@@ -107,8 +108,11 @@ const MarketInsights = observer(() => {
         if (is_over_under && scope === 'all' && over_one.running && picked_symbol) setSymbol(picked_symbol);
     }, [is_over_under, scope, over_one.running, picked_symbol]);
     const show_all = is_over_under && scope === 'all' && !(over_one.running && picked_symbol);
+    // the scratching sound plays in the background while it analyses (until a market is being traded)
+    useScanSound(is_over_under && over_one.running && !over_one.traded);
     const onAnalyse = () => {
         if (!is_over_under) return;
+        unlockScanSound();
         if (over_one.running) over_one.stop();
         else over_one.start(scope === 'all' ? MARKETS.map(m => m.symbol) : [symbol]);
     };
