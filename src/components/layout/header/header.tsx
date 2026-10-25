@@ -248,7 +248,8 @@ const AppHeader = observer(() => {
                 <Wrapper variant='right'>
                     {renderAccountSection('right')}
                     <div className='main__run-strategy-wrapper app-header__run'>
-                        <RunStrategy />
+                        {/* The store loads a moment after first paint; render Run only once it exists */}
+                        {client ? <RunStrategy /> : null}
                     </div>
                 </Wrapper>
             </Header>
