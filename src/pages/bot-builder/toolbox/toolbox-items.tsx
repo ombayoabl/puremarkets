@@ -95,6 +95,15 @@ export const ToolboxItems = () =>
                                                                             movable='false'
                                                                         >
                                                                             <Field name='FASTMODE'>FALSE</Field>
+                                                                            <Next>
+                                                                                <Block
+                                                                                    type='trade_definition_changemarket'
+                                                                                    deletable='false'
+                                                                                    movable='false'
+                                                                                >
+                                                                                    <Field name='CHANGEMARKET'>FALSE</Field>
+                                                                                </Block>
+                                                                            </Next>
                                                                         </Block>
                                                                     </Next>
                                                                 </Block>

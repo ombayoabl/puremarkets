@@ -18,6 +18,9 @@ import Sell from './Sell';
 import Ticks from './Ticks';
 import Total from './Total';
 
+// The 10 volatility indices that "Change market on each run" goes round.
+const MARKET_ROTATION = ['1HZ10V', 'R_10', '1HZ25V', 'R_25', '1HZ50V', 'R_50', '1HZ75V', 'R_75', '1HZ100V', 'R_100'];
+
 // Fast Mode: only let a trade go out on a share (FAST_BOT_RATE) of the ticks.
 let fast_tick_n = 0;
 const fastTickGate = () => {
@@ -106,9 +109,35 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         this.options = options;
         setFastMode(options.fastMode);
         this.fast_contracts = new Map();
+        this.market_rotation = null;
+        this.market_rotation_index = 0;
+        this.market_run_started = false;
         this.startPromise = this.loginAndGetBalance(token);
 
         if (!this.checkTicksPromiseExists()) this.watchTicks(symbol);
+
+        if (options.changeMarket) {
+            this.market_rotation = [symbol, ...MARKET_ROTATION.filter(s => s !== symbol)];
+            this.symbol = symbol;
+            this.market_rotation.forEach(s => this.ensureMarketMonitored(s));
+        }
+    }
+
+    // Change market on each run: the first run uses the selected market, every run after that moves to the
+    // next of the 10 volatilities, and after the last it starts again from the first (merry-go-round).
+    rotateMarket() {
+        const rotation = this.market_rotation;
+        if (!rotation?.length) return;
+
+        if (this.market_run_started) {
+            this.market_rotation_index = (this.market_rotation_index + 1) % rotation.length;
+        }
+        this.market_run_started = true;
+
+        const symbol = rotation[this.market_rotation_index];
+        this.options.symbol = symbol;
+        this.symbol = symbol;
+        this.ensureMarketMonitored(symbol);
     }
 
     start(tradeOptions) {
@@ -117,6 +146,8 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         }
 
         globalObserver.emit('bot.running');
+
+        if (this.options.changeMarket) this.rotateMarket();
 
         const validated_trade_options = this.validateTradeOptions(tradeOptions);
 

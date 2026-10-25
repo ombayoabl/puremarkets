@@ -23,6 +23,8 @@ export default Engine =>
                     key: tickListenerKey,
                 });
                 const callback = ticks => {
+                    // Only the market the bot is currently on drives the ticks (matters when markets rotate).
+                    if (this.symbol !== symbol) return;
                     if (this.is_proposal_subscription_required) {
                         this.checkProposalReady();
                     }
@@ -33,6 +35,26 @@ export default Engine =>
 
                 const key = await ticksService.monitor({ symbol, callback });
                 tickListenerKey = key;
+            }
+        }
+
+        // Change market on each run: keep a tick listener on every rotation market so switching is instant.
+        async ensureMarketMonitored(symbol) {
+            if (!this.market_listeners) this.market_listeners = {};
+            if (this.market_listeners[symbol] || this.symbol === symbol) return;
+            this.market_listeners[symbol] = true;
+            const callback = ticks => {
+                if (this.symbol !== symbol) return;
+                if (this.is_proposal_subscription_required) {
+                    this.checkProposalReady();
+                }
+                const { epoch } = ticks.slice(-1)[0];
+                this.store.dispatch({ type: constants.NEW_TICK, payload: epoch });
+            };
+            try {
+                await this.$scope.ticksService.monitor({ symbol, callback });
+            } catch (e) {
+                this.market_listeners[symbol] = false;
             }
         }
 

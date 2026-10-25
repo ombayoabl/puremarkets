@@ -25,6 +25,11 @@
                             <next>
                               <block type="trade_definition_fastmode" deletable="false" movable="false">
                                 <field name="FASTMODE">FALSE</field>
+                                <next>
+                                  <block type="trade_definition_changemarket" deletable="false" movable="false">
+                                    <field name="CHANGEMARKET">FALSE</field>
+                                  </block>
+                                </next>
                               </block>
                             </next>
                           </block>
