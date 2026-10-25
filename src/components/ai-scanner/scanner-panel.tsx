@@ -107,8 +107,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                     if (stale()) return;
                     onResult(list, best);
                     playConfirmSound(); // tick + chime, then the popup
-                    setFoundPopup(true); // "market found" popup, straight away
-                    onLoadBot(); // and the matching bot opens by itself behind it
+                    setFoundPopup(true); // "market found" popup; the panel stays open behind it with all the markets
                     return;
                 }
                 onResult(list, null); // show the latest numbers while it keeps looking
@@ -151,9 +150,12 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                 <button
                                     type='button'
                                     className='scanner-found__btn scanner-found__btn--primary'
-                                    onClick={() => setFoundPopup(false)}
+                                    onClick={() => {
+                                        setFoundPopup(false);
+                                        onLoadBot(); // opens the Over 1 Bot or the Under 8 Bot for the signal found
+                                    }}
                                 >
-                                    {found.kind === 'over1' ? 'Open Over 1 Bot' : 'Open Under 8 Bot'}
+                                    {found.kind === 'over1' ? 'Load Over 1 Bot' : 'Load Under 8 Bot'}
                                 </button>
                                 <button
                                     type='button'
