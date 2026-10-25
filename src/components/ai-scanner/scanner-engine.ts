@@ -120,14 +120,30 @@ export const scanAllMarkets = async (depth: number, onProgress?: (done: number) 
     return out.filter(Boolean) as MarketScan[];
 };
 
-// Picks the favoured signal: Over 1 first (the market with the widest gap between its green and red bar), because it
-// is the stricter signal and Under 8 is found on almost every scan; if there is no Over 1, Under 8 (the market with
-// the lowest 8 + 9 share). The result says which strategy it is for.
+// Picks the signal to trade: every market is checked for both strategies, and whichever signal is found is used.
+// When several are found they are ranked on the same scale, by how many percentage points the market clears its own
+// limit (Under 8: how far the lower of 8 / 9 is under 10%; Over 1: the smaller of green bar over 10.5% and red bar
+// under 9%), so neither strategy is favoured. The result says which strategy it is for.
 export const pickBest = (list: MarketScan[]): MarketScan | null => {
-    const o1 = list.filter(m => m.o1).sort((a, b) => b.o1_hi_pct - b.o1_lo_pct - (a.o1_hi_pct - a.o1_lo_pct))[0];
-    if (o1) return { ...o1, kind: 'over1' };
-    const u8 = list.filter(m => m.signal).sort((a, b) => a.p8 + a.p9 - (b.p8 + b.p9))[0];
-    return u8 ? { ...u8, kind: 'under8' } : null;
+    let best: MarketScan | null = null;
+    let best_margin = -Infinity;
+    for (const m of list) {
+        if (m.o1) {
+            const margin = Math.min(m.o1_hi_pct - O1_GREEN_MIN, O1_RED_MAX - m.o1_lo_pct);
+            if (margin > best_margin) {
+                best_margin = margin;
+                best = { ...m, kind: 'over1' };
+            }
+        }
+        if (m.signal) {
+            const margin = Math.min(LOW_LIMIT - m.p8, LOW_LIMIT - m.p9);
+            if (margin > best_margin) {
+                best_margin = margin;
+                best = { ...m, kind: 'under8' };
+            }
+        }
+    }
+    return best;
 };
 
 // Resolves true once the last digit on `symbol` has been 0 or 1 `hits` times in a row; false when cancelled.
