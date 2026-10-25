@@ -390,3 +390,33 @@
         }
     }
 }
+
+// ---- Run button + "Bot is not running" status, in the top row beside Log in / Sign up ----
+.app-header__run.main__run-strategy-wrapper {
+    position: static;
+    inset: auto;
+    display: flex;
+    align-items: center;
+    margin-inline-start: 0.8rem;
+
+    #db-animation__run-button {
+        background-color: #14a3a1 !important;
+    }
+
+    #db-animation__stop-button {
+        background-color: #0f8a88 !important;
+    }
+
+    .animation__container {
+        min-width: 16rem;
+    }
+
+    // Phones: keep just the button so the row never overflows
+    @media (max-width: 600px) {
+        margin-inline-start: 0.4rem;
+
+        .animation__container {
+            display: none;
+        }
+    }
+}

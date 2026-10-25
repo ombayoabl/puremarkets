@@ -42,7 +42,6 @@ import { useDevice } from '@deriv-com/ui';
 import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
-import RunStrategy from '../dashboard/run-strategy';
 import NavBar, { ComingSoon } from './nav-bar';
 import { useSiteConfig } from '@/services/site-config';
 import AiScanner from '../../components/ai-scanner/ai-scanner';
@@ -414,31 +413,6 @@ const AppWrapper = observer(() => {
                     <p>{site.maintenance.message || 'We are making improvements. Please check back soon.'}</p>
                 </div>
             )}
-            {(() => {
-                const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
-                const tm = site.test_mode;
-                // The scrolling banner shows automatically for test accounts (ids starting with D or R,
-                // e.g. DOT.../ROT...) and for any account listed in the admin setting. No admin switch needed.
-                const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.accounts?.includes(active_id));
-                if (!active_id || !is_test_account) return null;
-                return (
-                    <div className='site-testmode' role='status' aria-label={TICKER_MESSAGES.join('. ')}>
-                        <div className='site-testmode__track' aria-hidden='true'>
-                            {[0, 1].map(group => (
-                                <div className='site-testmode__group' key={group}>
-                                    {[0, 1, 2, 3].map(rep =>
-                                        TICKER_MESSAGES.map((msg, i) => (
-                                            <span className='site-testmode__item' key={`${rep}-${i}`}>
-                                                {msg}
-                                            </span>
-                                        ))
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })()}
             <AiScanner />
             {site.announcement.on && site.announcement.text && <div className='site-announcement'>{site.announcement.text}</div>}
             <div className='main'>
@@ -449,6 +423,31 @@ const AppWrapper = observer(() => {
                 >
                     <div>
                         <NavBar active_key={active_nav_key} onSelect={handleNavSelect} />
+                    {(() => {
+                        const active_id = String(client?.loginid || localStorage.getItem('active_loginid') || '').toUpperCase();
+                        const tm = site.test_mode;
+                        // The scrolling banner shows automatically for test accounts (ids starting with D or R,
+                        // e.g. DOT.../ROT...) and for any account listed in the admin setting. No admin switch needed.
+                        const is_test_account = /^[DR]/.test(active_id) || Boolean(tm?.accounts?.includes(active_id));
+                        if (!active_id || !is_test_account) return null;
+                        return (
+                            <div className='site-testmode' role='status' aria-label={TICKER_MESSAGES.join('. ')}>
+                                <div className='site-testmode__track' aria-hidden='true'>
+                                    {[0, 1].map(group => (
+                                        <div className='site-testmode__group' key={group}>
+                                            {[0, 1, 2, 3].map(rep =>
+                                                TICKER_MESSAGES.map((msg, i) => (
+                                                    <span className='site-testmode__item' key={`${rep}-${i}`}>
+                                                        {msg}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
                         <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
                             <div
                                 label={
@@ -585,7 +584,6 @@ const AppWrapper = observer(() => {
             </div>
             <DesktopWrapper>
                 <div className='main__run-strategy-wrapper'>
-                    <RunStrategy />
                     <RunPanel />
                 </div>
                 <ChartModal />

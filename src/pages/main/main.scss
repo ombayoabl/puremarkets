@@ -834,16 +834,3 @@
         transform: translateX(-50%);
     }
 }
-
-// Run button: teal, to match the header
-.main__run-strategy-wrapper .animation__button {
-    background-color: #14a3a1;
-}
-
-@media (max-width: 600px) {
-    .main__run-strategy-wrapper {
-        position: static;
-        width: 100%;
-        padding-inline: 1.2rem;
-    }
-}

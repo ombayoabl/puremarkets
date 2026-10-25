@@ -13,6 +13,7 @@ import { Header, useDevice, Wrapper } from '@deriv-com/ui';
 import { AppLogo } from '../app-logo';
 import AccountSwitcher from './account-switcher';
 import MenuItems from './menu-items';
+import RunStrategy from '@/pages/dashboard/run-strategy';
 import LiveTick from './live-tick';
 import MobileMenu from './mobile-menu';
 import './header.scss';
@@ -246,6 +247,9 @@ const AppHeader = observer(() => {
                 </Wrapper>
                 <Wrapper variant='right'>
                     {renderAccountSection('right')}
+                    <div className='main__run-strategy-wrapper app-header__run'>
+                        <RunStrategy />
+                    </div>
                 </Wrapper>
             </Header>
         </>

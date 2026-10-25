@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
+import { isProduction, WS_SERVERS } from '@/components/shared';
 import { useStore } from '@/hooks/useStore';
 import './live-tick.scss';
 
-// Public tick stream: no login or token needed.
-const WS_URL = 'wss://ws.derivws.com/websockets/v3?app_id=1089';
+// Same public tick server the rest of the app uses (no login needed).
+const getWsUrl = () => (isProduction() ? WS_SERVERS.PRODUCTION : WS_SERVERS.STAGING).replace(/^http/, 'ws');
 const DEFAULT_SYMBOL = 'R_10';
 
 /**
@@ -31,7 +32,7 @@ const LiveTick = observer(() => {
         last_quote.current = null;
 
         const connect = () => {
-            ws = new WebSocket(WS_URL);
+            ws = new WebSocket(getWsUrl());
             ws.onopen = () => {
                 retry = 0;
                 setIsLive(true);
