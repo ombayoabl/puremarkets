@@ -193,6 +193,8 @@ export const help_content_config = (public_path: string) => {
         // =============== Stop loss / Take profit ============
         stop_loss: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
         take_profit: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
+        purchase_hedge: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
+        trade_definition_hedgeoptions: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
         martingale: [
             { type: TEXT },
             { type: BLOCK },

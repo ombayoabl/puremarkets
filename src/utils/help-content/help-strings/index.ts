@@ -45,3 +45,5 @@ export { default as variables_set } from './variables_set';
 export { default as stop_loss } from './stop_loss';
 export { default as take_profit } from './take_profit';
 export { default as martingale } from './martingale';
+export { default as purchase_hedge } from './purchase_hedge';
+export { default as trade_definition_hedgeoptions } from './trade_definition_hedgeoptions';

@@ -11,6 +11,8 @@ const getBotInterface = tradeEngine => {
         purchase: (contract_type, is_universal) => tradeEngine.purchase(contract_type, is_universal),
         setCustomPrediction: value => tradeEngine.setCustomPrediction(value),
         changeMarketSymbol: symbol => tradeEngine.changeMarketSymbol(symbol),
+        hedgePurchase: (type_a, type_b) => tradeEngine.hedgePurchase(type_a, type_b),
+        setHedgeLegs: (...args) => tradeEngine.setHedgeLegs(...args),
         setStopLoss: amount => tradeEngine.setStopLoss(amount),
         setTakeProfit: amount => tradeEngine.setTakeProfit(amount),
         getMartingaleStake: (mode, initial, size, runs, payout) =>

@@ -175,6 +175,48 @@ export const ToolboxItems = () =>
                         </Shadow>
                     </Value>
                 </Block>
+                <Block type='trade_definition_hedgeoptions'>
+                    <Value name='DURATION'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>1</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='AMOUNT'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>1</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='PREDICTION_A'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>5</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='BARRIER_A'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>0.06</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='BARRIER2_A'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>-0.06</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='PREDICTION_B'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>4</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='BARRIER_B'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>-0.06</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='BARRIER2_B'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>0.06</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
                 <Block type='stop_loss'>
                     <Value name='AMOUNT'>
                         <Shadow type='math_number'>
@@ -215,6 +257,7 @@ export const ToolboxItems = () =>
             <Category id='purchase_conditions' name={localize('Purchase conditions')}>
                 <Block type='before_purchase' />
                 <Block type='purchase' />
+                <Block type='purchase_hedge' />
             </Category>
             <Category id='sell_conditions' name={localize('Sell conditions (optional)')}>
                 <Block type='during_purchase' />
