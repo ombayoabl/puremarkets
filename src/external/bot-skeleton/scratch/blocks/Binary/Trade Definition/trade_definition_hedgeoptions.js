@@ -13,6 +13,14 @@ window.Blockly.Blocks.trade_definition_hedgeoptions = {
 
         // Ensure one of this type per statement-stack
         this.setNextStatement(false);
+
+        // In the blocks menu show the compact row only (Hedge Duration + Stake); the leg rows
+        // (prediction / barriers) appear on the block once it is dragged onto the workspace.
+        if (this.workspace?.isFlyout) {
+            ['PREDICTION_A', 'BARRIER_A', 'BARRIER2_A', 'PREDICTION_B', 'BARRIER_B', 'BARRIER2_B'].forEach(name =>
+                this.getInput(name)?.setVisible(false)
+            );
+        }
     },
     definition() {
         const leg = (n, prediction_name, barrier_name, second_barrier_name) => [
@@ -25,7 +33,7 @@ window.Blockly.Blocks.trade_definition_hedgeoptions = {
         ];
 
         return {
-            message0: localize('Hedge duration: {{ duration_unit }} {{ duration_value }}', {
+            message0: localize('Hedge Duration: {{ duration_unit }} {{ duration_value }}', {
                 duration_unit: '%1',
                 duration_value: '%2',
             }),
@@ -67,7 +75,7 @@ window.Blockly.Blocks.trade_definition_hedgeoptions = {
     },
     meta() {
         return {
-            display_name: localize('Trade options (hedge)'),
+            display_name: localize('Trade options (Hedge)'),
             description: localize(
                 'Define the trade option for a hedge pair. Duration and stake are shared by both legs, but each leg gets its own prediction and its own barrier(s). For example, Over 5 + Under 4, or a barrier hedge of +0.06 Higher with -0.06 Lower. When the contract type needs two barriers (Ends in/out, Stays in/out), each leg has two barrier rows.'
             ),

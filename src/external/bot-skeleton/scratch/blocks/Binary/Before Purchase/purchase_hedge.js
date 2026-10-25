@@ -13,7 +13,7 @@ window.Blockly.Blocks.purchase_hedge = {
     },
     definition() {
         return {
-            message0: localize('Hedge purchase {{ first }} {{ second }}', { first: '%1', second: '%2' }),
+            message0: localize('Hedge Purchase {{ first }} and {{ second }}', { first: '%1', second: '%2' }),
             args0: [
                 {
                     type: 'field_dropdown',
@@ -36,7 +36,7 @@ window.Blockly.Blocks.purchase_hedge = {
     },
     meta() {
         return {
-            display_name: localize('Hedge purchase'),
+            display_name: localize('Hedge Purchase'),
             description: localize(
                 'Use this block to purchase two contracts at the exact same time (a hedge pair), for example Over and Under, or Differs and Over. Each drop down can select any contract type. This block can only be used within the Purchase conditions block and replaces the normal Purchase block.'
             ),

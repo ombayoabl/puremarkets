@@ -4,11 +4,12 @@ import { modifyContextMenu } from '../../../utils';
 window.Blockly.Blocks.martingale = {
     init() {
         this.jsonInit(this.definition());
+        this.setInputsInline(true);
         this.applyMode();
     },
     definition() {
         return {
-            message0: localize('Martingale {{ mode }}', { mode: '%1' }),
+            message0: `${localize('Martingale')} %1 %2 %3 %4 %5 %6 %7 %8 %9`,
             args0: [
                 {
                     type: 'field_dropdown',
@@ -19,18 +20,15 @@ window.Blockly.Blocks.martingale = {
                         [localize('Split martingale'), 'split'],
                     ],
                 },
-            ],
-            message1: localize('Initial stake {{ initial }}', { initial: '%1' }),
-            args1: [{ type: 'input_value', name: 'INITIAL', check: 'Number' }],
-            message2: '%1 %2',
-            args2: [
-                { type: 'field_label', name: 'SIZE_LABEL', text: localize('Martingale size') },
+                { type: 'field_label', text: `${localize('Initial stake')}:` },
+                { type: 'input_value', name: 'INITIAL', check: 'Number' },
+                { type: 'field_label', name: 'SIZE_LABEL', text: `${localize('Martingale size')}:` },
                 { type: 'input_value', name: 'SIZE', check: 'Number' },
+                { type: 'field_label', text: `${localize('Recovery runs')}:` },
+                { type: 'input_value', name: 'RUNS', check: 'Number' },
+                { type: 'field_label', text: `${localize('Payout override %')}:` },
+                { type: 'input_value', name: 'PAYOUT', check: 'Number' },
             ],
-            message3: localize('Recovery runs {{ runs }}', { runs: '%1' }),
-            args3: [{ type: 'input_value', name: 'RUNS', check: 'Number' }],
-            message4: localize('Payout override % {{ payout }}', { payout: '%1' }),
-            args4: [{ type: 'input_value', name: 'PAYOUT', check: 'Number' }],
             output: 'Number',
             outputShape: window.Blockly.OUTPUT_SHAPE_ROUND,
             colour: window.Blockly.Colours.Special1.colour,
@@ -61,7 +59,7 @@ window.Blockly.Blocks.martingale = {
         this.getInput('SIZE')?.setVisible(!is_split);
         this.getField('SIZE_LABEL')?.setVisible(!is_split);
         this.getField('SIZE_LABEL')?.setValue(
-            mode === 'compounding' ? localize('Profit % added') : localize('Martingale size')
+            `${mode === 'compounding' ? localize('Profit % added') : localize('Martingale size')}:`
         );
         if (this.rendered) this.render();
     },
