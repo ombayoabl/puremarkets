@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { playConfirmSound, unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
 import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
 
@@ -48,6 +49,7 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
     const [scanning, setScanning] = useState(false);
     const [done, setDone] = useState(0);
     const [scan_error, setScanError] = useState('');
+    const [found_popup, setFoundPopup] = useState(false);
 
     useScanSound(scanning); // the scratching sound from the user's video, looped while scanning
     const cancel_scan = useRef(false);
@@ -96,8 +98,9 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                     await new Promise(r => setTimeout(r, Math.max(0, MIN_MS - (Date.now() - started))));
                     if (stale()) return;
                     onResult(list, best);
-                    playConfirmSound(); // tick + chime, then the matching bot opens by itself
-                    onLoadBot();
+                    playConfirmSound(); // tick + chime, then the popup
+                    setFoundPopup(true); // "market found" popup, straight away
+                    onLoadBot(); // and the matching bot opens by itself behind it
                     return;
                 }
                 onResult(list, null); // show the latest numbers while it keeps looking
@@ -124,6 +127,39 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
 
     return (
         <div className='scanner-panel__backdrop' onClick={onClose}>
+            {found_popup &&
+                found &&
+                createPortal(
+                    <div className='scanner-found__overlay' onClick={() => setFoundPopup(false)}>
+                        <div className='scanner-found' onClick={e => e.stopPropagation()} role='alertdialog'>
+                            <div className='scanner-found__title'>Market found ✅</div>
+                            <div className='scanner-found__market'>{found.name}</div>
+                            <div className='scanner-found__sub'>
+                                {found.kind === 'over1'
+                                    ? `Over 1 · green bar digit ${found.o1_hi} ${found.o1_hi_pct}% · red bar digit ${found.o1_lo} ${found.o1_lo_pct}%`
+                                    : `Under 8 · digit 8 ${found.p8}% · digit 9 ${found.p9}%`}
+                            </div>
+                            <div className='scanner-found__actions'>
+                                <button
+                                    type='button'
+                                    className='scanner-found__btn scanner-found__btn--primary'
+                                    onClick={() => setFoundPopup(false)}
+                                >
+                                    {found.kind === 'over1' ? 'Open Over 1 Bot' : 'Open Under 8 Bot'}
+                                </button>
+                                <button
+                                    type='button'
+                                    className='scanner-found__btn'
+                                    onClick={() => setFoundPopup(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
             <div className='scanner-panel' role='dialog' aria-label='Entry Scanner' onClick={e => e.stopPropagation()}>
                 <div className='scanner-panel__header'>
                     <h2>Entry Scanner</h2>
