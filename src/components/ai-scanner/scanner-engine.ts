@@ -120,13 +120,14 @@ export const scanAllMarkets = async (depth: number, onProgress?: (done: number) 
     return out.filter(Boolean) as MarketScan[];
 };
 
-// Picks the favoured signal: Under 8 first (the market with the lowest 8 + 9 share); if there is none, Over 1
-// (the market with the widest gap between its green and red bar). The result says which strategy it is for.
+// Picks the favoured signal: Over 1 first (the market with the widest gap between its green and red bar), because it
+// is the stricter signal and Under 8 is found on almost every scan; if there is no Over 1, Under 8 (the market with
+// the lowest 8 + 9 share). The result says which strategy it is for.
 export const pickBest = (list: MarketScan[]): MarketScan | null => {
-    const u8 = list.filter(m => m.signal).sort((a, b) => a.p8 + a.p9 - (b.p8 + b.p9))[0];
-    if (u8) return { ...u8, kind: 'under8' };
     const o1 = list.filter(m => m.o1).sort((a, b) => b.o1_hi_pct - b.o1_lo_pct - (a.o1_hi_pct - a.o1_lo_pct))[0];
-    return o1 ? { ...o1, kind: 'over1' } : null;
+    if (o1) return { ...o1, kind: 'over1' };
+    const u8 = list.filter(m => m.signal).sort((a, b) => a.p8 + a.p9 - (b.p8 + b.p9))[0];
+    return u8 ? { ...u8, kind: 'under8' } : null;
 };
 
 // Resolves true once the last digit on `symbol` has been 0 or 1 `hits` times in a row; false when cancelled.
