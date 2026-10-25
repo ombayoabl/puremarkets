@@ -1,7 +1,9 @@
+import { localize } from '@deriv-com/translations';
 import { LogTypes } from '../../../constants/messages';
+import { createError } from '../../../utils/error';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
-import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
+import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy, universalTradeOptionToBuy } from '../utils/helpers';
 import { isFastMode, recordRequests } from '../utils/time-scale';
 import { purchaseSuccessful } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
@@ -11,7 +13,8 @@ let purchase_reference;
 
 export default Engine =>
     class Purchase extends Engine {
-        purchase(contract_type) {
+        // is_universal: the Contract type switcher block, which buys any contract type straight away
+        purchase(contract_type, is_universal = false) {
             // Prevent calling purchase twice
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
                 return Promise.resolve();
@@ -58,7 +61,7 @@ export default Engine =>
                 });
             };
 
-            if (this.is_proposal_subscription_required) {
+            if (this.is_proposal_subscription_required && !is_universal) {
                 const { id, askPrice } = this.selectProposal(contract_type);
 
                 const action = () => api_base.api.send({ buy: id, price: askPrice });
@@ -96,7 +99,22 @@ export default Engine =>
                     delayIndex++
                 ).then(onSuccess);
             }
-            const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
+            let trade_option;
+            try {
+                if (is_universal && this.tradeOptions.basis === 'payout') {
+                    throw createError(
+                        'InvalidtoBuy',
+                        localize(
+                            'The Contract type switcher works with a stake, not a payout, in the Trade options block.'
+                        )
+                    );
+                }
+                trade_option = is_universal
+                    ? universalTradeOptionToBuy(contract_type, this.tradeOptions)
+                    : tradeOptionToBuy(contract_type, this.tradeOptions);
+            } catch (e) {
+                return Promise.reject(e);
+            }
             const action = () => api_base.api.send(trade_option);
 
             this.isSold = false;

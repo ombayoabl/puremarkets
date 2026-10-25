@@ -2,6 +2,7 @@ import { findValueByKeyRecursively, formatTime, getRoundedNumber, isEmptyObject 
 import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
 import { config } from '@/external/bot-skeleton/constants';
 import { localize } from '@deriv-com/translations';
+import { createError } from '../../../utils/error';
 import { observer as globalObserver } from '../../../utils/observer';
 import { error as logError } from './broadcast';
 import { reportRateLimit } from './time-scale';
@@ -43,6 +44,60 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) =>
         }
         return proposal;
     });
+
+// Contract type switcher ("Purchase any (universal)"): the buy request for ANY contract type. Only the parameters
+// that contract type accepts are sent, so a Trade parameters block set to one kind of contract (for example Digits
+// with a prediction) never breaks the purchase of another kind (for example Rise).
+const UNIVERSAL_DIGIT_TYPES = ['DIGITOVER', 'DIGITUNDER', 'DIGITMATCH', 'DIGITDIFF'];
+const UNIVERSAL_TICK_TYPES = ['TICKHIGH', 'TICKLOW'];
+const UNIVERSAL_TOUCH_TYPES = ['ONETOUCH', 'NOTOUCH'];
+const UNIVERSAL_RANGE_TYPES = ['RANGE', 'UPORDOWN', 'EXPIRYRANGE', 'EXPIRYMISS'];
+const UNIVERSAL_OPTIONAL_BARRIER_TYPES = ['CALL', 'PUT', 'CALLE', 'PUTE'];
+
+export const universalTradeOptionToBuy = (contract_type, trade_option) => {
+    const buy = {
+        buy: '1',
+        price: trade_option.amount,
+        parameters: {
+            amount: trade_option.amount,
+            basis: trade_option.basis,
+            contract_type,
+            currency: trade_option.currency,
+            duration: trade_option.duration,
+            duration_unit: trade_option.duration_unit,
+            underlying_symbol: trade_option.symbol,
+        },
+    };
+    const missing = what =>
+        createError(
+            'InvalidtoBuy',
+            localize('{{ contract_type }} needs {{ what }} in the Trade options block.', { contract_type, what })
+        );
+
+    if (UNIVERSAL_DIGIT_TYPES.includes(contract_type)) {
+        if (trade_option.prediction === undefined) throw missing(localize('a prediction (last digit)'));
+        buy.parameters.barrier = trade_option.prediction;
+    } else if (UNIVERSAL_TICK_TYPES.includes(contract_type)) {
+        if (trade_option.prediction === undefined) throw missing(localize('a prediction (selected tick)'));
+        buy.parameters.selected_tick = trade_option.prediction;
+    } else if (UNIVERSAL_TOUCH_TYPES.includes(contract_type)) {
+        if (trade_option.barrierOffset === undefined) throw missing(localize('a barrier'));
+        buy.parameters.barrier = trade_option.barrierOffset;
+    } else if (UNIVERSAL_RANGE_TYPES.includes(contract_type)) {
+        if (trade_option.barrierOffset === undefined || trade_option.secondBarrierOffset === undefined) {
+            throw missing(localize('both barriers'));
+        }
+        buy.parameters.barrier = trade_option.barrierOffset;
+        buy.parameters.barrier2 = trade_option.secondBarrierOffset;
+    } else if (UNIVERSAL_OPTIONAL_BARRIER_TYPES.includes(contract_type) && trade_option.barrierOffset !== undefined) {
+        // Higher / Lower: only when the Trade options block has a barrier, otherwise plain Rise / Fall
+        buy.parameters.barrier = trade_option.barrierOffset;
+    }
+    if (!isEmptyObject(trade_option.app_markup_percentage)) {
+        buy.parameters.app_markup_percentage = trade_option.app_markup_percentage;
+    }
+    return buy;
+};
 
 export const tradeOptionToBuy = (contract_type, trade_option) => {
     const buy = {

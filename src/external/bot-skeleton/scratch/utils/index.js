@@ -405,9 +405,13 @@ const getAllRequiredBlocks = (workspace, required_block_types) => {
     });
 };
 
+// Blocks that can stand in for a mandatory block: the Contract type switcher counts as a Purchase block
+const MANDATORY_BLOCK_ALIASES = { purchase: ['purchase_universal'] };
+
 const getMissingBlocks = (workspace, required_block_types) => {
     return required_block_types.filter(blockType => {
-        return !workspace.getAllBlocks().some(block => block.type === blockType);
+        const accepted_types = [blockType, ...(MANDATORY_BLOCK_ALIASES[blockType] || [])];
+        return !workspace.getAllBlocks().some(block => accepted_types.includes(block.type));
     });
 };
 

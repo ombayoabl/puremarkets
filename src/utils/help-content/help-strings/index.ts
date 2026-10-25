@@ -27,6 +27,7 @@ export { default as read_details } from './read_details';
 export { default as read_ohlc } from './read_ohlc';
 export { default as read_ohlc_obj } from './read_ohlc_obj';
 export { default as sell_at_market } from './sell_at_market';
+export { default as purchase_universal } from './purchase_universal';
 export { default as sell_price } from './sell_price';
 export { default as sma_statement } from './sma_statement';
 export { default as text_print } from './text_print';
