@@ -6,6 +6,7 @@ import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
 import { OVER1_WINDOWS, useOverOneStrategy } from './over-one-strategy';
+import { EO_MIN_SHARE, EO_TICKS, useEvenOddStrategy } from './even-odd-strategy';
 import { unlockScanSound, useScanSound } from '@/components/scan-sound/scan-sound';
 import './market-insights.scss';
 
@@ -74,6 +75,7 @@ const MarketInsights = observer(() => {
     const [fast_mode, setFastMode] = useState(false);
     const [scope, setScope] = useState<'one' | 'all'>('all');
     const [auto_trade, setAutoTrade] = useState(true);
+    const [entry_hits, setEntryHits] = useState<string>('3'); // Even / Odd entry: opposite digits in a row (3 or 4)
 
     const [tick, setTick] = useState<number | null>(null);
     const [dp, setDp] = useState(2);
@@ -81,7 +83,7 @@ const MarketInsights = observer(() => {
     const [try_n, setTryN] = useState(0);
 
     const market = MARKETS.find(m => m.symbol === symbol) || MARKETS[0];
-    const over_one = useOverOneStrategy(MARKETS, {
+    const common_cfg = {
         stake: Number(stake) || 0.35,
         duration: Number(duration) || 1,
         martingale,
@@ -96,25 +98,37 @@ const MarketInsights = observer(() => {
         transactions,
         run_panel,
         summary_card,
-    });
+    };
+    const over_one = useOverOneStrategy(MARKETS, common_cfg);
+    const even_odd = useEvenOddStrategy(MARKETS, { ...common_cfg, entry_hits: Number(entry_hits) || 3 });
     const is_over_under = strategy === 'over_under';
+    const is_even_odd = strategy === 'even_odd';
+    const is_scan = is_over_under || is_even_odd; // strategies that analyse all volatilities and trade a signal
+    const cur = is_even_odd ? even_odd : over_one; // the strategy that is selected
     const over_rows = Object.values(over_one.rows).sort((a, b) => b.score - a.score);
-    const found_rows = over_rows.filter(r => r.signal); // markets with a signal right now
-    const best_symbol = over_rows[0] && over_rows[0].score > -Infinity ? over_rows[0].symbol : '';
+    const eo_rows = Object.values(even_odd.rows).sort((a, b) => b.score - a.score);
+    const cur_rows = is_even_odd ? eo_rows : over_rows;
+    const found_rows = cur_rows.filter(r => r.signal); // markets with a signal right now
+    const best_symbol = cur_rows[0] && cur_rows[0].score > -Infinity ? cur_rows[0].symbol : '';
+    // changing the strategy stops whichever one is running
+    useEffect(() => {
+        if (over_one.running) over_one.stop();
+        if (even_odd.running) even_odd.stop();
+    }, [strategy]);
     // analysing all volatilities: the Select market box follows the market the analysis picked
     // (the one being traded, otherwise the best one so far)
-    const picked_symbol = over_one.traded || best_symbol;
+    const picked_symbol = cur.traded || best_symbol;
     useEffect(() => {
-        if (is_over_under && scope === 'all' && over_one.running && picked_symbol) setSymbol(picked_symbol);
-    }, [is_over_under, scope, over_one.running, picked_symbol]);
-    const show_all = is_over_under && scope === 'all' && !(over_one.running && picked_symbol);
+        if (is_scan && scope === 'all' && cur.running && picked_symbol) setSymbol(picked_symbol);
+    }, [is_scan, scope, cur.running, picked_symbol]);
+    const show_all = is_scan && scope === 'all' && !(cur.running && picked_symbol);
     // the scratching sound plays in the background while it analyses (until a market is being traded)
-    useScanSound(is_over_under && over_one.running && !over_one.traded);
+    useScanSound(is_scan && cur.running && !cur.traded);
     const onAnalyse = () => {
-        if (!is_over_under) return;
+        if (!is_scan) return;
         unlockScanSound();
-        if (over_one.running) over_one.stop();
-        else over_one.start(scope === 'all' ? MARKETS.map(m => m.symbol) : [symbol]);
+        if (cur.running) cur.stop();
+        else cur.start(scope === 'all' ? MARKETS.map(m => m.symbol) : [symbol]);
     };
     const log_lines = useMemo(() => buildLogLines(90), []);
     const root_ref = useRef<HTMLDivElement>(null);
@@ -209,7 +223,7 @@ const MarketInsights = observer(() => {
 
     return (
         <div className='mi' ref={root_ref}>
-            <LimitPopup kind={over_one.limit} onClose={over_one.clearLimit} />
+            <LimitPopup kind={cur.limit} onClose={cur.clearLimit} />
             <div className='mi__log' aria-hidden='true'>
                 {log_lines.map((l, i) => (
                     <p key={i} className={i % 2 ? 'mi__log-r' : ''}>
@@ -244,8 +258,8 @@ const MarketInsights = observer(() => {
                     </span>
                     <select
                         id='mi-market'
-                        value={is_over_under && scope === 'all' ? 'ALL' : symbol}
-                        disabled={is_over_under && scope === 'all' && over_one.running}
+                        value={is_scan && scope === 'all' ? 'ALL' : symbol}
+                        disabled={is_scan && scope === 'all' && cur.running}
                         onChange={e => {
                             if (e.target.value === 'ALL') setScope('all');
                             else {
@@ -254,7 +268,7 @@ const MarketInsights = observer(() => {
                             }
                         }}
                     >
-                        {is_over_under && <option value='ALL'>{localize('Analyse all volatilities')}</option>}
+                        {is_scan && <option value='ALL'>{localize('Analyse all volatilities')}</option>}
                         {MARKETS.map(m => (
                             <option key={m.symbol} value={m.symbol}>
                                 {m.name}
@@ -262,7 +276,7 @@ const MarketInsights = observer(() => {
                         ))}
                     </select>
                 </div>
-                {is_over_under && scope === 'all' && over_one.running && picked_symbol && (
+                {is_scan && scope === 'all' && cur.running && picked_symbol && (
                     <p className='mi__picked'>
                         {found_rows.length > 0 && (
                             <>
@@ -270,7 +284,7 @@ const MarketInsights = observer(() => {
                                 <br />
                             </>
                         )}
-                        {over_one.traded ? localize('Trading:') : localize('Best so far:')} {market.name}
+                        {cur.traded ? localize('Trading:') : localize('Best so far:')} {market.name}
                     </p>
                 )}
 
@@ -305,11 +319,18 @@ const MarketInsights = observer(() => {
                     <label htmlFor='mi-max'>{localize('Max trades per signal')}</label>
                     <input id='mi-max' type='number' inputMode='numeric' min='1' step='1' value={max_trades} onChange={e => setMaxTrades(e.target.value)} />
 
-                    {is_over_under && (
+                    {is_even_odd && (
+                        <>
+                            <label htmlFor='mi-hits'>{localize('Entry: opposite digits in a row (3 or 4)')}</label>
+                            <input id='mi-hits' type='number' inputMode='numeric' min='3' max='4' step='1' value={entry_hits} onChange={e => setEntryHits(e.target.value)} />
+                        </>
+                    )}
+
+                    {is_scan && (
                         <label className='mi__check' htmlFor='mi-auto'>
                             <input id='mi-auto' type='checkbox' checked={auto_trade} onChange={e => setAutoTrade(e.target.checked)} />
                             <span className='mi__box' aria-hidden='true' />
-                            <span>{localize('Auto-place Over 1 on a signal')}</span>
+                            <span>{is_even_odd ? localize('Auto-place Even / Odd on a signal') : localize('Auto-place Over 1 on a signal')}</span>
                         </label>
                     )}
 
@@ -324,8 +345,48 @@ const MarketInsights = observer(() => {
                 </div>
 
                 <button type='button' className='mi__analyse' onClick={onAnalyse}>
-                    {over_one.running ? localize('Stop') : localize('Analyse')}
+                    {cur.running ? localize('Stop') : localize('Analyse')}
                 </button>
+
+                {is_even_odd && (even_odd.running || eo_rows.length > 0 || even_odd.error) && (
+                    <div className='mi__over1'>
+                        <h3>{localize('EVEN / ODD STRATEGY')}</h3>
+                        <p className='mi__over1-rule'>
+                            {localize('Last')} {EO_TICKS.toLocaleString()} {localize('ticks')}: {localize('3 or more even digits at')} {EO_MIN_SHARE}%+ {'→'} {localize('Even')} · {localize('3 or more odd digits at')} {EO_MIN_SHARE}%+ {'→'} {localize('Odd')}
+                        </p>
+                        {even_odd.status && <p className='mi__over1-status'>{even_odd.status}</p>}
+                        {even_odd.error && <p className='mi__over1-error'>{even_odd.error}</p>}
+                        {eo_rows.length > 0 && (
+                            <div className='mi__over1-table'>
+                                <div className='mi__over1-row mi__over1-row--head'>
+                                    <span>{localize('Market')}</span>
+                                    <span>{localize('Even')}</span>
+                                    <span>{localize('Odd')}</span>
+                                    <span>{localize('Wait')}</span>
+                                </div>
+                                {eo_rows.map(r => (
+                                    <div
+                                        key={r.symbol}
+                                        className={`mi__over1-row${r.signal ? ' mi__over1-row--signal' : ''}`}
+                                        title={r.pct.map((p, d) => `${d}: ${p}%`).join('  ')}
+                                    >
+                                        <span>
+                                            {MARKETS.find(m => m.symbol === r.symbol)?.name.replace(' Index', '')}
+                                            {scope === 'all' && r.symbol === even_odd.traded && <b className='mi__over1-best'>{localize('TRADING')}</b>}
+                                            {scope === 'all' && r.signal && r.symbol !== even_odd.traded && (
+                                                <b className='mi__over1-best mi__over1-found'>{`${localize('FOUND')} ${found_rows.findIndex(f => f.symbol === r.symbol) + 1}`}</b>
+                                            )}
+                                            {scope === 'all' && !even_odd.traded && !found_rows.length && r.symbol === best_symbol && <b className='mi__over1-best'>{localize('BEST')}</b>}
+                                        </span>
+                                        <span className={r.side === 'even' ? 'mi__over1-hit' : ''}>{r.pct.length ? `${r.even_n}/5` : '—'}</span>
+                                        <span className={r.side === 'odd' ? 'mi__over1-hit' : ''}>{r.pct.length ? `${r.odd_n}/5` : '—'}</span>
+                                        <span>{r.side ? `${r.wait}/${Math.min(4, Math.max(3, Number(entry_hits) || 3))}` : '—'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {is_over_under && (over_one.running || over_rows.length > 0 || over_one.error) && (
                     <div className='mi__over1'>
