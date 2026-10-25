@@ -120,31 +120,23 @@ export const scanAllMarkets = async (depth: number, onProgress?: (done: number) 
     return out.filter(Boolean) as MarketScan[];
 };
 
-// Picks the signal to trade: every market is checked for both strategies, and whichever signal is found is used.
-// When several are found they are ranked on the same scale, by how many percentage points the market clears its own
-// limit (Under 8: how far the lower of 8 / 9 is under 10%; Over 1: the smaller of green bar over 10.5% and red bar
-// under 9%), so neither strategy is favoured. The result says which strategy it is for.
-export const pickBest = (list: MarketScan[]): MarketScan | null => {
+// How many percentage points a market clears each strategy's own limit (negative or no signal = not a candidate).
+export const over1Margin = (m: MarketScan) => Math.min(m.o1_hi_pct - O1_GREEN_MIN, O1_RED_MAX - m.o1_lo_pct);
+export const under8Margin = (m: MarketScan) => Math.min(LOW_LIMIT - m.p8, LOW_LIMIT - m.p9);
+
+// One scan analyses every market for both strategies at the same time. This gives the strongest market of each
+// strategy and the favoured one, ranked on the same scale (margin over the strategy's own limit), so neither
+// strategy is favoured by default.
+export const analyseSignals = (list: MarketScan[]) => {
+    const o1 = list.filter(m => m.o1).sort((a, b) => over1Margin(b) - over1Margin(a))[0] || null;
+    const u8 = list.filter(m => m.signal).sort((a, b) => under8Margin(b) - under8Margin(a))[0] || null;
     let best: MarketScan | null = null;
-    let best_margin = -Infinity;
-    for (const m of list) {
-        if (m.o1) {
-            const margin = Math.min(m.o1_hi_pct - O1_GREEN_MIN, O1_RED_MAX - m.o1_lo_pct);
-            if (margin > best_margin) {
-                best_margin = margin;
-                best = { ...m, kind: 'over1' };
-            }
-        }
-        if (m.signal) {
-            const margin = Math.min(LOW_LIMIT - m.p8, LOW_LIMIT - m.p9);
-            if (margin > best_margin) {
-                best_margin = margin;
-                best = { ...m, kind: 'under8' };
-            }
-        }
-    }
-    return best;
+    if (o1 && (!u8 || over1Margin(o1) >= under8Margin(u8))) best = { ...o1, kind: 'over1' };
+    else if (u8) best = { ...u8, kind: 'under8' };
+    return { o1, u8, best };
 };
+
+export const pickBest = (list: MarketScan[]): MarketScan | null => analyseSignals(list).best;
 
 // Resolves true once the last digit on `symbol` has been 0 or 1 `hits` times in a row; false when cancelled.
 export const waitForLowDigit = (symbol: string, hits: number, dp0: number, isCancelled: () => boolean) =>

@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { playConfirmSound, unlockScanSound, useScanSound } from '../scan-sound/scan-sound';
-import { MarketScan, MAX_DEPTH, pickBest, scanAllMarkets } from './scanner-engine';
+import {
+    MarketScan,
+    MAX_DEPTH,
+    analyseSignals,
+    over1Margin,
+    pickBest,
+    scanAllMarkets,
+    under8Margin,
+} from './scanner-engine';
 
 type Mode = { key: string; tab: string; mode: string; blurb: string };
 
@@ -262,6 +270,36 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                     : 'Not scanned yet'}
                     </div>
 
+                    {strategy_ready &&
+                        scanned &&
+                        results.length > 0 &&
+                        (() => {
+                            const sig = analyseSignals(results);
+                            return (
+                                <div className='scanner-panel__card scanner-panel__status'>
+                                    <b>Signal analysis (both strategies, all markets at once)</b>
+                                    <div>
+                                        Over 1:{' '}
+                                        {sig.o1
+                                            ? `${sig.o1.name} — green bar digit ${sig.o1.o1_hi} ${sig.o1.o1_hi_pct}%, red bar digit ${sig.o1.o1_lo} ${sig.o1.o1_lo_pct}% (strength ${over1Margin(sig.o1).toFixed(1)})`
+                                            : 'no market qualifies'}
+                                    </div>
+                                    <div>
+                                        Under 8:{' '}
+                                        {sig.u8
+                                            ? `${sig.u8.name} — digit 8 ${sig.u8.p8}%, digit 9 ${sig.u8.p9}% (strength ${under8Margin(sig.u8).toFixed(1)})`
+                                            : 'no market qualifies'}
+                                    </div>
+                                    <div>
+                                        Favoured:{' '}
+                                        {sig.best
+                                            ? `${sig.best.kind === 'over1' ? 'Over 1' : 'Under 8'} on ${sig.best.name}`
+                                            : 'none yet'}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                     {strategy_ready && scanned && results.length > 0 && (
                         <div className='scanner-panel__card scanner-panel__results'>
                             {results.map(r => (
@@ -276,6 +314,13 @@ const ScannerPanel = ({ open, onClose, found, results, scanned, onResult, onLoad
                                     </b>
                                     <span className='scanner-panel__d'>8: {r.p8}%</span>
                                     <span className='scanner-panel__d'>9: {r.p9}%</span>
+                                    <span className='scanner-panel__d'>
+                                        G{r.o1_hi}: {r.o1_hi_pct}%
+                                    </span>
+                                    <span className='scanner-panel__d'>
+                                        R{r.o1_lo}: {r.o1_lo_pct}%
+                                    </span>
+                                    {r.signal && <span className='scanner-panel__d'>U8 ✓</span>}
                                     {r.o1 && <span className='scanner-panel__d'>O1 ✓</span>}
                                 </div>
                             ))}
