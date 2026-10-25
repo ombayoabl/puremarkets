@@ -10,6 +10,7 @@ export { default as controls_forEach } from './controls_forEach';
 export { default as controls_if } from './controls_if';
 export { default as controls_whileUntil } from './controls_whileUntil';
 export { default as during_purchase } from './during_purchase';
+export { default as custom_prediction_setter } from './custom_prediction_setter';
 export { default as epoch } from './epoch';
 export { default as get_ohlc } from './get_ohlc';
 export { default as is_candle_black } from './is_candle_black';

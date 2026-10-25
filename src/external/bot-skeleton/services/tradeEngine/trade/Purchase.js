@@ -109,8 +109,13 @@ export default Engine =>
                         )
                     );
                 }
+                // a prediction from the Custom prediction setter block is used by the Contract type switcher too
+                const universal_options =
+                    this.custom_prediction !== undefined
+                        ? { ...this.tradeOptions, prediction: this.custom_prediction }
+                        : this.tradeOptions;
                 trade_option = is_universal
-                    ? universalTradeOptionToBuy(contract_type, this.tradeOptions)
+                    ? universalTradeOptionToBuy(contract_type, universal_options)
                     : tradeOptionToBuy(contract_type, this.tradeOptions);
             } catch (e) {
                 return Promise.reject(e);

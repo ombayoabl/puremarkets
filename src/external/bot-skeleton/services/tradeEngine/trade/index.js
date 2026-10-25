@@ -1,5 +1,6 @@
 import { applyMiddleware, createStore } from 'redux';
 import { thunk } from 'redux-thunk';
+import { localize } from '@deriv-com/translations';
 import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
 import { createError } from '../../../utils/error';
 import { observer as globalObserver } from '../../../utils/observer';
@@ -158,10 +159,34 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         const validated_trade_options = this.validateTradeOptions(tradeOptions);
 
         this.tradeOptions = { ...validated_trade_options, symbol: this.options.symbol };
+        this.applyCustomPrediction();
         this.store.dispatch(start());
         this.checkLimits(validated_trade_options);
 
         this.makeDirectPurchaseDecision();
+    }
+
+    // Custom prediction setter block: a prediction set in the bot logic wins over the Trade options block.
+    // Only contract types that already use a prediction take it (the Contract type switcher block reads it itself).
+    applyCustomPrediction() {
+        if (this.custom_prediction === undefined || !this.tradeOptions) return;
+        if (this.tradeOptions.prediction === undefined) return;
+        this.tradeOptions.prediction = this.custom_prediction;
+    }
+
+    setCustomPrediction(value) {
+        const prediction = Number(value);
+        if (value === '' || value === null || value === undefined || !Number.isFinite(prediction)) {
+            globalObserver.emit('ui.log.error', localize('Custom prediction must be a number.'));
+            return;
+        }
+        this.custom_prediction = Math.round(prediction);
+        this.applyCustomPrediction();
+        // contracts priced from proposals need new proposals for the new prediction
+        if (this.is_proposal_subscription_required && this.tradeOptions) {
+            this.makeProposals({ ...this.options, ...this.tradeOptions });
+            this.checkProposalReady();
+        }
     }
 
     loginAndGetBalance(token) {

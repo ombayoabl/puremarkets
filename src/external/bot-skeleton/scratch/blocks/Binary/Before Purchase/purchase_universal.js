@@ -61,7 +61,7 @@ window.Blockly.Blocks.purchase_universal = {
         return {
             display_name: localize('Contract type switcher'),
             description: localize(
-                'Use this block to purchase any contract type without being limited by the Trade parameters block settings. You can select any contract type from the dropdown without any limitation. This block can only be used within the Purchase conditions block.'
+                'Use this block to purchase any contract type without being limited by the Trade parameters block settings. You can select any contract type from the drop down without any limitations. This block can only be used within the Purchase conditions block.'
             ),
             key_words: localize('buy, purchase, universal, switcher, contract type, any'),
         };

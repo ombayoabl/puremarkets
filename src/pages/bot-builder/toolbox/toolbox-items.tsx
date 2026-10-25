@@ -799,6 +799,13 @@ export const ToolboxItems = () =>
 
             <Category id='contract_modifiers' name={localize('Contract modifiers by Everyman 🔥')}>
                 <Block type='purchase_universal' />
+                <Block type='custom_prediction_setter'>
+                    <Value name='PREDICTION'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>1</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
             </Category>
 
             <Examples id='examples'>

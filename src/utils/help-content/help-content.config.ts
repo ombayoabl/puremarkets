@@ -260,6 +260,7 @@ export const help_content_config = (public_path: string) => {
         trade_definition_multiplier: [{ type: TEXT }, { type: TEXT }, { type: TEXT }, { type: TEXT }],
         before_purchase: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }],
         purchase_universal: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }],
+        custom_prediction_setter: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }],
         during_purchase: [
             { type: TEXT },
             { type: BLOCK },
