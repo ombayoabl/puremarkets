@@ -251,7 +251,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
             {open && (
                 <div className='scanner-panel__backdrop' onClick={onClose}>
                     <div
-                        className='scanner-panel'
+                        className='scanner-panel scanner-panel--bot'
                         role='dialog'
                         aria-label={bot_title}
                         onClick={e => e.stopPropagation()}

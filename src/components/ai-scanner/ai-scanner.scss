@@ -593,3 +593,80 @@
     font-weight: 700;
     white-space: nowrap;
 }
+
+// Bot window (Over 1 Bot / Under 8 Bot): compact, so everything including Run fits without scrolling.
+// The Run / Stop button stays pinned at the bottom even on a short screen.
+.scanner-panel.scanner-panel--bot {
+    max-height: 96vh;
+    display: flex;
+    flex-direction: column;
+
+    .scanner-panel__header {
+        flex: none;
+        padding: 12px 20px;
+
+        h2 {
+            font-size: 18px;
+        }
+    }
+
+    .scanner-panel__body {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 8px 8px 0;
+        gap: 6px;
+    }
+
+    .scanner-panel__card {
+        padding: 8px 10px;
+        border-radius: 14px;
+    }
+
+    .scanner-panel__row2 {
+        gap: 8px;
+    }
+
+    label {
+        margin-bottom: 2px;
+        font-size: 11px;
+    }
+
+    .scanner-panel__box {
+        padding: 8px 10px;
+        font-size: 14px;
+        border-radius: 12px;
+    }
+
+    .scanner-panel__input {
+        padding: 8px 10px;
+        font-size: 15px;
+        border-radius: 12px;
+    }
+
+    .scanner-panel__field {
+        padding: 6px 10px;
+        border-radius: 12px;
+
+        strong {
+            font-size: 15px;
+        }
+    }
+
+    .scanner-panel__status {
+        font-size: 13px;
+    }
+
+    .scanner-panel__actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+        grid-template-columns: 1fr;
+        padding: 8px 0 10px;
+        background: linear-gradient(180deg, rgba(233, 240, 251, 0), #e9f0fb 30%);
+    }
+
+    .scanner-panel__btn {
+        padding: 12px 10px;
+        border-radius: 14px;
+    }
+}
