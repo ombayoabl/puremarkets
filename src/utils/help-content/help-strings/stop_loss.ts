@@ -9,7 +9,7 @@ export default {
             'Example: Stop loss 10 stops the bot once your total loss in this run reaches 10 (in your account currency).'
         ),
         localize(
-            'Drop this block inside a stack that runs, such as Purchase conditions or Restart trading conditions. All the maths is done for you in the background.'
+            'All the math is done for you. Just drag and drop this block into a stack that runs, such as Purchase conditions or Restart trading conditions.'
         ),
     ],
 };

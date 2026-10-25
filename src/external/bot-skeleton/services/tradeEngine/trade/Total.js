@@ -25,6 +25,8 @@ export default Engine =>
             this.stop_loss = undefined;
             this.take_profit = undefined;
             this.profit_limit_hit = false;
+            this.settled_queue = [];
+            this.martingale_state = null;
 
             globalObserver.register('statistics.clear', this.clearStatistics.bind(this));
         }
@@ -71,7 +73,98 @@ export default Engine =>
 
             log(win ? LogTypes.PROFIT : LogTypes.LOST, { currency, profit });
 
+            // Finished contracts wait here until the Martingale block reads them (oldest first).
+            this.settled_queue.push({
+                buy_price: Number(buyPrice),
+                sell_price: Number(sellPrice),
+                payout: Number(contract.payout),
+                currency,
+            });
+            if (this.settled_queue.length > 1000) this.settled_queue.shift();
+
             this.checkProfitLimits();
+        }
+
+        // Martingale block: returns the stake for the next trade. All three modes reset to the
+        // initial stake on the opposite result.
+        getMartingaleStake(mode, initial, size, runs, payout_override) {
+            const initial_stake = Number(initial) > 0 ? Number(initial) : 1;
+            const multiplier = Number(size);
+            const recovery_runs = Math.max(1, Math.floor(Number(runs)) || 1);
+            const override_pct = Number(payout_override) > 0 ? Number(payout_override) / 100 : 0;
+
+            if (!this.martingale_state || this.martingale_state.mode !== mode) {
+                this.martingale_state = {
+                    mode,
+                    n_losses: 0, // normal: losses in a row
+                    next_stake: null, // compounding: stake after the last win
+                    in_recovery: false, // split
+                    outstanding: 0,
+                    runs_left: 0,
+                    pct: override_pct || null, // split: profit percentage, locked on the first trade
+                    last_stake: null,
+                    currency: undefined,
+                };
+            }
+            const state = this.martingale_state;
+            if (mode === 'split' && !state.pct && override_pct) state.pct = override_pct;
+
+            while (this.settled_queue.length) {
+                const contract = this.settled_queue.shift();
+                const profit = contract.sell_price - contract.buy_price;
+                const win = profit > 0;
+                state.currency = contract.currency;
+
+                if (mode === 'normal') {
+                    state.n_losses = win ? 0 : state.n_losses + 1;
+                } else if (mode === 'compounding') {
+                    state.next_stake = win ? contract.buy_price + (profit * (multiplier || 0)) / 100 : null;
+                } else {
+                    if (!state.pct) {
+                        // derived contract payout (locked on the first trade)
+                        if (contract.payout > contract.buy_price) {
+                            state.pct = (contract.payout - contract.buy_price) / contract.buy_price;
+                        } else if (win) {
+                            state.pct = profit / contract.buy_price;
+                        }
+                    }
+                    if (!win) {
+                        if (!state.in_recovery) {
+                            state.in_recovery = true;
+                            state.outstanding = -profit;
+                            state.runs_left = recovery_runs;
+                        } else {
+                            state.outstanding += -profit;
+                        }
+                    } else if (state.in_recovery) {
+                        state.outstanding -= profit;
+                        state.runs_left -= 1;
+                        if (state.runs_left <= 0) {
+                            state.in_recovery = false;
+                            state.outstanding = 0;
+                            state.last_stake = null;
+                        }
+                    }
+                }
+            }
+
+            let stake = initial_stake;
+            if (mode === 'normal') {
+                stake = initial_stake * (multiplier > 0 ? multiplier : 1) ** state.n_losses;
+            } else if (mode === 'compounding') {
+                stake = state.next_stake || initial_stake;
+            } else if (state.in_recovery && state.pct && state.runs_left > 0) {
+                if (state.outstanding > 0) {
+                    stake = Math.max(initial_stake, state.outstanding / state.runs_left / state.pct);
+                    state.last_stake = stake;
+                } else {
+                    // already recovered: ride the remaining runs and keep the surplus
+                    stake = state.last_stake || initial_stake;
+                }
+            }
+
+            if (!Number.isFinite(stake) || stake <= 0) stake = initial_stake;
+            return getRoundedNumber(stake, state.currency);
         }
 
         // Stop loss / Take profit blocks: the amounts are kept here and checked after every finished contract.

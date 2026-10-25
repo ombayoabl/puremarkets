@@ -28,7 +28,7 @@ window.Blockly.Blocks.stop_loss = {
         return {
             display_name: localize('Stop loss'),
             description: localize(
-                'Set the target loss. When your total loss in this run reaches this amount, the bot stops by itself and shows a message. Drop this block inside any stack that runs (for example Purchase conditions or Restart trading conditions); all the maths is done for you in the background.'
+                'Set the target loss. When your total loss in this run reaches this amount, the bot stops by itself and shows a message. All the math is done for you. Just drag and drop it into a stack that runs, like Purchase conditions or Restart trading conditions.'
             ),
             key_words: localize('stop loss'),
         };

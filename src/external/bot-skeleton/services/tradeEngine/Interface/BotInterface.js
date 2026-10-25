@@ -13,6 +13,8 @@ const getBotInterface = tradeEngine => {
         changeMarketSymbol: symbol => tradeEngine.changeMarketSymbol(symbol),
         setStopLoss: amount => tradeEngine.setStopLoss(amount),
         setTakeProfit: amount => tradeEngine.setTakeProfit(amount),
+        getMartingaleStake: (mode, initial, size, runs, payout) =>
+            tradeEngine.getMartingaleStake(mode, initial, size, runs, payout),
         getAskPrice: contract_type => Number(getProposal(contract_type, tradeEngine).ask_price),
         getPayout: contract_type => Number(getProposal(contract_type, tradeEngine).payout),
         getPurchaseReference: () => tradeEngine.getPurchaseReference(),

@@ -44,3 +44,4 @@ export { default as trade_definition_tradeoptions } from './trade_definition_tra
 export { default as variables_set } from './variables_set';
 export { default as stop_loss } from './stop_loss';
 export { default as take_profit } from './take_profit';
+export { default as martingale } from './martingale';

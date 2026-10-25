@@ -28,7 +28,7 @@ window.Blockly.Blocks.take_profit = {
         return {
             display_name: localize('Take profit'),
             description: localize(
-                'Set the take profit. When your total profit in this run reaches this amount, the bot stops by itself and shows a celebration message. Drop this block inside any stack that runs (for example Purchase conditions or Restart trading conditions); all the maths is done for you in the background.'
+                'Set the take profit. When your total profit in this run reaches this amount, the bot stops by itself and shows a celebration message. All the math is done for you. Just drag and drop it into a stack that runs, like Purchase conditions or Restart trading conditions.'
             ),
             key_words: localize('take profit'),
         };
