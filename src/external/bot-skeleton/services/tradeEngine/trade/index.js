@@ -5,7 +5,7 @@ import { createError } from '../../../utils/error';
 import { observer as globalObserver } from '../../../utils/observer';
 import { api_base } from '../../api/api-base';
 import { checkBlocksForProposalRequest, doUntilDone } from '../utils/helpers';
-import { FAST_BOT_RATE, isFastMode, setFastMode } from '../utils/time-scale';
+import { getFastRate, hasRequestBudget, isFastMode, setFastMode } from '../utils/time-scale';
 import { expectInitArg } from '../utils/sanitize';
 import { fastRelease, proposalsReady, start } from './state/actions';
 import * as constants from './state/constants';
@@ -21,11 +21,17 @@ import Total from './Total';
 // The 10 volatility indices that "Change market on each run" goes round.
 const MARKET_ROTATION = ['1HZ10V', 'R_10', '1HZ25V', 'R_25', '1HZ50V', 'R_50', '1HZ75V', 'R_75', '1HZ100V', 'R_100'];
 
-// Fast Mode: only let a trade go out on a share (FAST_BOT_RATE) of the ticks.
-let fast_tick_n = 0;
+// Fast Mode: only let a trade go out on a share of the ticks, and only while there is request budget left.
+let fast_credit = 0;
 const fastTickGate = () => {
-    fast_tick_n++;
-    return Math.floor(fast_tick_n * FAST_BOT_RATE) !== Math.floor((fast_tick_n - 1) * FAST_BOT_RATE);
+    fast_credit += getFastRate();
+    if (fast_credit < 1) return false;
+    if (!hasRequestBudget()) {
+        fast_credit = 1; // keep waiting for budget, trade as soon as it frees up
+        return false;
+    }
+    fast_credit -= 1;
+    return true;
 };
 
 const watchBefore = store =>

@@ -2,7 +2,7 @@ import { LogTypes } from '../../../constants/messages';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
 import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
-import { isFastMode } from '../utils/time-scale';
+import { isFastMode, recordRequests } from '../utils/time-scale';
 import { purchaseSuccessful } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
 
@@ -16,6 +16,8 @@ export default Engine =>
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
                 return Promise.resolve();
             }
+
+            if (isFastMode()) recordRequests(this.is_proposal_subscription_required ? 3 : 1);
 
             const onSuccess = response => {
                 // Don't unnecessarily send a forget request for a purchased contract.
