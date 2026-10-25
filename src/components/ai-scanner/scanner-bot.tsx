@@ -168,6 +168,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
         setPl({ n: 0, wins: 0, total: 0 });
         batch_lanes.warm(1);
         let losses = 0;
+        let entered = false; // Over 1 waits for 0/1 only before the first trade; after that every trade is instant
         let n = 0;
         let wins = 0;
         let total = 0;
@@ -183,12 +184,14 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
                       ? RECOVERY_DIGIT
                       : MAIN_DIGIT;
                 const amount = recovering ? round2(base * Math.pow(mult, losses)) : base;
-                if (over1 && !recovering) {
-                    // Over 1 waits for the last digit to hit 0 or 1 first; after a loss it recovers straight away
+                if (over1 && !recovering && !entered) {
+                    // Over 1 waits for the last digit to hit 0 or 1 for the first entry only; after that (and after a
+                    // loss) every trade is placed straight away, with no more waiting or analysing
                     setStatus(`Waiting for the digit to hit 0 or 1 (${hits}x) on ${m.name}…`);
                     const dp = MARKETS.find(x => x.symbol === m.symbol)?.dp ?? 2;
                     const ok = await waitForLowDigit(m.symbol, hits, dp, () => run_id.current !== my_run);
                     if (!ok || run_id.current !== my_run) break;
+                    entered = true;
                 }
                 setStatus(
                     `${recovering ? 'Recovery' : 'Trading'}: ${over1 ? 'Over' : 'Under'} ${barrier} on ${m.name}, stake ${amount.toFixed(2)} ${currency}`
@@ -352,7 +355,7 @@ const ScannerBot = observer(({ open, market, onClose, onRunningChange, onFinishe
 
                             {shown_kind === 'over1' && (
                                 <div className='scanner-panel__card'>
-                                    <label>WAIT FOR 0 OR 1 (TIMES IN A ROW, 1 OR 2)</label>
+                                    <label>FIRST ENTRY: WAIT FOR 0 OR 1 (TIMES IN A ROW, 1 OR 2)</label>
                                     <input
                                         className='scanner-panel__input'
                                         inputMode='numeric'
