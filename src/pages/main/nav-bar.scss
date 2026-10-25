@@ -93,3 +93,28 @@
         color: var(--text-less-prominent);
     }
 }
+
+// Second line: same blue → green → white band under the tab row
+.main-nav {
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #1f9bd7, #19b5a5, #d9f5ee, #f6fcfb, #d9f5ee, #19b5a5, #1f9bd7);
+        background-size: 300% 100%;
+        animation: header-line-drift 12s linear infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    &__item--active {
+        background: #d9f5ee;
+        border-bottom-color: #19b5a5;
+    }
+}

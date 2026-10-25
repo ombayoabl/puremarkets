@@ -326,3 +326,67 @@
         }
     }
 }
+
+// ---- Two-line header: each line carries a blue → green → white band ----
+@keyframes header-line-drift {
+    to {
+        background-position: -300% 0;
+    }
+}
+
+%gradient-line {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1f9bd7, #19b5a5, #d9f5ee, #f6fcfb, #d9f5ee, #19b5a5, #1f9bd7);
+    background-size: 300% 100%;
+    animation: header-line-drift 12s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
+.app-header {
+    position: relative;
+
+    &::after {
+        @extend %gradient-line;
+    }
+}
+
+// Log in / Sign up in the same blue-green family (overrides the red/blue block above)
+.app-header .auth-actions {
+    button:first-child {
+        background-color: transparent !important;
+        border: 1px solid #1f9bd7 !important;
+
+        &,
+        * {
+            color: #1f9bd7 !important;
+        }
+
+        &:hover:not(:disabled) {
+            background-color: #d9f5ee !important;
+        }
+    }
+
+    button:last-child {
+        background-color: #14a3a1 !important;
+
+        &:hover:not(:disabled) {
+            background-color: #0f8a88 !important;
+        }
+    }
+
+    @media (max-width: 600px) {
+        button {
+            height: 3.2rem;
+            padding-inline: 1.2rem;
+            margin-inline-end: 0.6rem;
+            font-size: 1.3rem;
+        }
+    }
+}
