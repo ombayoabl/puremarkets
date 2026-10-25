@@ -40,16 +40,19 @@
     &__item {
         display: inline-flex;
         align-items: center;
-        gap: 0.8rem;
-        height: 5.2rem;
-        padding: 0 1.2rem;
+        justify-content: center;
+        gap: 0.6rem;
+        height: 4rem;
+        padding: 0 1rem;
+        line-height: 1;
+        text-align: center;
         border: none;
         border-bottom: 2px solid transparent;
         border-top-left-radius: 1rem;
         border-top-right-radius: 1rem;
         background: transparent;
         color: var(--text-general);
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 400;
         cursor: pointer;
 
@@ -117,4 +120,22 @@
         background: #d9f5ee;
         border-bottom-color: #19b5a5;
     }
+}
+
+// Compact tab boxes: smaller icon, label sits dead centre in the box
+.main-nav__item {
+    svg {
+        flex: 0 0 auto;
+        width: 2rem;
+        height: 2rem;
+    }
+
+    span {
+        display: block;
+        line-height: 1;
+    }
+}
+
+.main-nav__list {
+    padding-top: 0.6rem;
 }
