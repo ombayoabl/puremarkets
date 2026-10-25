@@ -66,11 +66,11 @@ const MarketInsights = observer(() => {
     const [symbol, setSymbol] = useState('1HZ100V');
     const [stake, setStake] = useState<string>('0.35');
     const [duration, setDuration] = useState<string>('1');
-    const [stoploss, setStoploss] = useState<string>('1000');
+    const [stoploss, setStoploss] = useState<string>('100');
     const [take_profit, setTakeProfit] = useState<string>('50');
     const [martingale, setMartingale] = useState(true);
     const [multiplier, setMultiplier] = useState<string>('2');
-    const [max_trades, setMaxTrades] = useState<string>('200');
+    const [max_trades, setMaxTrades] = useState<string>('50');
     const [fast_mode, setFastMode] = useState(false);
     const [scope, setScope] = useState<'one' | 'all'>('all');
     const [auto_trade, setAutoTrade] = useState(true);
