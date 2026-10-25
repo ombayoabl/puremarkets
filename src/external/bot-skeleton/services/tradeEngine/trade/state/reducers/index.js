@@ -40,6 +40,11 @@ const signal = (state = initialState, action) => {
                 scope: constants.STOP,
                 proposalsReady: state.proposalsReady,
             };
+        case constants.FAST_RELEASE:
+            return {
+                scope: constants.STOP,
+                proposalsReady: state.proposalsReady,
+            };
         case constants.NEW_TICK:
             return {
                 ...state,

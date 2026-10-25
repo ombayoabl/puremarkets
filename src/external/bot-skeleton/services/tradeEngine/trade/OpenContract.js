@@ -1,6 +1,7 @@
 import { getRoundedNumber } from '@/components/shared';
 import { api_base } from '../../api/api-base';
 import { contract as broadcastContract, contractStatus } from '../utils/broadcast';
+import { isFastMode } from '../utils/time-scale';
 import { openContractReceived, sell } from './state/actions';
 
 export default Engine =>
@@ -10,6 +11,11 @@ export default Engine =>
             const subscription = api_base.api.onMessage().subscribe(({ data }) => {
                 if (data.msg_type === 'proposal_open_contract') {
                     const contract = data.proposal_open_contract;
+
+                    if (isFastMode() && contract && this.fast_contracts?.has(contract.contract_id)) {
+                        this.handleFastContract(contract);
+                        return;
+                    }
 
                     if (!contract || !this.expectedContractId(contract?.contract_id)) {
                         return;
@@ -42,6 +48,23 @@ export default Engine =>
                 }
             });
             api_base.pushSubscription(subscription);
+        }
+
+        // Fast Mode: several contracts are open at once, each one is tracked until it is sold.
+        handleFastContract(contract) {
+            broadcastContract({ accountID: api_base.account_info.loginid, ...contract });
+
+            if (!contract.is_sold) return;
+
+            this.fast_contracts.delete(contract.contract_id);
+            if (this.fast_contracts.size === 0) this.contractId = '';
+            this.data.contract = contract;
+            this.updateTotals(contract);
+            contractStatus({
+                id: 'contract.sold',
+                data: contract.transaction_ids.sell,
+                contract,
+            });
         }
 
         waitForAfter() {

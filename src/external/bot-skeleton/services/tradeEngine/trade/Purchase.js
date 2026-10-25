@@ -2,6 +2,7 @@ import { LogTypes } from '../../../constants/messages';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
 import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
+import { isFastMode } from '../utils/time-scale';
 import { purchaseSuccessful } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
 
@@ -27,6 +28,17 @@ export default Engine =>
                 });
 
                 this.contractId = buy.contract_id;
+                if (isFastMode()) {
+                    if (!this.fast_contracts) this.fast_contracts = new Map();
+                    this.fast_contracts.set(buy.contract_id, true);
+                    this.fast_last_buy = {
+                        transaction_ids: { buy: buy.transaction_id },
+                        buy_price: buy.buy_price,
+                        sell_price: buy.buy_price,
+                        currency: this.tradeOptions?.currency,
+                        contract_type,
+                    };
+                }
                 this.store.dispatch(purchaseSuccessful());
 
                 if (this.is_proposal_subscription_required) {

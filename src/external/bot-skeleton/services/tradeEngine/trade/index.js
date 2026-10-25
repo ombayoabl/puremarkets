@@ -5,9 +5,9 @@ import { createError } from '../../../utils/error';
 import { observer as globalObserver } from '../../../utils/observer';
 import { api_base } from '../../api/api-base';
 import { checkBlocksForProposalRequest, doUntilDone } from '../utils/helpers';
-import { setFastMode } from '../utils/time-scale';
+import { FAST_BOT_RATE, isFastMode, setFastMode } from '../utils/time-scale';
 import { expectInitArg } from '../utils/sanitize';
-import { proposalsReady, start } from './state/actions';
+import { fastRelease, proposalsReady, start } from './state/actions';
 import * as constants from './state/constants';
 import rootReducer from './state/reducers';
 import Balance from './Balance';
@@ -18,15 +18,34 @@ import Sell from './Sell';
 import Ticks from './Ticks';
 import Total from './Total';
 
+// Fast Mode: only let a trade go out on a share (FAST_BOT_RATE) of the ticks.
+let fast_tick_n = 0;
+const fastTickGate = () => {
+    fast_tick_n++;
+    return Math.floor(fast_tick_n * FAST_BOT_RATE) !== Math.floor((fast_tick_n - 1) * FAST_BOT_RATE);
+};
+
 const watchBefore = store =>
     watchScope({
         store,
         stopScope: constants.DURING_PURCHASE,
         passScope: constants.BEFORE_PURCHASE,
         passFlag: 'proposalsReady',
+        gate: isFastMode() ? fastTickGate : null,
     });
 
-const watchDuring = store =>
+const watchDuring = store => {
+    if (isFastMode()) {
+        // Do not wait for the contract to finish: hand control straight back so the next trade can follow.
+        if (store.getState().scope === constants.DURING_PURCHASE) {
+            store.dispatch(fastRelease());
+        }
+        return Promise.resolve(false);
+    }
+    return watchDuringScope(store);
+};
+
+const watchDuringScope = store =>
     watchScope({
         store,
         stopScope: constants.STOP,
@@ -38,7 +57,7 @@ const watchDuring = store =>
  * which leads to the same problem we try to solve. So prevTick is isolated
  */
 let prevTick;
-const watchScope = ({ store, stopScope, passScope, passFlag }) => {
+const watchScope = ({ store, stopScope, passScope, passFlag, gate }) => {
     // in case watch is called after stop is fired
     if (store.getState().scope === stopScope) {
         return Promise.resolve(false);
@@ -49,8 +68,9 @@ const watchScope = ({ store, stopScope, passScope, passFlag }) => {
 
             if (newState.newTick === prevTick) return;
             prevTick = newState.newTick;
+            const is_gate_open = gate ? gate() : true;
 
-            if (newState.scope === passScope && newState[passFlag]) {
+            if (newState.scope === passScope && newState[passFlag] && is_gate_open) {
                 unsubscribe();
                 resolve(true);
             }
@@ -85,6 +105,7 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         this.initArgs = args;
         this.options = options;
         setFastMode(options.fastMode);
+        this.fast_contracts = new Map();
         this.startPromise = this.loginAndGetBalance(token);
 
         if (!this.checkTicksPromiseExists()) this.watchTicks(symbol);
@@ -150,7 +171,15 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         if (watchName === 'before') {
             return watchBefore(this.store);
         }
+        if (isFastMode()) this.prepareFastResult();
         return watchDuring(this.store);
+    }
+
+    // Fast Mode: after-purchase blocks read the last finished contract. Before any contract has finished
+    // there is none yet, so use a neutral placeholder (counts as a win, same stake) instead of failing.
+    prepareFastResult() {
+        if (this.data.contract?.transaction_ids || !this.fast_last_buy) return;
+        this.data.contract = this.fast_last_buy;
     }
 
     makeDirectPurchaseDecision() {

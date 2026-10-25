@@ -40,3 +40,7 @@ export const openContractReceived = () => (dispatch, getState) => {
 
 export const sell = () => (dispatch, getState) =>
     dispatchIfScopeIs({ dispatch, getState, data: { type: constants.SELL }, scope: constants.DURING_PURCHASE });
+
+// Fast Mode: leave DURING_PURCHASE without waiting for the contract to be sold.
+export const fastRelease = () => (dispatch, getState) =>
+    dispatchIfScopeIs({ dispatch, getState, data: { type: constants.FAST_RELEASE }, scope: constants.DURING_PURCHASE });
