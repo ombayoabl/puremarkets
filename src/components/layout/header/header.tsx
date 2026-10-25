@@ -154,13 +154,15 @@ const AppHeader = observer(() => {
                                     <AccountSwitcher activeAccount={activeAccount} />
                                 </div>
                             )}
-                            <Button
-                                primary
-                                disabled={client?.is_logging_out || !authData?.currency}
-                                onClick={handleTransfer}
-                            >
-                                <Localize i18n_default_text='Transfer' />
-                            </Button>
+                            {isDesktop && (
+                                <Button
+                                    primary
+                                    disabled={client?.is_logging_out || !authData?.currency}
+                                    onClick={handleTransfer}
+                                >
+                                    <Localize i18n_default_text='Transfer' />
+                                </Button>
+                            )}
                         </div>
                     );
                 }

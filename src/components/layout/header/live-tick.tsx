@@ -17,7 +17,6 @@ const LiveTick = observer(() => {
     const store = useStore();
     const symbol = store?.dashboard?.bot_builder_symbol || DEFAULT_SYMBOL;
     const [price, setPrice] = useState<string>('––');
-    const [direction, setDirection] = useState<'up' | 'down' | ''>('');
     const [is_live, setIsLive] = useState(false);
     const last_quote = useRef<number | null>(null);
 
@@ -28,7 +27,6 @@ const LiveTick = observer(() => {
         let timer: ReturnType<typeof setTimeout>;
 
         setPrice('––');
-        setDirection('');
         last_quote.current = null;
 
         const connect = () => {
@@ -42,9 +40,6 @@ const LiveTick = observer(() => {
                 const msg = JSON.parse(event.data);
                 if (msg.msg_type !== 'tick' || msg.tick?.symbol !== symbol) return;
                 const quote = Number(msg.tick.quote);
-                if (last_quote.current !== null && quote !== last_quote.current) {
-                    setDirection(quote > last_quote.current ? 'up' : 'down');
-                }
                 last_quote.current = quote;
                 setPrice(quote.toFixed(msg.tick.pip_size ?? 2));
             };
@@ -67,7 +62,7 @@ const LiveTick = observer(() => {
     return (
         <div className='live-tick' data-testid='dt_live_tick' title={symbol}>
             <span className={`live-tick__dot${is_live ? ' live-tick__dot--on' : ''}`} />
-            <span className={`live-tick__price live-tick__price--${direction || 'flat'}`}>{price}</span>
+            <span className='live-tick__price'>{price}</span>
         </div>
     );
 });

@@ -20,16 +20,7 @@
         min-width: 9rem;
         font-size: 2rem;
         font-weight: 700;
-        color: var(--text-prominent);
-        transition: color 0.2s;
-
-        &--up {
-            color: #0f9d58;
-        }
-
-        &--down {
-            color: #d93025;
-        }
+        color: #000;
     }
 
     @media (max-width: 600px) {
