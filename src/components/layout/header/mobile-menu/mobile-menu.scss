@@ -17,8 +17,35 @@
     }
 
     &__footer {
+        flex-direction: column;
         justify-content: center;
-        height: 4rem;
+        align-items: center;
+        gap: 0.6rem;
+        height: auto;
+        padding-block: 0.8rem;
+    }
+
+    // "Build & Designed by Every Man": opens WhatsApp. Thin colour lines above and below.
+    &__credit {
+        display: block;
+        padding-block: 0.8rem;
+        border-top: 2px solid transparent;
+        border-bottom: 2px solid transparent;
+        border-image: linear-gradient(90deg, #1f9bd7, #c026d3, #f5b301) 1;
+        color: var(--text-prominent);
+        font-size: 1.4rem;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: none;
+        width: 80%;
+    }
+
+    // Long label: let it wrap neatly instead of being cut off
+    &__transfer-label {
+        display: block;
+        font-size: 1.3rem;
+        line-height: 1.3;
+        white-space: normal;
     }
 
     &__header {

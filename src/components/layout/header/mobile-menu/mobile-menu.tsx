@@ -133,6 +133,14 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
                 </Drawer.Content>
 
                 <Drawer.Footer className='mobile-menu__footer'>
+                    <a
+                        className='mobile-menu__credit'
+                        href='https://wa.me/254705491022'
+                        target='_blank'
+                        rel='noopener noreferrer'
+                    >
+                        Build &amp; Designed by <u>Every Man</u>
+                    </a>
                     <ServerTime />
                     <NetworkStatus />
                 </Drawer.Footer>

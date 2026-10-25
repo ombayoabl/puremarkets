@@ -4,6 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { generateOAuthURL } from '@/components/shared';
 import Button from '@/components/shared_ui/button';
 import useActiveAccount from '@/hooks/api/account/useActiveAccount';
+import { DBOT_TABS } from '@/constants/bot-contents';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useLogout } from '@/hooks/useLogout';
 import { useStore } from '@/hooks/useStore';
@@ -21,7 +22,7 @@ import './header.scss';
 const AppHeader = observer(() => {
     const { isDesktop } = useDevice();
     const { isAuthorizing, activeLoginid, setIsAuthorizing, authData } = useApiBase();
-    const { client } = useStore() ?? {};
+    const { client, dashboard } = useStore() ?? {};
     const [authTimeout, setAuthTimeout] = useState(false);
     const is_account_regenerating = client?.is_account_regenerating || false;
 
@@ -249,10 +250,13 @@ const AppHeader = observer(() => {
                 </Wrapper>
                 <Wrapper variant='right'>
                     {renderAccountSection('right')}
-                    <div className='main__run-strategy-wrapper app-header__run'>
-                        {/* The store loads a moment after first paint; render Run only once it exists */}
-                        {client ? <RunStrategy /> : null}
-                    </div>
+                    {/* Desktop only (phones get the Run bar at the bottom); never on DTrader.
+                        The store loads a moment after first paint, so wait for it. */}
+                    {isDesktop && client && dashboard?.active_tab !== DBOT_TABS.DTRADER ? (
+                        <div className='main__run-strategy-wrapper app-header__run'>
+                            <RunStrategy />
+                        </div>
+                    ) : null}
                 </Wrapper>
             </Header>
         </>

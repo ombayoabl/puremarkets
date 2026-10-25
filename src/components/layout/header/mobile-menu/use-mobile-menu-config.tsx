@@ -1,11 +1,28 @@
 import { ComponentProps, ReactNode, useMemo } from 'react';
 import useThemeSwitcher from '@/hooks/useThemeSwitcher';
 import RootStore from '@/stores/root-store';
-import { LegacyLogout1pxIcon, LegacyTheme1pxIcon } from '@deriv/quill-icons/Legacy';
+import { navigateToTransfer } from '@/utils/transfer-utils';
+import { LegacyLogout1pxIcon, LegacyReportsIcon, LegacyTheme1pxIcon } from '@deriv/quill-icons/Legacy';
 import { useTranslations } from '@deriv-com/translations';
 import { ToggleSwitch } from '@deriv-com/ui';
 
 export type TSubmenuSection = 'accountSettings' | 'cashier' | 'reports';
+
+const TransferIcon = ({ className }: { className?: string }) => (
+    <svg
+        className={className}
+        width='16'
+        height='16'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='var(--text-general)'
+        strokeWidth='2'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+    >
+        <path d='M4 8h16m0 0-4-4m4 4-4 4M20 16H4m0 0 4-4m-4 4 4 4' />
+    </svg>
+);
 
 //IconTypes
 type TMenuConfig = {
@@ -50,12 +67,26 @@ const useMobileMenuConfig = (
                 // For desktop menu items, see:
                 // src/components/layout/header/header-config.tsx
 
+                client?.is_logged_in && {
+                    as: 'button',
+                    label: localize('Reports'),
+                    LeftComponent: LegacyReportsIcon,
+                    submenu: 'reports',
+                },
                 // Conditionally include theme toggle based on brand config
                 enableThemeToggle && {
                     as: 'button',
                     label: localize('Dark theme'),
                     LeftComponent: LegacyTheme1pxIcon,
                     RightComponent: <ToggleSwitch value={is_dark_mode_on} onChange={toggleTheme} />,
+                },
+                client?.is_logged_in && {
+                    as: 'button',
+                    label: <span className='mobile-menu__transfer-label'>{localize('Transfer to Options / USD wallet')}</span>,
+                    LeftComponent: TransferIcon,
+                    onClick: () => {
+                        if (client?.currency) navigateToTransfer(client.currency);
+                    },
                 },
             ].filter(Boolean) as TMenuConfig,
             [

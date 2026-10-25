@@ -420,3 +420,48 @@
         }
     }
 }
+
+// ---- Phones: hamburger on the left, balance tucked into the top-right corner ----
+@media (max-width: 600px) {
+    .app-header--mobile {
+        padding-inline: 0.4rem;
+
+        .app-header__logo {
+            padding-inline: 0.6rem;
+        }
+
+        .app-header__logo-img {
+            max-width: 9rem;
+        }
+
+        .app-header__logo-text {
+            margin-left: 0.4rem;
+            font-size: 1.2rem;
+        }
+
+        .account-info {
+            flex: 0 0 auto;
+            margin-inline-start: auto;
+            max-width: 52vw;
+        }
+
+        .deriv-account-switcher__balance {
+            font-size: 1.3rem;
+            white-space: nowrap;
+        }
+
+        .live-tick {
+            margin-inline-start: 0.2rem;
+            min-width: 0;
+        }
+
+        .live-tick__price {
+            min-width: 0;
+            font-size: 1.4rem;
+        }
+
+        .live-tick__dot {
+            display: none;
+        }
+    }
+}

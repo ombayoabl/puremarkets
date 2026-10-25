@@ -313,6 +313,7 @@ const RunPanel = observer(() => {
 
     const show_run_panel = [BOT_BUILDER, CHART, BULK_TRADER, OVER_ONE, UNDER_EIGHT, MARKET_INSIGHTS].includes(active_tab) || active_tour;
     if ((!show_run_panel && isDesktop) || active_tour === 'bot_builder') return null;
+    if (active_tab === DBOT_TABS.DTRADER) return null;
 
     return (
         <>
