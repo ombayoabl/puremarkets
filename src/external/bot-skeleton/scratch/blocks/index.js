@@ -6,6 +6,7 @@ import './Binary/After Purchase';
 import './Binary/Before Purchase';
 import './Binary/During Purchase';
 import './Binary/Indicators';
+import './Binary/Profit Limits';
 import './Binary/Tick Analysis';
 import './Binary/Tools/Candle';
 import './Binary/Tools/Misc';

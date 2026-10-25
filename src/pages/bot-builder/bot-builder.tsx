@@ -2,6 +2,8 @@
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
+import LimitPopup, { LimitKind } from '@/components/limit-popup/limit-popup';
+import { observer as globalObserver } from '@/external/bot-skeleton';
 import { botNotification } from '@/components/bot-notification/bot-notification';
 import { notification_message } from '@/components/bot-notification/bot-notification-utils';
 import { useStore } from '@/hooks/useStore';
@@ -25,6 +27,14 @@ const BotBuilder = observer(() => {
     const { isDesktop } = useDevice();
     const { onMount, onUnmount } = app;
     const el_ref = React.useRef<HTMLInputElement | null>(null);
+    const [limit, setLimit] = React.useState<LimitKind>(null);
+
+    // Stop loss / Take profit blocks: show the message when the bot stops because a limit was hit
+    React.useEffect(() => {
+        const onProfitLimit = ({ kind }: { kind: LimitKind }) => setLimit(kind);
+        globalObserver.register('bot.profit_limit', onProfitLimit);
+        return () => globalObserver.unregister('bot.profit_limit', onProfitLimit);
+    }, []);
 
     // TODO: fix
     // const isMounted = useIsMounted();
@@ -123,6 +133,7 @@ const BotBuilder = observer(() => {
                     <WorkspaceWrapper />
                 </div>
             </div>
+            <LimitPopup kind={limit} onClose={() => setLimit(null)} />
             {active_tab === 1 && <BotBuilderTourHandler is_mobile={!isDesktop} />}
             {/* removed this outside from toolbar becuase it needs to loaded seperately without dependency */}
             <LoadModal />

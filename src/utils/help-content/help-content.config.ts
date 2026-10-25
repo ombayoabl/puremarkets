@@ -190,6 +190,9 @@ export const help_content_config = (public_path: string) => {
             { type: TEXT },
             { type: EXAMPLE, example_id: 'notify_telegram' },
         ],
+        // =============== Stop loss / Take profit ============
+        stop_loss: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
+        take_profit: [{ type: TEXT }, { type: BLOCK }, { type: TEXT }, { type: TEXT }],
         // =============== Misc blocks ============
         console: [{ type: TEXT }, { type: TEXT }, { type: TEXT }, { type: TEXT }, { type: TEXT }, { type: TEXT }],
         balance: [

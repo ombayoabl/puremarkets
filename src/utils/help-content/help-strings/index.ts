@@ -42,3 +42,5 @@ export { default as trade_definition } from './trade_definition';
 export { default as trade_definition_multiplier } from './trade_definition_multiplier';
 export { default as trade_definition_tradeoptions } from './trade_definition_tradeoptions';
 export { default as variables_set } from './variables_set';
+export { default as stop_loss } from './stop_loss';
+export { default as take_profit } from './take_profit';

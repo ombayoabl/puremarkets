@@ -22,6 +22,9 @@ export default Engine =>
             super();
             this.sessionRuns = 0;
             this.sessionProfit = 0;
+            this.stop_loss = undefined;
+            this.take_profit = undefined;
+            this.profit_limit_hit = false;
 
             globalObserver.register('statistics.clear', this.clearStatistics.bind(this));
         }
@@ -67,6 +70,35 @@ export default Engine =>
             });
 
             log(win ? LogTypes.PROFIT : LogTypes.LOST, { currency, profit });
+
+            this.checkProfitLimits();
+        }
+
+        // Stop loss / Take profit blocks: the amounts are kept here and checked after every finished contract.
+        setStopLoss(amount) {
+            const value = Math.abs(Number(amount));
+            this.stop_loss = value > 0 ? value : undefined;
+            this.checkProfitLimits();
+        }
+
+        setTakeProfit(amount) {
+            const value = Math.abs(Number(amount));
+            this.take_profit = value > 0 ? value : undefined;
+            this.checkProfitLimits();
+        }
+
+        checkProfitLimits() {
+            if (this.profit_limit_hit) return;
+
+            const profit = Number(this.sessionProfit);
+            let kind = null;
+            if (this.stop_loss && profit <= -this.stop_loss) kind = 'sl';
+            else if (this.take_profit && profit >= this.take_profit) kind = 'tp';
+            if (!kind) return;
+
+            this.profit_limit_hit = true;
+            globalObserver.emit('bot.profit_limit', { kind });
+            globalObserver.emit('bot.click_stop'); // same as pressing the Stop button
         }
 
         updateAndReturnTotalRuns() {

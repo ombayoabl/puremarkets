@@ -175,6 +175,20 @@ export const ToolboxItems = () =>
                         </Shadow>
                     </Value>
                 </Block>
+                <Block type='stop_loss'>
+                    <Value name='AMOUNT'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>10</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
+                <Block type='take_profit'>
+                    <Value name='AMOUNT'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>20</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
             </Category>
             <Category id='purchase_conditions' name={localize('Purchase conditions')}>
                 <Block type='before_purchase' />
