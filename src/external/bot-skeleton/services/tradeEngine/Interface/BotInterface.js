@@ -10,6 +10,7 @@ const getBotInterface = tradeEngine => {
         stop: (...args) => tradeEngine.stop(...args),
         purchase: (contract_type, is_universal) => tradeEngine.purchase(contract_type, is_universal),
         setCustomPrediction: value => tradeEngine.setCustomPrediction(value),
+        changeMarketSymbol: symbol => tradeEngine.changeMarketSymbol(symbol),
         getAskPrice: contract_type => Number(getProposal(contract_type, tradeEngine).ask_price),
         getPayout: contract_type => Number(getProposal(contract_type, tradeEngine).payout),
         getPurchaseReference: () => tradeEngine.getPurchaseReference(),

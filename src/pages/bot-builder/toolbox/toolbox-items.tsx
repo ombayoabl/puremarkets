@@ -806,6 +806,7 @@ export const ToolboxItems = () =>
                         </Shadow>
                     </Value>
                 </Block>
+                <Block type='market_symbol_change' />
             </Category>
 
             <Examples id='examples'>

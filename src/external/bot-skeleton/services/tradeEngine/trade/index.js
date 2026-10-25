@@ -174,6 +174,40 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         this.tradeOptions.prediction = this.custom_prediction;
     }
 
+    // Market symbol change block: moves the market for placing contracts (options / trade options) AND the market
+    // the analysis blocks read (this.symbol) in one go, and lets the new market's ticks drive the bot.
+    changeMarketSymbol(symbol) {
+        if (!this.options) {
+            globalObserver.emit('ui.log.error', localize('The market can only be changed after the bot has started.'));
+            return;
+        }
+        if (!MARKET_ROTATION.includes(symbol)) {
+            globalObserver.emit('ui.log.error', localize('Unknown market symbol: {{ symbol }}', { symbol }));
+            return;
+        }
+        if (this.symbol === symbol && this.options.symbol === symbol) return;
+
+        // listen to the new market BEFORE it becomes the current one (a market's listener only reacts while current)
+        this.ensureMarketMonitored(symbol);
+
+        this.options.symbol = symbol; // contracts are placed on this market from the next trade
+        this.symbol = symbol; // last digit, tick list, OHLC and the other analysis blocks read this market
+        if (this.tradeOptions) this.tradeOptions.symbol = symbol;
+
+        // with "Change market on each run", carry on from this market
+        const rotation_index = this.market_rotation ? this.market_rotation.indexOf(symbol) : -1;
+        if (rotation_index >= 0) {
+            this.market_rotation_index = rotation_index;
+            this.market_run_started = true;
+        }
+
+        // contracts priced from proposals need new proposals for the new market
+        if (this.is_proposal_subscription_required && this.tradeOptions) {
+            this.makeProposals({ ...this.options, ...this.tradeOptions });
+            this.checkProposalReady();
+        }
+    }
+
     setCustomPrediction(value) {
         const prediction = Number(value);
         if (value === '' || value === null || value === undefined || !Number.isFinite(prediction)) {

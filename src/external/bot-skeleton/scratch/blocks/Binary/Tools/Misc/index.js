@@ -9,3 +9,4 @@ import './total_runs';
 import './useless_block';
 import './console';
 import './custom_prediction_setter';
+import './market_symbol_change';

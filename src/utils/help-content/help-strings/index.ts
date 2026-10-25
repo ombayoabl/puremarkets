@@ -19,6 +19,7 @@ export { default as logic_operation } from './logic_operation';
 export { default as math_arithmetic } from './math_arithmetic';
 export { default as math_constrain } from './math_constrain';
 export { default as math_single } from './math_single';
+export { default as market_symbol_change } from './market_symbol_change';
 export { default as notify_telegram } from './notify_telegram';
 export { default as ohlc } from './ohlc';
 export { default as ohlc_values } from './ohlc_values';
