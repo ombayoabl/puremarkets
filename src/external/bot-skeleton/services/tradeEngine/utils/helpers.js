@@ -4,6 +4,7 @@ import { config } from '@/external/bot-skeleton/constants';
 import { localize } from '@deriv-com/translations';
 import { observer as globalObserver } from '../../../utils/observer';
 import { error as logError } from './broadcast';
+import { scaleDelay } from './time-scale';
 
 export const tradeOptionToProposal = (trade_option, purchase_reference) =>
     trade_option.contractTypes.map(type => {
@@ -183,7 +184,7 @@ const getBackoffDelayInMs = (error_obj, delay_index) => {
 
     logError(message_to_print);
 
-    return next_delay_in_seconds * 1000;
+    return scaleDelay(next_delay_in_seconds * 1000);
 };
 
 export const updateErrorMessage = error => {

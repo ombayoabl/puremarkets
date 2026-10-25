@@ -88,6 +88,15 @@ export const ToolboxItems = () =>
                                                                     movable='false'
                                                                 >
                                                                     <Field name='RESTARTONERROR'>TRUE</Field>
+                                                                    <Next>
+                                                                        <Block
+                                                                            type='trade_definition_fastmode'
+                                                                            deletable='false'
+                                                                            movable='false'
+                                                                        >
+                                                                            <Field name='FASTMODE'>FALSE</Field>
+                                                                        </Block>
+                                                                    </Next>
                                                                 </Block>
                                                             </Next>
                                                         </Block>

@@ -5,6 +5,7 @@ import './trade_definition_contracttype';
 import './trade_definition_candleinterval';
 import './trade_definition_restartbuysell';
 import './trade_definition_restartonerror';
+import './trade_definition_fastmode';
 import './trade_definition_tradeoptions';
 import './trade_definition_multiplier';
 import './multiplier_stop_loss';

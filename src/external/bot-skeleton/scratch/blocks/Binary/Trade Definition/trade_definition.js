@@ -174,6 +174,7 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
     const candle_interval_block = block.getChildByType('trade_definition_candleinterval');
     const restart_on_error_block = block.getChildByType('trade_definition_restartonerror');
     const restart_on_buy_sell_block = block.getChildByType('trade_definition_restartbuysell');
+    const fast_mode_block = block.getChildByType('trade_definition_fastmode');
 
     const symbol = market_block.getFieldValue('SYMBOL_LIST');
     const trade_type = trade_type_block.getFieldValue('TRADETYPE_LIST');
@@ -181,6 +182,8 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
     const candle_interval = candle_interval_block.getFieldValue('CANDLEINTERVAL_LIST');
     const should_restart_on_error = restart_on_error_block.getFieldValue('RESTARTONERROR') !== 'FALSE';
     const should_restart_on_buy_sell = restart_on_buy_sell_block.getFieldValue('TIME_MACHINE_ENABLED') !== 'FALSE';
+    // Older strategies have no fast mode block -> treated as off.
+    const is_fast_mode = fast_mode_block?.getFieldValue('FASTMODE') === 'TRUE';
 
     const { opposites } = config();
     const contract_type_list =
@@ -199,6 +202,7 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
           candleInterval      : '${candle_interval || 'FALSE'}',
           shouldRestartOnError: ${should_restart_on_error},
           timeMachineEnabled  : ${should_restart_on_buy_sell},
+          fastMode            : ${is_fast_mode},
         });
         ${initialization.trim()}
     };

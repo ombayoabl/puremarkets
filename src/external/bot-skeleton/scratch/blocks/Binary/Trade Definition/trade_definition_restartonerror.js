@@ -22,13 +22,17 @@ window.Blockly.Blocks.trade_definition_restartonerror = {
             nextStatement: null,
         });
 
-        this.setNextStatement(false);
         this.setMovable(false);
         this.setDeletable(false);
     },
     onchange(/* event */) {
         if (!this.workspace || window.Blockly.derivWorkspace.isFlyoutVisible || this.workspace.isDragging()) {
             return;
+        }
+
+        const next_block = this.getNextBlock();
+        if (next_block && next_block.type !== 'trade_definition_fastmode') {
+            next_block.unplug(true);
         }
 
         this.enforceLimitations();

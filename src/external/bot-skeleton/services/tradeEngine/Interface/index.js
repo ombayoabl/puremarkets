@@ -1,4 +1,5 @@
 import TradeEngine from '../trade';
+import { scaleDelay } from '../utils/time-scale';
 import getBotInterface from './BotInterface';
 import getTicksInterface from './TicksInterface';
 import getToolsInterface from './ToolsInterface';
@@ -10,7 +11,7 @@ const sleep = (observer, arg = 1) => {
             setTimeout(() => {
                 r();
                 setTimeout(() => observer.emit('CONTINUE'), 0);
-            }, arg * 1000),
+            }, scaleDelay(arg * 1000)),
         () => {}
     );
 };

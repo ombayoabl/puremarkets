@@ -22,6 +22,11 @@
                         <next>
                           <block type="trade_definition_restartonerror" deletable="false" movable="false">
                             <field name="RESTARTONERROR">TRUE</field>
+                            <next>
+                              <block type="trade_definition_fastmode" deletable="false" movable="false">
+                                <field name="FASTMODE">FALSE</field>
+                              </block>
+                            </next>
                           </block>
                         </next>
                       </block>
