@@ -1022,3 +1022,72 @@
         overflow-y: auto;
     }
 }
+
+// Laptop / desktop screens: a smaller account popup (Real / Demo tabs, accounts, Reset balance,
+// Trader's Hub link, Manage accounts). Phones keep the bigger touch-friendly sizes above.
+@media (min-width: 900px) {
+    .acc-dropdown--panel {
+        min-width: 27rem;
+        width: 27rem;
+        max-height: calc(100vh - 8rem);
+        overflow-y: auto;
+
+        .acc-dropdown {
+            &__tab {
+                padding: 0.9rem 0.8rem 0.8rem;
+                font-size: 1.3rem;
+                border-bottom-width: 0.2rem;
+            }
+
+            &__section-header {
+                padding: 1.1rem 1.2rem 0.5rem;
+                font-size: 1.2rem;
+            }
+
+            &__empty {
+                padding: 0.8rem 1.2rem;
+                font-size: 1.2rem;
+            }
+
+            &__account {
+                gap: 0.8rem;
+                padding: 0.9rem 1.2rem;
+            }
+
+            &__account-left {
+                gap: 0.8rem;
+            }
+
+            &__account-type {
+                font-size: 1.3rem !important;
+            }
+
+            &__account-id {
+                font-size: 1.1rem;
+            }
+
+            &__balance {
+                font-size: 1.3rem !important;
+            }
+
+            &__reset-btn {
+                padding: 0.4rem 0.9rem;
+                font-size: 1.1rem;
+            }
+
+            &__cfd-link {
+                padding: 1rem 1.2rem 0.8rem;
+                font-size: 1.2rem;
+            }
+
+            &__footer {
+                padding: 0.6rem 1.2rem 1.2rem;
+            }
+
+            &__manage-btn {
+                padding: 0.7rem 1.6rem;
+                font-size: 1.2rem;
+            }
+        }
+    }
+}
