@@ -1,0 +1,49 @@
+// Scrollbar with up / down arrow buttons for the blocks popup (flyout) and the blocks menu list,
+// so the box can be scrolled by clicking the arrows as well as dragging.
+$arrow-up: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M5 2 L9 8 H1 Z' fill='%23505050'/></svg>");
+$arrow-down: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M5 8 L9 2 H1 Z' fill='%23505050'/></svg>");
+
+.flyout__content .flyout__content-scrollbar.dc-themed-scrollbars,
+.db-toolbox__category-menu {
+    // Chrome ignores the ::-webkit-scrollbar rules below while these are not "auto"
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+
+    &::-webkit-scrollbar {
+        width: 1.6rem;
+        background: var(--general-section-1);
+    }
+
+    &::-webkit-scrollbar-track {
+        background: var(--general-section-1);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        min-height: 4rem;
+        border: 0.3rem solid var(--general-section-1);
+        border-radius: 0.8rem;
+        background: #9aa3b2;
+
+        &:hover {
+            background: #6f7a8c;
+        }
+    }
+
+    &::-webkit-scrollbar-button:single-button {
+        display: block;
+        width: 1.6rem;
+        height: 1.8rem;
+        background-color: var(--general-section-1);
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 0.9rem;
+    }
+
+    &::-webkit-scrollbar-button:single-button:vertical:decrement {
+        background-image: $arrow-up;
+    }
+
+    &::-webkit-scrollbar-button:single-button:vertical:increment {
+        background-image: $arrow-down;
+    }
+}

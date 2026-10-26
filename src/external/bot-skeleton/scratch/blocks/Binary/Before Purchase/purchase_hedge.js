@@ -38,7 +38,7 @@ window.Blockly.Blocks.purchase_hedge = {
         return {
             display_name: localize('Hedge Purchase'),
             description: localize(
-                'Use this block to purchase two contracts at the exact same time (a hedge pair), for example Over and Under, or Differs and Over. Each drop down can select any contract type. This block can only be used within the Purchase conditions block and replaces the normal Purchase block.'
+                'Use this block to purchase two contracts at the exact same time (a hedge pair), for example Over and Under, or Differs and Over. Each dropdown selects any contract type. This block can only be used within the Purchase conditions block and replaces the normal Purchase block.'
             ),
             key_words: localize('buy, purchase, hedge, pair, two contracts'),
         };

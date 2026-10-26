@@ -13,6 +13,7 @@ import { getPlatformConfig } from '../shared';
 import Input from '../shared_ui/input';
 import Text from '../shared_ui/text';
 import ThemedScrollbars from '../shared_ui/themed-scrollbars';
+import './scroll-arrows.scss';
 import FlyoutBlockGroup from './flyout-block-group';
 import HelpBase from './help-contents';
 
