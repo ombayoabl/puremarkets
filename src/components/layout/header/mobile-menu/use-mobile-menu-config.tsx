@@ -1,8 +1,15 @@
 import { ComponentProps, ReactNode, useMemo } from 'react';
 import useThemeSwitcher from '@/hooks/useThemeSwitcher';
 import RootStore from '@/stores/root-store';
+import { DBOT_TABS } from '@/constants/bot-contents';
 import { navigateToTransfer } from '@/utils/transfer-utils';
-import { LegacyLogout1pxIcon, LegacyReportsIcon, LegacyTheme1pxIcon } from '@deriv/quill-icons/Legacy';
+import {
+    LegacyGuide1pxIcon,
+    LegacyHomeOldIcon,
+    LegacyLogout1pxIcon,
+    LegacyReportsIcon,
+    LegacyTheme1pxIcon,
+} from '@deriv/quill-icons/Legacy';
 import { useTranslations } from '@deriv-com/translations';
 import { ToggleSwitch } from '@deriv-com/ui';
 
@@ -41,13 +48,14 @@ type TMenuConfig = {
 const useMobileMenuConfig = (
     client?: RootStore['client'],
     onLogout?: () => void,
-    enableThemeToggle: boolean = true
+    enableThemeToggle: boolean = true,
+    dashboard?: RootStore['dashboard'],
+    onNavigate?: () => void
 ) => {
     const { localize } = useTranslations();
     const { is_dark_mode_on, toggleTheme } = useThemeSwitcher();
 
     const menuConfig = useMemo((): TMenuConfig[] => {
-
         return [
             [
                 // ========================================
@@ -82,7 +90,11 @@ const useMobileMenuConfig = (
                 },
                 client?.is_logged_in && {
                     as: 'button',
-                    label: <span className='mobile-menu__transfer-label'>{localize('Transfer to Options / USD wallet')}</span>,
+                    label: (
+                        <span className='mobile-menu__transfer-label'>
+                            {localize('Transfer to Options / USD wallet')}
+                        </span>
+                    ),
                     LeftComponent: TransferIcon,
                     onClick: () => {
                         if (client?.currency) navigateToTransfer(client.currency);
@@ -99,6 +111,29 @@ const useMobileMenuConfig = (
                         removeBorderBottom: true,
                     },
             ].filter(Boolean) as TMenuConfig,
+            [
+                {
+                    as: 'button',
+                    label: localize('Home'),
+                    LeftComponent: LegacyHomeOldIcon,
+                    isActive: dashboard?.active_tab === DBOT_TABS.DASHBOARD,
+                    onClick: () => {
+                        dashboard?.setActiveTab(DBOT_TABS.DASHBOARD);
+                        onNavigate?.();
+                    },
+                },
+                {
+                    as: 'button',
+                    label: localize('Tutorials'),
+                    LeftComponent: LegacyGuide1pxIcon,
+                    isActive: dashboard?.active_tab === DBOT_TABS.TUTORIAL,
+                    onClick: () => {
+                        dashboard?.setActiveTab(DBOT_TABS.TUTORIAL);
+                        onNavigate?.();
+                    },
+                    removeBorderBottom: true,
+                },
+            ] as TMenuConfig,
         ].filter(section => section.length > 0);
     }, [
         client,
@@ -107,6 +142,9 @@ const useMobileMenuConfig = (
         toggleTheme,
         localize,
         enableThemeToggle, // [AI] Added to recalculate menu when theme toggle config changes
+        dashboard?.active_tab,
+        dashboard,
+        onNavigate,
     ]);
 
     // [AI] Check if menu has any items to determine if mobile menu should be shown

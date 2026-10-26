@@ -16,6 +16,7 @@ import { Drawer, MobileLanguagesDrawer, useDevice } from '@deriv-com/ui';
 import NetworkStatus from './../../footer/NetworkStatus';
 import ServerTime from './../../footer/ServerTime';
 import BackButton from './back-button';
+import CreditContact from './credit-contact';
 import MenuContent from './menu-content';
 import MenuHeader from './menu-header';
 import ReportsSubmenu from './reports-submenu';
@@ -36,7 +37,7 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
     const { hideModal, isModalOpenFor, showModal } = useModalManager();
     const { isDesktop } = useDevice();
     // [AI] Get client from store to check menu items
-    const { client } = useStore() ?? {};
+    const { client, dashboard } = useStore() ?? {};
     // [/AI]
 
     // Get mobile menu configuration from brand.config.json
@@ -44,7 +45,7 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
     const enableThemeToggle = brandConfig.platform.footer?.enable_theme_toggle ?? true;
 
     // Check if menu has any items to determine if mobile menu should be shown
-    const { hasMenuItems } = useMobileMenuConfig(client, onLogout, enableThemeToggle);
+    const { hasMenuItems } = useMobileMenuConfig(client, onLogout, enableThemeToggle, dashboard);
 
     const openDrawer = () => setIsDrawerOpen(true);
     const closeDrawer = () => {
@@ -123,6 +124,7 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
                         <MenuContent
                             enableThemeToggle={enableThemeToggle}
                             onOpenSubmenu={openSubmenu}
+                            onNavigate={closeDrawer}
                             onLogout={() => {
                                 closeDrawer();
                                 onLogout?.();
@@ -133,14 +135,7 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
                 </Drawer.Content>
 
                 <Drawer.Footer className='mobile-menu__footer'>
-                    <a
-                        className='mobile-menu__credit'
-                        href='https://wa.me/254705491022'
-                        target='_blank'
-                        rel='noopener noreferrer'
-                    >
-                        Build &amp; Designed by <u>Every Man</u>
-                    </a>
+                    <CreditContact />
                     <ServerTime />
                     <NetworkStatus />
                 </Drawer.Footer>

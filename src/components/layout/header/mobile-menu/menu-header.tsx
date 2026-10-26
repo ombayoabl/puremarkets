@@ -1,8 +1,9 @@
-// Updated to show a plain "Settings" title (matching other templates' drawer style)
+// Drawer header: "Menu" title with the Install App button
 import { ComponentProps } from 'react';
 import { LabelPairedGlobeSmRegularIcon } from '@deriv/quill-icons';
 import { useTranslations } from '@deriv-com/translations';
 import { Text, useDevice } from '@deriv-com/ui';
+import InstallAppButton from './install-app-button';
 
 type TMenuHeader = {
     hideLanguageSetting: boolean;
@@ -17,11 +18,10 @@ const MenuHeader = ({ hideLanguageSetting, openLanguageSetting }: TMenuHeader) =
 
     return (
         <div className='mobile-menu__header'>
-            {/* [AI] Show a plain "Settings" title instead of the logo + app name mark */}
             <Text size={isDesktop ? 'sm' : 'md'} weight='bold'>
-                {localize('Settings')}
+                {localize('Menu')}
             </Text>
-            {/* [/AI] */}
+            <InstallAppButton />
 
             {!hideLanguageSetting && (
                 <button

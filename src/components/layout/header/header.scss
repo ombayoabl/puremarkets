@@ -424,7 +424,8 @@
 // ---- Phones: hamburger on the left, balance tucked into the top-right corner ----
 @media (max-width: 600px) {
     .app-header--mobile {
-        padding-inline: 0.4rem;
+        padding-inline-start: 0.4rem;
+        padding-inline-end: 0.2rem;
 
         .app-header__logo {
             padding-inline: 0.6rem;
@@ -439,9 +440,10 @@
             font-size: 1.2rem;
         }
 
+        // Balance sits flush in the top-right corner, nothing left over on its right
         .account-info {
             flex: 0 0 auto;
-            margin-inline-start: auto;
+            margin-inline: 0;
             max-width: 52vw;
         }
 
@@ -450,9 +452,11 @@
             white-space: nowrap;
         }
 
+        // Live tick: centred in the free space between the logo and the balance (same on every phone width)
         .live-tick {
-            margin-inline-start: 0.2rem;
+            margin-inline: auto;
             min-width: 0;
+            justify-content: center;
         }
 
         .live-tick__price {

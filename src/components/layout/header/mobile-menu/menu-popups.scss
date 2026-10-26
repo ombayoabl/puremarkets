@@ -1,0 +1,97 @@
+// Pop-ups opened from the mobile menu (rendered on document.body, above the drawer)
+@keyframes em-lines-slide {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 300% 50%;
+    }
+}
+
+// green, yellow, gold, white - sliding along a line or around a box
+$em-lines: linear-gradient(90deg, #22c55e, #facc15, #d4af37, #ffffff, #22c55e, #facc15, #d4af37, #ffffff, #22c55e);
+
+.em-lines {
+    display: block;
+    height: 3px;
+    width: 100%;
+    border-radius: 2px;
+    background: $em-lines;
+    background-size: 300% 100%;
+    animation: em-lines-slide 4s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
+.em-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.55);
+
+    // the box: animated colour lines run round its edge
+    &__box {
+        width: min(32rem, 100%);
+        padding: 3px;
+        border-radius: 1.6rem;
+        background: $em-lines;
+        background-size: 300% 100%;
+        animation: em-lines-slide 4s linear infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    &__card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 2.4rem 1.6rem;
+        border-radius: 1.4rem;
+        background: #0f1b1e;
+        color: #fff;
+        text-align: center;
+    }
+
+    &__title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: 0.04rem;
+        color: #d4af37;
+    }
+
+    &__number {
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: 0.1rem;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    &__text {
+        font-size: 1.4rem;
+        line-height: 1.5;
+        color: #e5e5e5;
+    }
+
+    &__close {
+        margin-top: 0.6rem;
+        padding: 0.8rem 2.4rem;
+        border: 1px solid #facc15;
+        border-radius: 0.8rem;
+        background: transparent;
+        color: #facc15;
+        font-size: 1.4rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+}
