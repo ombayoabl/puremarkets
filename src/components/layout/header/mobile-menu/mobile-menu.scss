@@ -25,11 +25,12 @@
         padding-block: 0.8rem;
     }
 
-    // "Build & Designed by Every Man": box with moving green / yellow / gold / white lines, opens WhatsApp
+    // "Build & Designed by Everyman": box with moving green / yellow / gold / white lines, opens WhatsApp
     &__credit {
         display: block;
-        width: 86%;
-        padding: 3px;
+        width: auto;
+        max-width: 86%;
+        padding: 2px;
         border-radius: 1.2rem;
         background: linear-gradient(
             90deg,
@@ -56,8 +57,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.3rem;
-        padding: 1rem 1.2rem;
+        padding: 0.6rem 1.4rem;
         border-radius: 1rem;
         background: var(--general-main-1);
         text-align: center;
@@ -65,15 +65,9 @@
 
     &__credit-text {
         color: var(--text-prominent);
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 700;
-    }
-
-    &__credit-number {
-        color: #14a3a1;
-        font-size: 1.6rem;
-        font-weight: 800;
-        letter-spacing: 0.08rem;
+        white-space: nowrap;
     }
 
     &__install {
