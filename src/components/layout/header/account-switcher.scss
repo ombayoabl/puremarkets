@@ -1004,3 +1004,21 @@
     pointer-events: auto;
     cursor: pointer;
 }
+
+// Phones: the Real / Demo dropdown opens as a full-width panel right under the header
+@media (max-width: 600px) {
+    .acc-dropdown.acc-dropdown--panel {
+        position: fixed;
+        top: 4.7rem; // replaced by the measured header bottom when the dropdown opens
+        left: 0;
+        right: 0;
+        width: 100vw;
+        min-width: 0;
+        max-width: 100vw;
+        margin: 0;
+        padding: 0;
+        border-radius: 0 0 1.2rem 1.2rem;
+        max-height: calc(100dvh - 12rem);
+        overflow-y: auto;
+    }
+}

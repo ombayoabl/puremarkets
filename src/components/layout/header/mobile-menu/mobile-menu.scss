@@ -25,20 +25,55 @@
         padding-block: 0.8rem;
     }
 
-    // "Build & Designed by Every Man": colour lines above and below (moving), tap to see the number
+    // "Build & Designed by Every Man": box with moving green / yellow / gold / white lines, opens WhatsApp
     &__credit {
+        display: block;
+        width: 86%;
+        padding: 3px;
+        border-radius: 1.2rem;
+        background: linear-gradient(
+            90deg,
+            #22c55e,
+            #facc15,
+            #d4af37,
+            #ffffff,
+            #22c55e,
+            #facc15,
+            #d4af37,
+            #ffffff,
+            #22c55e
+        );
+        background-size: 300% 100%;
+        animation: em-lines-slide 4s linear infinite;
+        text-decoration: none;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    &__credit-inner {
         display: flex;
         flex-direction: column;
-        gap: 0.8rem;
-        width: 80%;
-        padding: 0;
-        border: 0;
-        background: transparent;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 1rem 1.2rem;
+        border-radius: 1rem;
+        background: var(--general-main-1);
+        text-align: center;
+    }
+
+    &__credit-text {
         color: var(--text-prominent);
         font-size: 1.4rem;
         font-weight: 700;
-        text-align: center;
-        cursor: pointer;
+    }
+
+    &__credit-number {
+        color: #14a3a1;
+        font-size: 1.6rem;
+        font-weight: 800;
+        letter-spacing: 0.08rem;
     }
 
     &__install {
@@ -210,5 +245,33 @@
         svg > path {
             fill: var(--text-prominent);
         }
+    }
+}
+
+// The drawer is rendered on document.body, so it is as tall as the screen (inside the header it was only header-high)
+.mobile-menu--portal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: 100000;
+
+    .deriv-drawer__overlay {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+        z-index: 99999;
+    }
+
+    .deriv-drawer__container {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        height: 100dvh;
+        max-width: 85vw;
+        z-index: 100000;
     }
 }

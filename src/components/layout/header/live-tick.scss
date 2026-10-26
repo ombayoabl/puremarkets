@@ -23,6 +23,11 @@
         color: #000;
     }
 
+    // the last digit is the one that moves: a little bigger
+    &__last {
+        font-size: 1.25em;
+    }
+
     @media (max-width: 600px) {
         margin-inline-start: 0.8rem;
 

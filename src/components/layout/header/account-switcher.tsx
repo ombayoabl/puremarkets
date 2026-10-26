@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import { addComma, getCurrencyDisplayCode, getDecimalPlaces, standalone_routes } from '@/components/shared';
@@ -74,6 +74,14 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
             document.removeEventListener('keydown', handleKeyDown);
         };
     }, []);
+
+    // Phones: the dropdown is a full-width panel pinned under the header, so measure where the header ends
+    const [panel_top, setPanelTop] = useState<number | null>(null);
+    useLayoutEffect(() => {
+        if (!isOpen) return;
+        const header = wrapperRef.current?.closest('header');
+        setPanelTop(header ? Math.round(header.getBoundingClientRect().bottom) : null);
+    }, [isOpen]);
 
     const toggleDropdown = useCallback(() => {
         if (is_bot_running || isSingleAccount) return;
@@ -203,7 +211,11 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                 </div>
             </AccountInfoWrapper>
             {isOpen && (
-                <div className='acc-dropdown acc-dropdown--panel' role='listbox'>
+                <div
+                    className='acc-dropdown acc-dropdown--panel'
+                    role='listbox'
+                    style={panel_top !== null ? { top: panel_top } : undefined}
+                >
                     <div className='acc-dropdown__tabs'>
                         <button
                             type='button'

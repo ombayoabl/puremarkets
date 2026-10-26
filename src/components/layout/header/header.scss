@@ -427,6 +427,19 @@
         padding-inline-start: 0.4rem;
         padding-inline-end: 0.2rem;
 
+        // The library gives both wrappers width 100% (so each only gets half the row). The left one takes all the
+        // free space, the right one only what it needs: this is what lets the balance sit in the corner.
+        .deriv-wrapper__left {
+            flex: 1 1 auto;
+            width: auto;
+            min-width: 0;
+        }
+
+        .deriv-wrapper__right {
+            flex: 0 0 auto;
+            width: auto;
+        }
+
         .app-header__logo {
             padding-inline: 0.6rem;
         }

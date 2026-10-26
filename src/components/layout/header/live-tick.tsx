@@ -62,7 +62,10 @@ const LiveTick = observer(() => {
     return (
         <div className='live-tick' data-testid='dt_live_tick' title={symbol}>
             <span className={`live-tick__dot${is_live ? ' live-tick__dot--on' : ''}`} />
-            <span className='live-tick__price'>{price}</span>
+            <span className='live-tick__price'>
+                {price.slice(0, -1)}
+                <span className='live-tick__last'>{price.slice(-1)}</span>
+            </span>
         </div>
     );
 });

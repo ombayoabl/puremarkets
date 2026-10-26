@@ -2,6 +2,7 @@
 // Updated to use brand configuration for mobile menu elements visibility
 // Controls language settings and theme toggle via brand.config.json
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import brandConfig from '@/../brand.config.json';
 import useModalManager from '@/hooks/useModalManager';
 // [AI] Import useStore to check if menu has items
@@ -72,74 +73,79 @@ const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
                 <ToggleButton onClick={openDrawer} />
             </div>
 
-            <Drawer isOpen={isDrawerOpen} onCloseDrawer={closeDrawer} width='29.5rem'>
-                <Drawer.Header onCloseDrawer={closeDrawer}>
-                    {/* [AI] Conditionally render language settings in header based on brand config */}
-                    <MenuHeader
-                        hideLanguageSetting={!enableLanguageSettings || isLanguageSettingVisible}
-                        openLanguageSetting={openLanguageSetting}
-                    />
-                    {/* [/AI] */}
-                </Drawer.Header>
-
-                <Drawer.Content>
-                    {/* [AI] Conditionally render language drawer based on brand config */}
-                    {enableLanguageSettings && isLanguageSettingVisible ? (
-                        <>
-                            <div className='mobile-menu__back-btn'>
-                                <BackButton buttonText={localize('Language')} onClick={hideModal} />
-                            </div>
-
-                            <MobileLanguagesDrawer
-                                isOpen
-                                /* [AI] */
-                                languages={OFFERED_LANGUAGES}
-                                /* [/AI] */
-                                onClose={hideModal}
-                                onLanguageSwitch={code => {
-                                    try {
-                                        switchLanguage(code);
-                                        hideModal();
-                                        // Page reload is necessary because Blockly is outside React lifecycle
-                                        // and won't re-render with new language without full page refresh
-                                        // Use replace() to navigate to the active tab URL which will reload the page
-                                        window.location.replace(getActiveTabUrl());
-                                    } catch (error) {
-                                        console.error('Failed to switch language:', error);
-                                        hideModal();
-                                    }
-                                }}
-                                selectedLanguage={currentLang}
-                                wrapperClassName='mobile-menu__language-drawer'
+            {createPortal(
+                <div className='mobile-menu mobile-menu--portal'>
+                    <Drawer isOpen={isDrawerOpen} onCloseDrawer={closeDrawer} width='29.5rem'>
+                        <Drawer.Header onCloseDrawer={closeDrawer}>
+                            {/* [AI] Conditionally render language settings in header based on brand config */}
+                            <MenuHeader
+                                hideLanguageSetting={!enableLanguageSettings || isLanguageSettingVisible}
+                                openLanguageSetting={openLanguageSetting}
                             />
-                        </>
-                    ) : activeSubmenu === 'reports' ? (
-                        <>
-                            <div className='mobile-menu__back-btn'>
-                                <BackButton buttonText={localize('Reports')} onClick={closeSubmenu} />
-                            </div>
-                            <ReportsSubmenu />
-                        </>
-                    ) : (
-                        <MenuContent
-                            enableThemeToggle={enableThemeToggle}
-                            onOpenSubmenu={openSubmenu}
-                            onNavigate={closeDrawer}
-                            onLogout={() => {
-                                closeDrawer();
-                                onLogout?.();
-                            }}
-                        />
-                    )}
-                    {/* [/AI] */}
-                </Drawer.Content>
+                            {/* [/AI] */}
+                        </Drawer.Header>
 
-                <Drawer.Footer className='mobile-menu__footer'>
-                    <CreditContact />
-                    <ServerTime />
-                    <NetworkStatus />
-                </Drawer.Footer>
-            </Drawer>
+                        <Drawer.Content>
+                            {/* [AI] Conditionally render language drawer based on brand config */}
+                            {enableLanguageSettings && isLanguageSettingVisible ? (
+                                <>
+                                    <div className='mobile-menu__back-btn'>
+                                        <BackButton buttonText={localize('Language')} onClick={hideModal} />
+                                    </div>
+
+                                    <MobileLanguagesDrawer
+                                        isOpen
+                                        /* [AI] */
+                                        languages={OFFERED_LANGUAGES}
+                                        /* [/AI] */
+                                        onClose={hideModal}
+                                        onLanguageSwitch={code => {
+                                            try {
+                                                switchLanguage(code);
+                                                hideModal();
+                                                // Page reload is necessary because Blockly is outside React lifecycle
+                                                // and won't re-render with new language without full page refresh
+                                                // Use replace() to navigate to the active tab URL which will reload the page
+                                                window.location.replace(getActiveTabUrl());
+                                            } catch (error) {
+                                                console.error('Failed to switch language:', error);
+                                                hideModal();
+                                            }
+                                        }}
+                                        selectedLanguage={currentLang}
+                                        wrapperClassName='mobile-menu__language-drawer'
+                                    />
+                                </>
+                            ) : activeSubmenu === 'reports' ? (
+                                <>
+                                    <div className='mobile-menu__back-btn'>
+                                        <BackButton buttonText={localize('Reports')} onClick={closeSubmenu} />
+                                    </div>
+                                    <ReportsSubmenu />
+                                </>
+                            ) : (
+                                <MenuContent
+                                    enableThemeToggle={enableThemeToggle}
+                                    onOpenSubmenu={openSubmenu}
+                                    onNavigate={closeDrawer}
+                                    onLogout={() => {
+                                        closeDrawer();
+                                        onLogout?.();
+                                    }}
+                                />
+                            )}
+                            {/* [/AI] */}
+                        </Drawer.Content>
+
+                        <Drawer.Footer className='mobile-menu__footer'>
+                            <CreditContact />
+                            <ServerTime />
+                            <NetworkStatus />
+                        </Drawer.Footer>
+                    </Drawer>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
