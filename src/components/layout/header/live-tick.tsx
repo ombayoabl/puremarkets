@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { isProduction, WS_SERVERS } from '@/components/shared';
+import { observer as globalObserver } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import './live-tick.scss';
 
@@ -15,7 +16,26 @@ const DEFAULT_SYMBOL = 'R_10';
  */
 const LiveTick = observer(() => {
     const store = useStore();
-    const symbol = store?.dashboard?.bot_builder_symbol || DEFAULT_SYMBOL;
+    const selected_symbol = store?.dashboard?.bot_builder_symbol || DEFAULT_SYMBOL;
+    // While a bot runs it can move to other markets (Change market on each run, Market symbol changer)
+    const [bot_symbol, setBotSymbol] = useState<string | null>(null);
+    const symbol = bot_symbol || selected_symbol;
+
+    useEffect(() => {
+        const onMarketChanged = (new_symbol: string) => setBotSymbol(new_symbol);
+        const onBotStop = () => setBotSymbol(null);
+        globalObserver.register('bot.market_changed', onMarketChanged);
+        globalObserver.register('bot.stop', onBotStop);
+        return () => {
+            globalObserver.unregister('bot.market_changed', onMarketChanged);
+            globalObserver.unregister('bot.stop', onBotStop);
+        };
+    }, []);
+
+    // picking another market in the Bot Builder takes over again
+    useEffect(() => {
+        setBotSymbol(null);
+    }, [selected_symbol]);
     const [price, setPrice] = useState<string>('––');
     const [is_live, setIsLive] = useState(false);
     const last_quote = useRef<number | null>(null);

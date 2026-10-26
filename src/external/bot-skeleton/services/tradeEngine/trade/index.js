@@ -145,6 +145,7 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
         this.options.symbol = symbol;
         this.symbol = symbol;
         this.ensureMarketMonitored(symbol);
+        globalObserver.emit('bot.market_changed', symbol); // the header live price follows the bot's market
     }
 
     start(tradeOptions) {
@@ -206,6 +207,8 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
             this.makeProposals({ ...this.options, ...this.tradeOptions });
             this.checkProposalReady();
         }
+
+        globalObserver.emit('bot.market_changed', symbol); // the header live price follows the bot's market
     }
 
     setCustomPrediction(value) {
