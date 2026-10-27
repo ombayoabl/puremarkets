@@ -1,6 +1,6 @@
 {
     // The name must match the project name in Cloudflare (Workers & Pages).
-    "name": "puremarkets1",
+    "name": "puremarkets-site",
     "main": "worker/index.js",
     "compatibility_date": "2026-10-01",
     "assets": {
