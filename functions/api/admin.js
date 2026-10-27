@@ -49,7 +49,7 @@ export const onRequest = async ({ request, env }) => {
     if (!(await checkToken(env, auth))) return reply({ error: 'Please log in again.' }, 401);
     if (!storageReady(env)) {
         return reply(
-            { error: 'No storage connected on Cloudflare yet (add the Upstash Redis variables to the project).' },
+            { error: 'No storage connected on Cloudflare yet (bind a KV namespace named PM_KV to the project, or set the Upstash variables).' },
             500
         );
     }

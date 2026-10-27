@@ -1,8 +1,11 @@
 // Shared helpers for the puremarkets back end on Cloudflare Pages Functions.
 // (The same logic as api/_lib.js for Vercel, written with web-standard APIs only, so it runs on Cloudflare.)
-// Storage: any Upstash Redis REST store. Set these in Cloudflare Pages -> Settings -> Variables and secrets:
-//   KV_REST_API_URL + KV_REST_API_TOKEN  (or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
-//   ADMIN_PASSWORD (required), ADMIN_SECRET (optional, signs the login token)
+// Storage (either one):
+//   1) Cloudflare KV: bind a KV namespace to the project with the variable name  PM_KV  (recommended).
+//      If the old Upstash variables below are ALSO set, anything not found in KV yet is read from the old store,
+//      and every save goes to Cloudflare KV (so the old data moves over by itself as you save).
+//   2) Upstash Redis REST store: KV_REST_API_URL + KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
+// Also set (Variables and secrets): ADMIN_PASSWORD (required), ADMIN_SECRET (optional, signs the login token)
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -15,7 +18,8 @@ export const json = (data, status = 200, headers = {}) =>
 
 const kvUrl = env => env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL || '';
 const kvToken = env => env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN || '';
-export const storageReady = env => Boolean(kvUrl(env) && kvToken(env));
+const upstashReady = env => Boolean(kvUrl(env) && kvToken(env));
+export const storageReady = env => Boolean(env.PM_KV || upstashReady(env));
 
 async function kv(env, ...cmd) {
     const res = await fetch(kvUrl(env), {
@@ -30,7 +34,20 @@ async function kv(env, ...cmd) {
 
 export async function getJson(env, key, fallback) {
     if (!storageReady(env)) return fallback;
-    const raw = await kv(env, 'GET', key);
+    let raw = null;
+    if (env.PM_KV) {
+        raw = await env.PM_KV.get(key);
+        if ((raw === null || raw === undefined) && upstashReady(env)) {
+            // not moved to Cloudflare KV yet: read it from the old store
+            try {
+                raw = await kv(env, 'GET', key);
+            } catch (e) {
+                raw = null;
+            }
+        }
+    } else {
+        raw = await kv(env, 'GET', key);
+    }
     if (!raw) return fallback;
     try {
         return JSON.parse(raw);
@@ -38,7 +55,8 @@ export async function getJson(env, key, fallback) {
         return fallback;
     }
 }
-export const setJson = (env, key, value) => kv(env, 'SET', key, JSON.stringify(value));
+export const setJson = (env, key, value) =>
+    env.PM_KV ? env.PM_KV.put(key, JSON.stringify(value)) : kv(env, 'SET', key, JSON.stringify(value));
 
 export const DEFAULT_SETTINGS = {
     maintenance: { on: false, message: 'We are making improvements. Please check back soon.' },
